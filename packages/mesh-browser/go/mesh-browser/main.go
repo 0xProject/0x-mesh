@@ -186,7 +186,7 @@ func (cw *MeshWrapper) GetOrders(perPage int, minOrderHash string) (js.Value, er
 }
 
 func (cw *MeshWrapper) GQLAddOrders(rawOrders js.Value, rawOpts js.Value) (js.Value, error) {
-	var newOrders []*gqltypes.NewOrder
+	var newOrders []*gqltypes.NewOrderV3
 	if err := jsutil.InefficientlyConvertFromJS(rawOrders, &newOrders); err != nil {
 		return js.Undefined(), err
 	}

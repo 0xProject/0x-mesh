@@ -32,25 +32,25 @@ const concurrencyLimit = 5
 // disruptions, etc...), we categorize them into `Kind`s and uniquely identify the reasons for
 // machines with a `Code`
 type RejectedOrderInfo struct {
-	OrderHash   common.Hash         `json:"orderHash"`
-	SignedOrder *zeroex.SignedOrder `json:"signedOrder"`
-	Kind        RejectedOrderKind   `json:"kind"`
-	Status      RejectedOrderStatus `json:"status"`
+	OrderHash   common.Hash           `json:"orderHash"`
+	SignedOrder *zeroex.SignedOrderV3 `json:"signedOrder"`
+	Kind        RejectedOrderKind     `json:"kind"`
+	Status      RejectedOrderStatus   `json:"status"`
 }
 
 // AcceptedOrderInfo represents an fillable order and how much it could be filled for
 type AcceptedOrderInfo struct {
-	OrderHash                common.Hash         `json:"orderHash"`
-	SignedOrder              *zeroex.SignedOrder `json:"signedOrder"`
-	FillableTakerAssetAmount *big.Int            `json:"fillableTakerAssetAmount"`
-	IsNew                    bool                `json:"isNew"`
+	OrderHash                common.Hash           `json:"orderHash"`
+	SignedOrder              *zeroex.SignedOrderV3 `json:"signedOrder"`
+	FillableTakerAssetAmount *big.Int              `json:"fillableTakerAssetAmount"`
+	IsNew                    bool                  `json:"isNew"`
 }
 
 type acceptedOrderInfoJSON struct {
-	OrderHash                string              `json:"orderHash"`
-	SignedOrder              *zeroex.SignedOrder `json:"signedOrder"`
-	FillableTakerAssetAmount string              `json:"fillableTakerAssetAmount"`
-	IsNew                    bool                `json:"isNew"`
+	OrderHash                string                `json:"orderHash"`
+	SignedOrder              *zeroex.SignedOrderV3 `json:"signedOrder"`
+	FillableTakerAssetAmount string                `json:"fillableTakerAssetAmount"`
+	IsNew                    bool                  `json:"isNew"`
 }
 
 // MarshalJSON is a custom Marshaler for AcceptedOrderInfo
@@ -251,21 +251,21 @@ func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLengt
 // retrieve up until the failure.
 // The `validationBlock` parameter lets the caller specify a specific block at which to validate
 // the orders. This can be set to the `latest` block or any other historical block.
-func (o *OrderValidator) BatchValidate(ctx context.Context, signedOrders []*zeroex.SignedOrder, areNewOrders bool, validationBlock *types.MiniHeader) *ValidationResults {
+func (o *OrderValidator) BatchValidate(ctx context.Context, signedOrders []*zeroex.SignedOrderV3, areNewOrders bool, validationBlock *types.MiniHeader) *ValidationResults {
 	if len(signedOrders) == 0 {
 		return &ValidationResults{}
 	}
-	offchainValidSignedOrders, rejectedOrderInfos := o.BatchOffchainValidation(signedOrders)
+	offchainValidSignedOrderV3s, rejectedOrderInfos := o.BatchOffchainValidation(signedOrders)
 	validationResults := &ValidationResults{
 		Accepted: []*AcceptedOrderInfo{},
 		Rejected: rejectedOrderInfos,
 	}
 
-	signedOrderChunks := [][]*zeroex.SignedOrder{}
-	chunkSizes := o.computeOptimalChunkSizes(offchainValidSignedOrders)
+	signedOrderChunks := [][]*zeroex.SignedOrderV3{}
+	chunkSizes := o.computeOptimalChunkSizes(offchainValidSignedOrderV3s)
 	for _, chunkSize := range chunkSizes {
-		signedOrderChunks = append(signedOrderChunks, offchainValidSignedOrders[:chunkSize])
-		offchainValidSignedOrders = offchainValidSignedOrders[chunkSize:]
+		signedOrderChunks = append(signedOrderChunks, offchainValidSignedOrderV3s[:chunkSize])
+		offchainValidSignedOrderV3s = offchainValidSignedOrderV3s[chunkSize:]
 	}
 
 	semaphoreChan := make(chan struct{}, concurrencyLimit)
@@ -274,7 +274,7 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, signedOrders []*zero
 	wg := &sync.WaitGroup{}
 	for _, signedOrders := range signedOrderChunks {
 		wg.Add(1)
-		go func(signedOrders []*zeroex.SignedOrder) {
+		go func(signedOrders []*zeroex.SignedOrderV3) {
 			defer wg.Done()
 
 			select {
@@ -300,9 +300,9 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, signedOrders []*zero
 // - `Signature` contains a properly encoded 0x signature
 // - Validate that order isn't expired
 // Returns the signedOrders that are off-chain valid along with an array of orderInfo for the rejected orders
-func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOrder) ([]*zeroex.SignedOrder, []*RejectedOrderInfo) {
+func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOrderV3) ([]*zeroex.SignedOrderV3, []*RejectedOrderInfo) {
 	rejectedOrderInfos := []*RejectedOrderInfo{}
-	offchainValidSignedOrders := []*zeroex.SignedOrder{}
+	offchainValidSignedOrderV3s := []*zeroex.SignedOrderV3{}
 	for _, signedOrder := range signedOrders {
 		orderHash, err := signedOrder.ComputeOrderHash()
 		if err != nil {
@@ -401,10 +401,10 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 			continue
 		}
 
-		offchainValidSignedOrders = append(offchainValidSignedOrders, signedOrder)
+		offchainValidSignedOrderV3s = append(offchainValidSignedOrderV3s, signedOrder)
 	}
 
-	return offchainValidSignedOrders, rejectedOrderInfos
+	return offchainValidSignedOrderV3s, rejectedOrderInfos
 }
 
 // batchOnchainValidation validates a list of signed orders using the deployed
@@ -413,7 +413,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 // will invalidate MultiAssetProxy orders that contain duplicate ERC721 asset data).
 func (o *OrderValidator) batchOnchainValidation(
 	ctx context.Context,
-	signedOrders []*zeroex.SignedOrder,
+	signedOrders []*zeroex.SignedOrderV3,
 	validationBlock *types.MiniHeader,
 	areNewOrders bool,
 	validationResults *ValidationResults,
@@ -647,27 +647,27 @@ func numWords(bytes []byte) int {
 	return (len(bytes) + 31) / 32
 }
 
-func computeABIEncodedSignedOrderStringLength(signedOrder *zeroex.SignedOrder) int {
-	// The fixed size fields in a SignedOrder take up 1536 bytes. The variable length fields take up 64 characters per 256-bit word. This is because each byte in signedOrder is as two bytes in the JSON string.
-	return 1536 + 64*(numWords(signedOrder.Order.MakerAssetData)+
-		numWords(signedOrder.Order.TakerAssetData)+
-		numWords(signedOrder.Order.MakerFeeAssetData)+
-		numWords(signedOrder.Order.MakerFeeAssetData))
+func computeABIEncodedSignedOrderV3StringLength(signedOrder *zeroex.SignedOrderV3) int {
+	// The fixed size fields in a SignedOrderV3 take up 1536 bytes. The variable length fields take up 64 characters per 256-bit word. This is because each byte in signedOrder is as two bytes in the JSON string.
+	return 1536 + 64*(numWords(signedOrder.MakerAssetData)+
+		numWords(signedOrder.TakerAssetData)+
+		numWords(signedOrder.MakerFeeAssetData)+
+		numWords(signedOrder.MakerFeeAssetData))
 }
 
 // computeOptimalChunkSizes splits the signedOrders into chunks where the payload size of each chunk
 // is beneath the maxRequestContentLength. It does this by implementing a greedy algorithm which ABI
 // encodes signedOrders one at a time until the computed payload size is as close to the
 // maxRequestContentLength as possible.
-func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*zeroex.SignedOrder) []int {
+func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*zeroex.SignedOrderV3) []int {
 	chunkSizes := []int{}
 
 	payloadLength := jsonRPCPayloadByteLength
 	nextChunkSize := 0
 	for _, signedOrder := range signedOrders {
-		encodedSignedOrderByteLength := computeABIEncodedSignedOrderStringLength(signedOrder)
-		if payloadLength+encodedSignedOrderByteLength < o.maxRequestContentLength {
-			payloadLength += encodedSignedOrderByteLength
+		encodedSignedOrderV3ByteLength := computeABIEncodedSignedOrderV3StringLength(signedOrder)
+		if payloadLength+encodedSignedOrderV3ByteLength < o.maxRequestContentLength {
+			payloadLength += encodedSignedOrderV3ByteLength
 			nextChunkSize++
 		} else {
 			if nextChunkSize == 0 {
@@ -676,7 +676,7 @@ func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*zeroex.SignedO
 			}
 			chunkSizes = append(chunkSizes, nextChunkSize)
 			nextChunkSize = 1
-			payloadLength = jsonRPCPayloadByteLength + encodedSignedOrderByteLength
+			payloadLength = jsonRPCPayloadByteLength + encodedSignedOrderV3ByteLength
 		}
 	}
 	if nextChunkSize != 0 {

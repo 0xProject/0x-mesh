@@ -52,7 +52,7 @@ func TestAddOrders(t *testing.T) {
 
 	numOrders := 10
 	orderHashes := []common.Hash{}
-	orders := []*types.OrderWithMetadata{}
+	orders := []*types.OrderWithMetadataV3{}
 	for i := 0; i < numOrders; i++ {
 		order := newTestOrder()
 		orders = append(orders, order)
@@ -88,7 +88,7 @@ func TestAddOrdersMaxExpirationTime(t *testing.T) {
 
 	// Create the max number of orders with increasing expiration time
 	// 0, 1, 2, etc.
-	originalOrders := []*types.OrderWithMetadata{}
+	originalOrders := []*types.OrderWithMetadataV3{}
 	for i := 0; i < opts.MaxOrders; i++ {
 		testOrder := newTestOrder()
 		testOrder.ExpirationTimeSeconds = big.NewInt(int64(i))
@@ -112,15 +112,15 @@ func TestAddOrdersMaxExpirationTime(t *testing.T) {
 	orderWithShorterExpirationTime := newTestOrder()
 	orderWithShorterExpirationTime.IsPinned = false
 	orderWithShorterExpirationTime.ExpirationTimeSeconds = big.NewInt(0).Add(currentMaxExpirationTime, big.NewInt(-1))
-	newOrders := []*types.OrderWithMetadata{orderWithLongerExpirationTime, orderWithShorterExpirationTime}
+	newOrders := []*types.OrderWithMetadataV3{orderWithLongerExpirationTime, orderWithShorterExpirationTime}
 	alreadyStored, added, removed, err = db.AddOrders(newOrders)
 	require.NoError(t, err)
 	assert.Len(t, alreadyStored, 0, "Expected no orders to be already stored")
-	assertOrderSlicesAreUnsortedEqual(t, []*types.OrderWithMetadata{orderWithShorterExpirationTime}, added)
-	assertOrderSlicesAreUnsortedEqual(t, []*types.OrderWithMetadata{originalOrders[len(originalOrders)-1]}, removed)
+	assertOrderSlicesAreUnsortedEqual(t, []*types.OrderWithMetadataV3{orderWithShorterExpirationTime}, added)
+	assertOrderSlicesAreUnsortedEqual(t, []*types.OrderWithMetadataV3{originalOrders[len(originalOrders)-1]}, removed)
 
 	// Check the remaining orders in the database to make sure they are what we expect.
-	expectedStoredOrders := make([]*types.OrderWithMetadata, len(originalOrders))
+	expectedStoredOrders := make([]*types.OrderWithMetadataV3, len(originalOrders))
 	copy(expectedStoredOrders, originalOrders)
 	expectedStoredOrders[len(expectedStoredOrders)-1] = orderWithShorterExpirationTime
 	actualStoredOrders, err := db.FindOrders(nil)
@@ -129,7 +129,7 @@ func TestAddOrdersMaxExpirationTime(t *testing.T) {
 
 	// Add some pinned orders. Pinned orders should replace non-pinned orders, even if
 	// they have a later expiration time.
-	pinnedOrders := []*types.OrderWithMetadata{}
+	pinnedOrders := []*types.OrderWithMetadataV3{}
 	for i := 0; i < opts.MaxOrders; i++ {
 		testOrder := newTestOrder()
 		testOrder.ExpirationTimeSeconds = big.NewInt(int64(i * 10))
@@ -153,15 +153,15 @@ func TestAddOrdersMaxExpirationTime(t *testing.T) {
 	pinnedOrderWithShorterExpirationTime := newTestOrder()
 	pinnedOrderWithShorterExpirationTime.IsPinned = true
 	pinnedOrderWithShorterExpirationTime.ExpirationTimeSeconds = big.NewInt(0).Add(currentMaxExpirationTime, big.NewInt(-1))
-	newPinnedOrders := []*types.OrderWithMetadata{pinnedOrderWithLongerExpirationTime, pinnedOrderWithShorterExpirationTime}
+	newPinnedOrders := []*types.OrderWithMetadataV3{pinnedOrderWithLongerExpirationTime, pinnedOrderWithShorterExpirationTime}
 	alreadyStored, added, removed, err = db.AddOrders(newPinnedOrders)
 	require.NoError(t, err)
 	assert.Len(t, alreadyStored, 0, "Expected no orders to be already stored")
-	assertOrderSlicesAreUnsortedEqual(t, []*types.OrderWithMetadata{pinnedOrderWithShorterExpirationTime}, added)
-	assertOrderSlicesAreUnsortedEqual(t, []*types.OrderWithMetadata{pinnedOrders[len(pinnedOrders)-1]}, removed)
+	assertOrderSlicesAreUnsortedEqual(t, []*types.OrderWithMetadataV3{pinnedOrderWithShorterExpirationTime}, added)
+	assertOrderSlicesAreUnsortedEqual(t, []*types.OrderWithMetadataV3{pinnedOrders[len(pinnedOrders)-1]}, removed)
 
 	// Check the remaining orders in the database to make sure they are what we expect.
-	expectedStoredOrders = make([]*types.OrderWithMetadata, len(pinnedOrders))
+	expectedStoredOrders = make([]*types.OrderWithMetadataV3, len(pinnedOrders))
 	copy(expectedStoredOrders, pinnedOrders)
 	expectedStoredOrders[len(expectedStoredOrders)-1] = pinnedOrderWithShorterExpirationTime
 	actualStoredOrders, err = db.FindOrders(nil)
@@ -187,7 +187,7 @@ func TestGetOrder(t *testing.T) {
 	defer cancel()
 	db := newTestDB(t, ctx)
 
-	_, added, _, err := db.AddOrders([]*types.OrderWithMetadata{newTestOrder()})
+	_, added, _, err := db.AddOrders([]*types.OrderWithMetadataV3{newTestOrder()})
 	require.NoError(t, err)
 	originalOrder := added[0]
 
@@ -209,7 +209,7 @@ func TestGetOrderStatuses(t *testing.T) {
 	removedOrder.IsRemoved = true
 	unfillableOrder := newTestOrder()
 	unfillableOrder.IsUnfillable = true
-	_, _, _, err := db.AddOrders([]*types.OrderWithMetadata{removedOrder, unfillableOrder})
+	_, _, _, err := db.AddOrders([]*types.OrderWithMetadataV3{removedOrder, unfillableOrder})
 	require.NoError(t, err)
 
 	hashes := []common.Hash{
@@ -248,7 +248,7 @@ func TestGetCurrentMaxExpirationTime(t *testing.T) {
 	db := newTestDB(t, ctx)
 
 	// Create some non-pinned orders with expiration times 0, 1, 2, etc.
-	nonPinnedOrders := []*types.OrderWithMetadata{}
+	nonPinnedOrders := []*types.OrderWithMetadataV3{}
 	for i := 0; i < 5; i++ {
 		order := newTestOrder()
 		order.ExpirationTimeSeconds = big.NewInt(int64(i))
@@ -259,7 +259,7 @@ func TestGetCurrentMaxExpirationTime(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create some pinned orders with expiration times 0, 2, 4, etc.
-	pinnedOrders := []*types.OrderWithMetadata{}
+	pinnedOrders := []*types.OrderWithMetadataV3{}
 	for i := 0; i < 5; i++ {
 		order := newTestOrder()
 		order.ExpirationTimeSeconds = big.NewInt(int64(i * 2))
@@ -280,7 +280,7 @@ func TestUpdateOrder(t *testing.T) {
 	defer cancel()
 	db := newTestDB(t, ctx)
 
-	err := db.UpdateOrder(common.Hash{}, func(existingOrder *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
+	err := db.UpdateOrder(common.Hash{}, func(existingOrder *types.OrderWithMetadataV3) (*types.OrderWithMetadataV3, error) {
 		return existingOrder, nil
 	})
 	assert.EqualError(t, err, ErrNotFound.Error(), "calling UpdateOrder with a hash that doesn't exist should return ErrNotFound")
@@ -289,7 +289,7 @@ func TestUpdateOrder(t *testing.T) {
 	// UpdateOrder only updates one of them and does not affect the
 	// others.
 	numOrders := 3
-	originalOrders := []*types.OrderWithMetadata{}
+	originalOrders := []*types.OrderWithMetadataV3{}
 	for i := 0; i < numOrders; i++ {
 		originalOrders = append(originalOrders, newTestOrder())
 	}
@@ -298,7 +298,7 @@ func TestUpdateOrder(t *testing.T) {
 
 	orderToUpdate := originalOrders[0]
 	updatedFillableAmount := big.NewInt(12345)
-	err = db.UpdateOrder(orderToUpdate.Hash, func(existingOrder *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
+	err = db.UpdateOrder(orderToUpdate.Hash, func(existingOrder *types.OrderWithMetadataV3) (*types.OrderWithMetadataV3, error) {
 		updatedOrder := existingOrder
 		updatedOrder.FillableTakerAssetAmount = updatedFillableAmount
 		return updatedOrder, nil
@@ -318,7 +318,7 @@ func TestFindOrders(t *testing.T) {
 	db := newTestDB(t, ctx)
 
 	numOrders := 10
-	originalOrders := []*types.OrderWithMetadata{}
+	originalOrders := []*types.OrderWithMetadataV3{}
 	for i := 0; i < numOrders; i++ {
 		originalOrders = append(originalOrders, newTestOrder())
 	}
@@ -338,7 +338,7 @@ func TestFindOrdersSort(t *testing.T) {
 	// Create some test orders with carefully chosen MakerAssetAmount
 	// and TakerAssetAmount values for testing sorting.
 	numOrders := 5
-	originalOrders := []*types.OrderWithMetadata{}
+	originalOrders := []*types.OrderWithMetadataV3{}
 	for i := 0; i < numOrders; i++ {
 		order := newTestOrder()
 		order.MakerAssetAmount = big.NewInt(int64(i))
@@ -409,12 +409,12 @@ func TestFindOrdersSort(t *testing.T) {
 
 type findOrdersSortTestCase struct {
 	sortOpts []OrderSort
-	less     func([]*types.OrderWithMetadata) func(i, j int) bool
+	less     func([]*types.OrderWithMetadataV3) func(i, j int) bool
 }
 
-func runFindOrdersSortTestCase(db *DB, originalOrders []*types.OrderWithMetadata, testCase findOrdersSortTestCase) func(t *testing.T) {
+func runFindOrdersSortTestCase(db *DB, originalOrders []*types.OrderWithMetadataV3, testCase findOrdersSortTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
-		expectedOrders := make([]*types.OrderWithMetadata, len(originalOrders))
+		expectedOrders := make([]*types.OrderWithMetadataV3, len(originalOrders))
 		copy(expectedOrders, originalOrders)
 		sort.Slice(expectedOrders, testCase.less(expectedOrders))
 		findOpts := &OrderQuery{
@@ -432,7 +432,7 @@ func TestFindOrdersLimitAndOffset(t *testing.T) {
 	db := newTestDB(t, ctx)
 
 	numOrders := 10
-	originalOrders := []*types.OrderWithMetadata{}
+	originalOrders := []*types.OrderWithMetadataV3{}
 	for i := 0; i < numOrders; i++ {
 		originalOrders = append(originalOrders, newTestOrder())
 	}
@@ -469,7 +469,7 @@ func TestFindOrdersLimitAndOffset(t *testing.T) {
 		{
 			limit:          10,
 			offset:         10,
-			expectedOrders: []*types.OrderWithMetadata{},
+			expectedOrders: []*types.OrderWithMetadataV3{},
 		},
 	}
 	for i, testCase := range testCases {
@@ -481,7 +481,7 @@ func TestFindOrdersLimitAndOffset(t *testing.T) {
 type findOrdersLimitAndOffsetTestCase struct {
 	limit          uint
 	offset         uint
-	expectedOrders []*types.OrderWithMetadata
+	expectedOrders []*types.OrderWithMetadataV3
 	expectedError  string
 }
 
@@ -590,7 +590,7 @@ func TestDeleteOrder(t *testing.T) {
 	defer cancel()
 	db := newTestDB(t, ctx)
 
-	_, added, _, err := db.AddOrders([]*types.OrderWithMetadata{newTestOrder()})
+	_, added, _, err := db.AddOrders([]*types.OrderWithMetadataV3{newTestOrder()})
 	require.NoError(t, err)
 	originalOrder := added[0]
 	require.NoError(t, db.DeleteOrder(originalOrder.Hash))
@@ -610,7 +610,7 @@ func TestDeleteOrdersLimitAndOffset(t *testing.T) {
 	// - orders[1].MakerAssetAmount = 1
 	// - etc.
 	numOrders := 10
-	originalOrders := []*types.OrderWithMetadata{}
+	originalOrders := []*types.OrderWithMetadataV3{}
 	for i := 0; i < numOrders; i++ {
 		testOrder := newTestOrder()
 		testOrder.MakerAssetAmount = big.NewInt(int64(i))
@@ -656,7 +656,7 @@ func TestDeleteOrdersFilter(t *testing.T) {
 	}
 }
 
-func runDeleteOrdersFilterTestCase(db *DB, originalOrders []*types.OrderWithMetadata, testCase orderFilterTestCase) func(t *testing.T) {
+func runDeleteOrdersFilterTestCase(db *DB, originalOrders []*types.OrderWithMetadataV3, testCase orderFilterTestCase) func(t *testing.T) {
 	return func(t *testing.T) {
 		defer func() {
 			// After each case, reset the state of the database by re-adding the original orders.
@@ -672,7 +672,7 @@ func runDeleteOrdersFilterTestCase(db *DB, originalOrders []*types.OrderWithMeta
 
 		// Figure out which orders should still remain in the database, then
 		// call FindOrders and make sure we get back what we expect.
-		expectedRemainingOrders := []*types.OrderWithMetadata{}
+		expectedRemainingOrders := []*types.OrderWithMetadataV3{}
 		for _, order := range originalOrders {
 			shouldBeRemaining := true
 			for _, remainingOrder := range testCase.expectedMatchingOrders {
@@ -1219,8 +1219,8 @@ func newTestDB(t testing.TB, ctx context.Context) *DB {
 // newTestOrder returns a new order with a random hash that is ready to insert
 // into the database. Some computed fields (e.g. hash, signature) may not be
 // correct, so the order will not pass 0x validation.
-func newTestOrder() *types.OrderWithMetadata {
-	return &types.OrderWithMetadata{
+func newTestOrder() *types.OrderWithMetadataV3 {
+	return &types.OrderWithMetadataV3{
 		Hash:                     common.BigToHash(big.NewInt(int64(rand.Int()))),
 		ChainID:                  big.NewInt(constants.TestChainID),
 		MakerAddress:             constants.GanacheAccount1,
@@ -1326,17 +1326,17 @@ func newTestMetadata() *types.Metadata {
 type orderFilterTestCase struct {
 	name                   string
 	filters                []OrderFilter
-	expectedMatchingOrders []*types.OrderWithMetadata
+	expectedMatchingOrders []*types.OrderWithMetadataV3
 }
 
-func createAndStoreOrdersForFilterTests(t *testing.T, db *DB) []*types.OrderWithMetadata {
+func createAndStoreOrdersForFilterTests(t *testing.T, db *DB) []*types.OrderWithMetadataV3 {
 	// Create some test orders with very specific characteristics to make it easier to write tests.
 	// - Both MakerAssetAmount and TakerAssetAmount will be 0, 1, 2, etc.
 	// - MakerAssetData will be 'a', 'b', 'c', etc.
 	// - ParsedMakerAssetData will always be for the ERC721Dummy contract, and each will contain
 	//   two token ids: (0, 1), (0, 11), (0, 21), (0, 31) etc.
 	numOrders := 10
-	storedOrders := []*types.OrderWithMetadata{}
+	storedOrders := []*types.OrderWithMetadataV3{}
 	for i := 0; i < numOrders; i++ {
 		order := newTestOrder()
 		order.MakerAssetAmount = big.NewInt(int64(i))
@@ -1360,7 +1360,7 @@ func createAndStoreOrdersForFilterTests(t *testing.T, db *DB) []*types.OrderWith
 	return storedOrders
 }
 
-func makeOrderFilterTestCases(t *testing.T, db *DB) ([]*types.OrderWithMetadata, []orderFilterTestCase) {
+func makeOrderFilterTestCases(t *testing.T, db *DB) ([]*types.OrderWithMetadataV3, []orderFilterTestCase) {
 	storedOrders := createAndStoreOrdersForFilterTests(t, db)
 	testCases := []orderFilterTestCase{
 		{
@@ -1960,33 +1960,33 @@ func TestDHTStoreBatch(t *testing.T) {
 // the original slice. Uses the same semantics as slice expressions: low is
 // inclusive, hi is exclusive. The returned slice still contains pointers, it
 // just doesn't use the same underlying array.
-func safeSubsliceOrders(orders []*types.OrderWithMetadata, low, hi int) []*types.OrderWithMetadata {
-	result := make([]*types.OrderWithMetadata, hi-low)
+func safeSubsliceOrders(orders []*types.OrderWithMetadataV3, low, hi int) []*types.OrderWithMetadataV3 {
+	result := make([]*types.OrderWithMetadataV3, hi-low)
 	for i := low; i < hi; i++ {
 		result[i-low] = orders[i]
 	}
 	return result
 }
 
-func sortOrdersByHash(orders []*types.OrderWithMetadata) {
+func sortOrdersByHash(orders []*types.OrderWithMetadataV3) {
 	sort.SliceStable(orders, func(i, j int) bool {
 		return bytes.Compare(orders[i].Hash.Bytes(), orders[j].Hash.Bytes()) == -1
 	})
 }
 
-func lessByMakerAssetAmountAsc(orders []*types.OrderWithMetadata) func(i, j int) bool {
+func lessByMakerAssetAmountAsc(orders []*types.OrderWithMetadataV3) func(i, j int) bool {
 	return func(i, j int) bool {
 		return orders[i].MakerAssetAmount.Cmp(orders[j].MakerAssetAmount) == -1
 	}
 }
 
-func lessByMakerAssetAmountDesc(orders []*types.OrderWithMetadata) func(i, j int) bool {
+func lessByMakerAssetAmountDesc(orders []*types.OrderWithMetadataV3) func(i, j int) bool {
 	return func(i, j int) bool {
 		return orders[i].MakerAssetAmount.Cmp(orders[j].MakerAssetAmount) == 1
 	}
 }
 
-func lessByTakerAssetAmountAscAndMakerAssetAmountAsc(orders []*types.OrderWithMetadata) func(i, j int) bool {
+func lessByTakerAssetAmountAscAndMakerAssetAmountAsc(orders []*types.OrderWithMetadataV3) func(i, j int) bool {
 	return func(i, j int) bool {
 		switch orders[i].TakerAssetAmount.Cmp(orders[j].TakerAssetAmount) {
 		case -1:
@@ -2003,7 +2003,7 @@ func lessByTakerAssetAmountAscAndMakerAssetAmountAsc(orders []*types.OrderWithMe
 	}
 }
 
-func lessByTakerAssetAmountDescAndMakerAssetAmountDesc(orders []*types.OrderWithMetadata) func(i, j int) bool {
+func lessByTakerAssetAmountDescAndMakerAssetAmountDesc(orders []*types.OrderWithMetadataV3) func(i, j int) bool {
 	return func(i, j int) bool {
 		switch orders[i].TakerAssetAmount.Cmp(orders[j].TakerAssetAmount) {
 		case -1:
@@ -2020,7 +2020,7 @@ func lessByTakerAssetAmountDescAndMakerAssetAmountDesc(orders []*types.OrderWith
 	}
 }
 
-func assertOrderSlicesAreEqual(t *testing.T, expected, actual []*types.OrderWithMetadata) {
+func assertOrderSlicesAreEqual(t *testing.T, expected, actual []*types.OrderWithMetadataV3) {
 	assert.Equal(t, len(expected), len(actual), "wrong number of orders")
 	for i, expectedOrder := range expected {
 		if i >= len(actual) {
@@ -2040,18 +2040,18 @@ func assertOrderSlicesAreEqual(t *testing.T, expected, actual []*types.OrderWith
 	}
 }
 
-func assertOrderSlicesAreUnsortedEqual(t *testing.T, expected, actual []*types.OrderWithMetadata) {
+func assertOrderSlicesAreUnsortedEqual(t *testing.T, expected, actual []*types.OrderWithMetadataV3) {
 	// Make a copy of the given orders so we don't mess up the original when sorting them.
-	expectedCopy := make([]*types.OrderWithMetadata, len(expected))
+	expectedCopy := make([]*types.OrderWithMetadataV3, len(expected))
 	copy(expectedCopy, expected)
 	sortOrdersByHash(expectedCopy)
-	actualCopy := make([]*types.OrderWithMetadata, len(actual))
+	actualCopy := make([]*types.OrderWithMetadataV3, len(actual))
 	copy(actualCopy, actual)
 	sortOrdersByHash(actualCopy)
 	assertOrderSlicesAreEqual(t, expectedCopy, actualCopy)
 }
 
-func assertOrdersAreEqual(t *testing.T, expected, actual *types.OrderWithMetadata) {
+func assertOrdersAreEqual(t *testing.T, expected, actual *types.OrderWithMetadataV3) {
 	if expected.LastUpdated.Equal(actual.LastUpdated) {
 		// HACK(albrow): In this case, the two values represent the same time.
 		// This is what we care about, but the assert package might consider

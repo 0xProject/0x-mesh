@@ -26,7 +26,7 @@ func (o OrderEvent) JSValue() js.Value {
 	})
 }
 
-func (s SignedOrder) JSValue() js.Value {
+func (s SignedOrderV3) JSValue() js.Value {
 	makerAssetData := "0x"
 	if len(s.MakerAssetData) != 0 {
 		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerAssetData))

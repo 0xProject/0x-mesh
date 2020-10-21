@@ -139,7 +139,7 @@ func (s *oneOrderSubprotocol) ParseResponseMetadata(metadata json.RawMessage) (i
 }
 
 func (s *oneOrderSubprotocol) HandleOrderSyncRequest(ctx context.Context, req *Request) (*Response, error) {
-	order := &zeroex.Order{
+	order := &zeroex.OrderV3{
 		ChainID:               big.NewInt(constants.TestChainID),
 		MakerAddress:          constants.GanacheAccount1,
 		TakerAddress:          constants.NullAddress,
@@ -163,7 +163,7 @@ func (s *oneOrderSubprotocol) HandleOrderSyncRequest(ctx context.Context, req *R
 	}
 	return &Response{
 		ProviderID: s.myPeerID,
-		Orders:     []*zeroex.SignedOrder{signedOrder},
+		Orders:     []*zeroex.SignedOrderV3{signedOrder},
 		Complete:   true,
 		Metadata:   req.Metadata,
 	}, nil

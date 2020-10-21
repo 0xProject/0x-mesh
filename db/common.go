@@ -28,14 +28,14 @@ var (
 )
 
 type Database interface {
-	AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []common.Hash, added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error)
-	GetOrder(hash common.Hash) (*types.OrderWithMetadata, error)
+	AddOrders(orders []*types.OrderWithMetadataV3) (alreadyStored []common.Hash, added []*types.OrderWithMetadataV3, removed []*types.OrderWithMetadataV3, err error)
+	GetOrder(hash common.Hash) (*types.OrderWithMetadataV3, error)
 	GetOrderStatuses(hashes []common.Hash) (statuses []*StoredOrderStatus, err error)
-	FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
+	FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadataV3, error)
 	CountOrders(opts *OrderQuery) (int, error)
 	DeleteOrder(hash common.Hash) error
-	DeleteOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
-	UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) error
+	DeleteOrders(opts *OrderQuery) ([]*types.OrderWithMetadataV3, error)
+	UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadataV3) (updatedOrder *types.OrderWithMetadataV3, err error)) error
 	AddMiniHeaders(miniHeaders []*types.MiniHeader) (added []*types.MiniHeader, removed []*types.MiniHeader, err error)
 	GetMiniHeader(hash common.Hash) (*types.MiniHeader, error)
 	FindMiniHeaders(opts *MiniHeaderQuery) ([]*types.MiniHeader, error)

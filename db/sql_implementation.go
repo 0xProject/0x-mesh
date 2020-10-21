@@ -324,13 +324,13 @@ func (db *DB) ReadWriteTransactionalContext(ctx context.Context, opts *sql.TxOpt
 	return db.sqldb.TransactionalContext(ctx, opts, f)
 }
 
-func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []common.Hash, added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error) {
+func (db *DB) AddOrders(orders []*types.OrderWithMetadataV3) (alreadyStored []common.Hash, added []*types.OrderWithMetadataV3, removed []*types.OrderWithMetadataV3, err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
 
 	sqlOrders := sqltypes.OrdersFromCommonType(orders)
-	addedMap := map[common.Hash]*types.OrderWithMetadata{}
+	addedMap := map[common.Hash]*types.OrderWithMetadataV3{}
 	sqlRemoved := []*sqltypes.Order{}
 
 	err = db.ReadWriteTransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
@@ -390,7 +390,7 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []comm
 	return alreadyStored, added, sqltypes.OrdersToCommonType(sqlRemoved), nil
 }
 
-func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err error) {
+func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadataV3, err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
@@ -441,7 +441,7 @@ func (db *DB) GetOrderStatuses(hashes []common.Hash) (statuses []*StoredOrderSta
 	return orderStatuses, nil
 }
 
-func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadata, err error) {
+func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadataV3, err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
@@ -562,7 +562,7 @@ func (db *DB) DeleteOrder(hash common.Hash) error {
 	return nil
 }
 
-func (db *DB) DeleteOrders(query *OrderQuery) (deleted []*types.OrderWithMetadata, err error) {
+func (db *DB) DeleteOrders(query *OrderQuery) (deleted []*types.OrderWithMetadataV3, err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
@@ -595,7 +595,7 @@ func (db *DB) DeleteOrders(query *OrderQuery) (deleted []*types.OrderWithMetadat
 	return sqltypes.OrdersToCommonType(ordersToDelete), nil
 }
 
-func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) (err error) {
+func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadataV3) (updatedOrder *types.OrderWithMetadataV3, err error)) (err error) {
 	defer func() {
 		err = convertErr(err)
 	}()

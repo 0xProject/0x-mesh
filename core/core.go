@@ -780,12 +780,12 @@ func (app *App) periodicallyCheckForNewAddrs(ctx context.Context, startingAddrs 
 	}
 }
 
-func (app *App) GetOrder(hash common.Hash) (*types.OrderWithMetadata, error) {
+func (app *App) GetOrder(hash common.Hash) (*types.OrderWithMetadataV3, error) {
 	<-app.started
 	return app.db.GetOrder(hash)
 }
 
-func (app *App) FindOrders(query *db.OrderQuery) ([]*types.OrderWithMetadata, error) {
+func (app *App) FindOrders(query *db.OrderQuery) ([]*types.OrderWithMetadataV3, error) {
 	<-app.started
 	return app.db.FindOrders(query)
 }
@@ -848,7 +848,7 @@ func (app *App) GetOrders(perPage int, minOrderHash common.Hash) (*types.GetOrde
 	for _, order := range orders {
 		ordersInfos = append(ordersInfos, &types.OrderInfo{
 			OrderHash:                order.Hash,
-			SignedOrder:              order.SignedOrder(),
+			SignedOrder:              order.SignedOrderV3(),
 			FillableTakerAssetAmount: order.FillableTakerAssetAmount,
 		})
 	}
@@ -882,7 +882,7 @@ func (app *App) GetOrders(perPage int, minOrderHash common.Hash) (*types.GetOrde
 // - KeepUnfunded: Indicates that these orders should not be pruned if they are
 //   unfunded.
 //
-func (app *App) AddOrders(ctx context.Context, signedOrders []*zeroex.SignedOrder, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
+func (app *App) AddOrders(ctx context.Context, signedOrders []*zeroex.SignedOrderV3, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	signedOrdersRaw := []*json.RawMessage{}
 	buf := &bytes.Buffer{}
 	if err := json.NewEncoder(buf).Encode(signedOrders); err != nil {
@@ -903,12 +903,12 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 		Rejected: []*ordervalidator.RejectedOrderInfo{},
 	}
 	orderHashesSeen := map[common.Hash]struct{}{}
-	schemaValidOrders := []*zeroex.SignedOrder{}
+	schemaValidOrders := []*zeroex.SignedOrderV3{}
 	for _, signedOrderRaw := range signedOrdersRaw {
 		signedOrderBytes := []byte(*signedOrderRaw)
 		result, err := app.orderFilter.ValidateOrderJSON(signedOrderBytes)
 		if err != nil {
-			signedOrder := &zeroex.SignedOrder{}
+			signedOrder := &zeroex.SignedOrderV3{}
 			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
 				signedOrder = nil
 			}
@@ -929,7 +929,7 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 				Code:    ordervalidator.ROInvalidSchemaCode,
 				Message: fmt.Sprintf("order did not pass JSON-schema validation: %s", result.Errors()),
 			}
-			signedOrder := &zeroex.SignedOrder{}
+			signedOrder := &zeroex.SignedOrderV3{}
 			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
 				signedOrder = nil
 			}
@@ -941,10 +941,10 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 			continue
 		}
 
-		signedOrder := &zeroex.SignedOrder{}
+		signedOrder := &zeroex.SignedOrderV3{}
 		if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
 			// This error should never happen since the signedOrder already passed the JSON schema validation above
-			log.WithField("signedOrderRaw", string(signedOrderBytes)).Error("Failed to unmarshal SignedOrder")
+			log.WithField("signedOrderRaw", string(signedOrderBytes)).Error("Failed to unmarshal SignedOrderV3")
 			return nil, err
 		}
 
@@ -989,7 +989,7 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 }
 
 // shareOrder immediately shares the given order on the GossipSub network.
-func (app *App) shareOrder(order *zeroex.SignedOrder) error {
+func (app *App) shareOrder(order *zeroex.SignedOrderV3) error {
 	<-app.started
 
 	encoded, err := encoding.OrderToRawMessage(app.orderFilter.Topic(), order)

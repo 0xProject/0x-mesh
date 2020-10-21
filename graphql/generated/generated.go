@@ -72,10 +72,17 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddOrders func(childComplexity int, orders []*gqltypes.NewOrder, opts *gqltypes.AddOrdersOpts) int
+		AddOrders func(childComplexity int, orders []*gqltypes.NewOrderV3, opts *gqltypes.AddOrdersOpts) int
 	}
 
-	Order struct {
+	OrderEvent struct {
+		ContractEvents func(childComplexity int) int
+		EndState       func(childComplexity int) int
+		Order          func(childComplexity int) int
+		Timestamp      func(childComplexity int) int
+	}
+
+	OrderV3 struct {
 		ChainID               func(childComplexity int) int
 		ExchangeAddress       func(childComplexity int) int
 		ExpirationTimeSeconds func(childComplexity int) int
@@ -95,14 +102,7 @@ type ComplexityRoot struct {
 		TakerFeeAssetData     func(childComplexity int) int
 	}
 
-	OrderEvent struct {
-		ContractEvents func(childComplexity int) int
-		EndState       func(childComplexity int) int
-		Order          func(childComplexity int) int
-		Timestamp      func(childComplexity int) int
-	}
-
-	OrderWithMetadata struct {
+	OrderWithMetadataV3 struct {
 		ChainID                  func(childComplexity int) int
 		ExchangeAddress          func(childComplexity int) int
 		ExpirationTimeSeconds    func(childComplexity int) int
@@ -160,11 +160,11 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error)
+	AddOrders(ctx context.Context, orders []*gqltypes.NewOrderV3, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error)
 }
 type QueryResolver interface {
-	Order(ctx context.Context, hash string) (*gqltypes.OrderWithMetadata, error)
-	Orders(ctx context.Context, sort []*gqltypes.OrderSort, filters []*gqltypes.OrderFilter, limit *int) ([]*gqltypes.OrderWithMetadata, error)
+	Order(ctx context.Context, hash string) (*gqltypes.OrderWithMetadataV3, error)
+	Orders(ctx context.Context, sort []*gqltypes.OrderSort, filters []*gqltypes.OrderFilter, limit *int) ([]*gqltypes.OrderWithMetadataV3, error)
 	Stats(ctx context.Context) (*gqltypes.Stats, error)
 }
 type SubscriptionResolver interface {
@@ -294,126 +294,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.AddOrders(childComplexity, args["orders"].([]*gqltypes.NewOrder), args["opts"].(*gqltypes.AddOrdersOpts)), true
-
-	case "Order.chainId":
-		if e.complexity.Order.ChainID == nil {
-			break
-		}
-
-		return e.complexity.Order.ChainID(childComplexity), true
-
-	case "Order.exchangeAddress":
-		if e.complexity.Order.ExchangeAddress == nil {
-			break
-		}
-
-		return e.complexity.Order.ExchangeAddress(childComplexity), true
-
-	case "Order.expirationTimeSeconds":
-		if e.complexity.Order.ExpirationTimeSeconds == nil {
-			break
-		}
-
-		return e.complexity.Order.ExpirationTimeSeconds(childComplexity), true
-
-	case "Order.feeRecipientAddress":
-		if e.complexity.Order.FeeRecipientAddress == nil {
-			break
-		}
-
-		return e.complexity.Order.FeeRecipientAddress(childComplexity), true
-
-	case "Order.makerAddress":
-		if e.complexity.Order.MakerAddress == nil {
-			break
-		}
-
-		return e.complexity.Order.MakerAddress(childComplexity), true
-
-	case "Order.makerAssetAmount":
-		if e.complexity.Order.MakerAssetAmount == nil {
-			break
-		}
-
-		return e.complexity.Order.MakerAssetAmount(childComplexity), true
-
-	case "Order.makerAssetData":
-		if e.complexity.Order.MakerAssetData == nil {
-			break
-		}
-
-		return e.complexity.Order.MakerAssetData(childComplexity), true
-
-	case "Order.makerFee":
-		if e.complexity.Order.MakerFee == nil {
-			break
-		}
-
-		return e.complexity.Order.MakerFee(childComplexity), true
-
-	case "Order.makerFeeAssetData":
-		if e.complexity.Order.MakerFeeAssetData == nil {
-			break
-		}
-
-		return e.complexity.Order.MakerFeeAssetData(childComplexity), true
-
-	case "Order.salt":
-		if e.complexity.Order.Salt == nil {
-			break
-		}
-
-		return e.complexity.Order.Salt(childComplexity), true
-
-	case "Order.senderAddress":
-		if e.complexity.Order.SenderAddress == nil {
-			break
-		}
-
-		return e.complexity.Order.SenderAddress(childComplexity), true
-
-	case "Order.signature":
-		if e.complexity.Order.Signature == nil {
-			break
-		}
-
-		return e.complexity.Order.Signature(childComplexity), true
-
-	case "Order.takerAddress":
-		if e.complexity.Order.TakerAddress == nil {
-			break
-		}
-
-		return e.complexity.Order.TakerAddress(childComplexity), true
-
-	case "Order.takerAssetAmount":
-		if e.complexity.Order.TakerAssetAmount == nil {
-			break
-		}
-
-		return e.complexity.Order.TakerAssetAmount(childComplexity), true
-
-	case "Order.takerAssetData":
-		if e.complexity.Order.TakerAssetData == nil {
-			break
-		}
-
-		return e.complexity.Order.TakerAssetData(childComplexity), true
-
-	case "Order.takerFee":
-		if e.complexity.Order.TakerFee == nil {
-			break
-		}
-
-		return e.complexity.Order.TakerFee(childComplexity), true
-
-	case "Order.takerFeeAssetData":
-		if e.complexity.Order.TakerFeeAssetData == nil {
-			break
-		}
-
-		return e.complexity.Order.TakerFeeAssetData(childComplexity), true
+		return e.complexity.Mutation.AddOrders(childComplexity, args["orders"].([]*gqltypes.NewOrderV3), args["opts"].(*gqltypes.AddOrdersOpts)), true
 
 	case "OrderEvent.contractEvents":
 		if e.complexity.OrderEvent.ContractEvents == nil {
@@ -443,138 +324,257 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.OrderEvent.Timestamp(childComplexity), true
 
-	case "OrderWithMetadata.chainId":
-		if e.complexity.OrderWithMetadata.ChainID == nil {
+	case "OrderV3.chainId":
+		if e.complexity.OrderV3.ChainID == nil {
 			break
 		}
 
-		return e.complexity.OrderWithMetadata.ChainID(childComplexity), true
+		return e.complexity.OrderV3.ChainID(childComplexity), true
 
-	case "OrderWithMetadata.exchangeAddress":
-		if e.complexity.OrderWithMetadata.ExchangeAddress == nil {
+	case "OrderV3.exchangeAddress":
+		if e.complexity.OrderV3.ExchangeAddress == nil {
 			break
 		}
 
-		return e.complexity.OrderWithMetadata.ExchangeAddress(childComplexity), true
+		return e.complexity.OrderV3.ExchangeAddress(childComplexity), true
 
-	case "OrderWithMetadata.expirationTimeSeconds":
-		if e.complexity.OrderWithMetadata.ExpirationTimeSeconds == nil {
+	case "OrderV3.expirationTimeSeconds":
+		if e.complexity.OrderV3.ExpirationTimeSeconds == nil {
 			break
 		}
 
-		return e.complexity.OrderWithMetadata.ExpirationTimeSeconds(childComplexity), true
+		return e.complexity.OrderV3.ExpirationTimeSeconds(childComplexity), true
 
-	case "OrderWithMetadata.feeRecipientAddress":
-		if e.complexity.OrderWithMetadata.FeeRecipientAddress == nil {
+	case "OrderV3.feeRecipientAddress":
+		if e.complexity.OrderV3.FeeRecipientAddress == nil {
 			break
 		}
 
-		return e.complexity.OrderWithMetadata.FeeRecipientAddress(childComplexity), true
+		return e.complexity.OrderV3.FeeRecipientAddress(childComplexity), true
 
-	case "OrderWithMetadata.fillableTakerAssetAmount":
-		if e.complexity.OrderWithMetadata.FillableTakerAssetAmount == nil {
+	case "OrderV3.makerAddress":
+		if e.complexity.OrderV3.MakerAddress == nil {
 			break
 		}
 
-		return e.complexity.OrderWithMetadata.FillableTakerAssetAmount(childComplexity), true
+		return e.complexity.OrderV3.MakerAddress(childComplexity), true
 
-	case "OrderWithMetadata.hash":
-		if e.complexity.OrderWithMetadata.Hash == nil {
+	case "OrderV3.makerAssetAmount":
+		if e.complexity.OrderV3.MakerAssetAmount == nil {
 			break
 		}
 
-		return e.complexity.OrderWithMetadata.Hash(childComplexity), true
+		return e.complexity.OrderV3.MakerAssetAmount(childComplexity), true
 
-	case "OrderWithMetadata.makerAddress":
-		if e.complexity.OrderWithMetadata.MakerAddress == nil {
+	case "OrderV3.makerAssetData":
+		if e.complexity.OrderV3.MakerAssetData == nil {
 			break
 		}
 
-		return e.complexity.OrderWithMetadata.MakerAddress(childComplexity), true
+		return e.complexity.OrderV3.MakerAssetData(childComplexity), true
 
-	case "OrderWithMetadata.makerAssetAmount":
-		if e.complexity.OrderWithMetadata.MakerAssetAmount == nil {
+	case "OrderV3.makerFee":
+		if e.complexity.OrderV3.MakerFee == nil {
 			break
 		}
 
-		return e.complexity.OrderWithMetadata.MakerAssetAmount(childComplexity), true
+		return e.complexity.OrderV3.MakerFee(childComplexity), true
 
-	case "OrderWithMetadata.makerAssetData":
-		if e.complexity.OrderWithMetadata.MakerAssetData == nil {
+	case "OrderV3.makerFeeAssetData":
+		if e.complexity.OrderV3.MakerFeeAssetData == nil {
 			break
 		}
 
-		return e.complexity.OrderWithMetadata.MakerAssetData(childComplexity), true
+		return e.complexity.OrderV3.MakerFeeAssetData(childComplexity), true
 
-	case "OrderWithMetadata.makerFee":
-		if e.complexity.OrderWithMetadata.MakerFee == nil {
+	case "OrderV3.salt":
+		if e.complexity.OrderV3.Salt == nil {
 			break
 		}
 
-		return e.complexity.OrderWithMetadata.MakerFee(childComplexity), true
+		return e.complexity.OrderV3.Salt(childComplexity), true
 
-	case "OrderWithMetadata.makerFeeAssetData":
-		if e.complexity.OrderWithMetadata.MakerFeeAssetData == nil {
+	case "OrderV3.senderAddress":
+		if e.complexity.OrderV3.SenderAddress == nil {
 			break
 		}
 
-		return e.complexity.OrderWithMetadata.MakerFeeAssetData(childComplexity), true
+		return e.complexity.OrderV3.SenderAddress(childComplexity), true
 
-	case "OrderWithMetadata.salt":
-		if e.complexity.OrderWithMetadata.Salt == nil {
+	case "OrderV3.signature":
+		if e.complexity.OrderV3.Signature == nil {
 			break
 		}
 
-		return e.complexity.OrderWithMetadata.Salt(childComplexity), true
+		return e.complexity.OrderV3.Signature(childComplexity), true
 
-	case "OrderWithMetadata.senderAddress":
-		if e.complexity.OrderWithMetadata.SenderAddress == nil {
+	case "OrderV3.takerAddress":
+		if e.complexity.OrderV3.TakerAddress == nil {
 			break
 		}
 
-		return e.complexity.OrderWithMetadata.SenderAddress(childComplexity), true
+		return e.complexity.OrderV3.TakerAddress(childComplexity), true
 
-	case "OrderWithMetadata.signature":
-		if e.complexity.OrderWithMetadata.Signature == nil {
+	case "OrderV3.takerAssetAmount":
+		if e.complexity.OrderV3.TakerAssetAmount == nil {
 			break
 		}
 
-		return e.complexity.OrderWithMetadata.Signature(childComplexity), true
+		return e.complexity.OrderV3.TakerAssetAmount(childComplexity), true
 
-	case "OrderWithMetadata.takerAddress":
-		if e.complexity.OrderWithMetadata.TakerAddress == nil {
+	case "OrderV3.takerAssetData":
+		if e.complexity.OrderV3.TakerAssetData == nil {
 			break
 		}
 
-		return e.complexity.OrderWithMetadata.TakerAddress(childComplexity), true
+		return e.complexity.OrderV3.TakerAssetData(childComplexity), true
 
-	case "OrderWithMetadata.takerAssetAmount":
-		if e.complexity.OrderWithMetadata.TakerAssetAmount == nil {
+	case "OrderV3.takerFee":
+		if e.complexity.OrderV3.TakerFee == nil {
 			break
 		}
 
-		return e.complexity.OrderWithMetadata.TakerAssetAmount(childComplexity), true
+		return e.complexity.OrderV3.TakerFee(childComplexity), true
 
-	case "OrderWithMetadata.takerAssetData":
-		if e.complexity.OrderWithMetadata.TakerAssetData == nil {
+	case "OrderV3.takerFeeAssetData":
+		if e.complexity.OrderV3.TakerFeeAssetData == nil {
 			break
 		}
 
-		return e.complexity.OrderWithMetadata.TakerAssetData(childComplexity), true
+		return e.complexity.OrderV3.TakerFeeAssetData(childComplexity), true
 
-	case "OrderWithMetadata.takerFee":
-		if e.complexity.OrderWithMetadata.TakerFee == nil {
+	case "OrderWithMetadataV3.chainId":
+		if e.complexity.OrderWithMetadataV3.ChainID == nil {
 			break
 		}
 
-		return e.complexity.OrderWithMetadata.TakerFee(childComplexity), true
+		return e.complexity.OrderWithMetadataV3.ChainID(childComplexity), true
 
-	case "OrderWithMetadata.takerFeeAssetData":
-		if e.complexity.OrderWithMetadata.TakerFeeAssetData == nil {
+	case "OrderWithMetadataV3.exchangeAddress":
+		if e.complexity.OrderWithMetadataV3.ExchangeAddress == nil {
 			break
 		}
 
-		return e.complexity.OrderWithMetadata.TakerFeeAssetData(childComplexity), true
+		return e.complexity.OrderWithMetadataV3.ExchangeAddress(childComplexity), true
+
+	case "OrderWithMetadataV3.expirationTimeSeconds":
+		if e.complexity.OrderWithMetadataV3.ExpirationTimeSeconds == nil {
+			break
+		}
+
+		return e.complexity.OrderWithMetadataV3.ExpirationTimeSeconds(childComplexity), true
+
+	case "OrderWithMetadataV3.feeRecipientAddress":
+		if e.complexity.OrderWithMetadataV3.FeeRecipientAddress == nil {
+			break
+		}
+
+		return e.complexity.OrderWithMetadataV3.FeeRecipientAddress(childComplexity), true
+
+	case "OrderWithMetadataV3.fillableTakerAssetAmount":
+		if e.complexity.OrderWithMetadataV3.FillableTakerAssetAmount == nil {
+			break
+		}
+
+		return e.complexity.OrderWithMetadataV3.FillableTakerAssetAmount(childComplexity), true
+
+	case "OrderWithMetadataV3.hash":
+		if e.complexity.OrderWithMetadataV3.Hash == nil {
+			break
+		}
+
+		return e.complexity.OrderWithMetadataV3.Hash(childComplexity), true
+
+	case "OrderWithMetadataV3.makerAddress":
+		if e.complexity.OrderWithMetadataV3.MakerAddress == nil {
+			break
+		}
+
+		return e.complexity.OrderWithMetadataV3.MakerAddress(childComplexity), true
+
+	case "OrderWithMetadataV3.makerAssetAmount":
+		if e.complexity.OrderWithMetadataV3.MakerAssetAmount == nil {
+			break
+		}
+
+		return e.complexity.OrderWithMetadataV3.MakerAssetAmount(childComplexity), true
+
+	case "OrderWithMetadataV3.makerAssetData":
+		if e.complexity.OrderWithMetadataV3.MakerAssetData == nil {
+			break
+		}
+
+		return e.complexity.OrderWithMetadataV3.MakerAssetData(childComplexity), true
+
+	case "OrderWithMetadataV3.makerFee":
+		if e.complexity.OrderWithMetadataV3.MakerFee == nil {
+			break
+		}
+
+		return e.complexity.OrderWithMetadataV3.MakerFee(childComplexity), true
+
+	case "OrderWithMetadataV3.makerFeeAssetData":
+		if e.complexity.OrderWithMetadataV3.MakerFeeAssetData == nil {
+			break
+		}
+
+		return e.complexity.OrderWithMetadataV3.MakerFeeAssetData(childComplexity), true
+
+	case "OrderWithMetadataV3.salt":
+		if e.complexity.OrderWithMetadataV3.Salt == nil {
+			break
+		}
+
+		return e.complexity.OrderWithMetadataV3.Salt(childComplexity), true
+
+	case "OrderWithMetadataV3.senderAddress":
+		if e.complexity.OrderWithMetadataV3.SenderAddress == nil {
+			break
+		}
+
+		return e.complexity.OrderWithMetadataV3.SenderAddress(childComplexity), true
+
+	case "OrderWithMetadataV3.signature":
+		if e.complexity.OrderWithMetadataV3.Signature == nil {
+			break
+		}
+
+		return e.complexity.OrderWithMetadataV3.Signature(childComplexity), true
+
+	case "OrderWithMetadataV3.takerAddress":
+		if e.complexity.OrderWithMetadataV3.TakerAddress == nil {
+			break
+		}
+
+		return e.complexity.OrderWithMetadataV3.TakerAddress(childComplexity), true
+
+	case "OrderWithMetadataV3.takerAssetAmount":
+		if e.complexity.OrderWithMetadataV3.TakerAssetAmount == nil {
+			break
+		}
+
+		return e.complexity.OrderWithMetadataV3.TakerAssetAmount(childComplexity), true
+
+	case "OrderWithMetadataV3.takerAssetData":
+		if e.complexity.OrderWithMetadataV3.TakerAssetData == nil {
+			break
+		}
+
+		return e.complexity.OrderWithMetadataV3.TakerAssetData(childComplexity), true
+
+	case "OrderWithMetadataV3.takerFee":
+		if e.complexity.OrderWithMetadataV3.TakerFee == nil {
+			break
+		}
+
+		return e.complexity.OrderWithMetadataV3.TakerFee(childComplexity), true
+
+	case "OrderWithMetadataV3.takerFeeAssetData":
+		if e.complexity.OrderWithMetadataV3.TakerFeeAssetData == nil {
+			break
+		}
+
+		return e.complexity.OrderWithMetadataV3.TakerFeeAssetData(childComplexity), true
 
 	case "Query.order":
 		if e.complexity.Query.Order == nil {
@@ -822,14 +822,13 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 
 var sources = []*ast.Source{
 	&ast.Source{Name: "graphql/schema.graphql", Input: `"""
-Arbitrary value of any type.
-"""
+Arbitrary value of any type.  """
 scalar Any
 
 """
 A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format.)
 """
-type Order {
+type OrderV3 {
     chainId: String!
     exchangeAddress: String!
     makerAddress: String!
@@ -852,7 +851,7 @@ type Order {
 """
 A signed 0x order along with some additional metadata about the order which is not part of the 0x protocol specification.
 """
-type OrderWithMetadata {
+type OrderWithMetadataV3 {
     chainId: String!
     exchangeAddress: String!
     makerAddress: String!
@@ -986,7 +985,7 @@ type Query {
     """
     Returns the order with the specified hash, or null if no order is found with that hash.
     """
-    order(hash: String!): OrderWithMetadata
+    order(hash: String!): OrderWithMetadataV3
     """
     Returns an array of orders that satisfy certain criteria.
     """
@@ -1005,7 +1004,7 @@ type Query {
         The maximum number of orders to be included in the results. Defaults to 20.
         """
         limit: Int = 20
-    ): [OrderWithMetadata!]!
+    ): [OrderWithMetadataV3!]!
     """
     Returns the current stats.
     """
@@ -1015,7 +1014,7 @@ type Query {
 """
 A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format).
 """
-input NewOrder {
+input NewOrderV3 {
     chainId: String!
     exchangeAddress: String!
     makerAddress: String!
@@ -1055,7 +1054,7 @@ type AcceptedOrderResult {
     """
     The order that was accepted, including metadata.
     """
-    order: OrderWithMetadata!
+    order: OrderWithMetadataV3!
     """
     Whether or not the order is new. Set to true if this is the first time this Mesh node has accepted the order
     and false otherwise.
@@ -1071,7 +1070,7 @@ type RejectedOrderResult {
     """
     The order that was rejected.
     """
-    order: Order!
+    order: OrderV3!
     """
     A machine-readable code indicating why the order was rejected. This code is designed to
     be used by programs and applications and will never change without breaking backwards-compatibility.
@@ -1115,7 +1114,7 @@ type Mutation {
     Adds one or more orders to Mesh.
     """
     addOrders(
-        orders: [NewOrder!]!,
+        orders: [NewOrderV3!]!,
         opts: AddOrdersOpts = {
             pinned: false,
             keepCancelled: false,
@@ -1158,7 +1157,7 @@ type OrderEvent {
     """
     The order that was affected.
     """
-    order: OrderWithMetadata!
+    order: OrderWithMetadataV3!
     """
     A way of classifying the effect that the order event had on the order. You can
     think of different end states as different "types" of order events.
@@ -1281,9 +1280,9 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 func (ec *executionContext) field_Mutation_addOrders_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 []*gqltypes.NewOrder
+	var arg0 []*gqltypes.NewOrderV3
 	if tmp, ok := rawArgs["orders"]; ok {
-		arg0, err = ec.unmarshalNNewOrder2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrderᚄ(ctx, tmp)
+		arg0, err = ec.unmarshalNNewOrderV32ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrderV3ᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1423,9 +1422,9 @@ func (ec *executionContext) _AcceptedOrderResult_order(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*gqltypes.OrderWithMetadata)
+	res := resTmp.(*gqltypes.OrderWithMetadataV3)
 	fc.Result = res
-	return ec.marshalNOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadata(ctx, field.Selections, res)
+	return ec.marshalNOrderWithMetadataV32ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadataV3(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _AcceptedOrderResult_isNew(ctx context.Context, field graphql.CollectedField, obj *gqltypes.AcceptedOrderResult) (ret graphql.Marshaler) {
@@ -1894,7 +1893,7 @@ func (ec *executionContext) _Mutation_addOrders(ctx context.Context, field graph
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AddOrders(rctx, args["orders"].([]*gqltypes.NewOrder), args["opts"].(*gqltypes.AddOrdersOpts))
+		return ec.resolvers.Mutation().AddOrders(rctx, args["orders"].([]*gqltypes.NewOrderV3), args["opts"].(*gqltypes.AddOrdersOpts))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1909,584 +1908,6 @@ func (ec *executionContext) _Mutation_addOrders(ctx context.Context, field graph
 	res := resTmp.(*gqltypes.AddOrdersResults)
 	fc.Result = res
 	return ec.marshalNAddOrdersResults2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddOrdersResults(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Order_chainId(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Order",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ChainID, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Order_exchangeAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Order",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ExchangeAddress, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Order_makerAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Order",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.MakerAddress, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Order_makerAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Order",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.MakerAssetData, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Order_makerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Order",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.MakerAssetAmount, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Order_makerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Order",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.MakerFeeAssetData, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Order_makerFee(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Order",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.MakerFee, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Order_takerAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Order",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TakerAddress, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Order_takerAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Order",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TakerAssetData, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Order_takerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Order",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TakerAssetAmount, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Order_takerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Order",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TakerFeeAssetData, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Order_takerFee(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Order",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TakerFee, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Order_senderAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Order",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.SenderAddress, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Order_feeRecipientAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Order",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.FeeRecipientAddress, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Order_expirationTimeSeconds(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Order",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ExpirationTimeSeconds, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Order_salt(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Order",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Salt, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Order_signature(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Order",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Signature, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderEvent_order(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderEvent) (ret graphql.Marshaler) {
@@ -2518,9 +1939,9 @@ func (ec *executionContext) _OrderEvent_order(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*gqltypes.OrderWithMetadata)
+	res := resTmp.(*gqltypes.OrderWithMetadataV3)
 	fc.Result = res
-	return ec.marshalNOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadata(ctx, field.Selections, res)
+	return ec.marshalNOrderWithMetadataV32ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadataV3(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderEvent_endState(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderEvent) (ret graphql.Marshaler) {
@@ -2625,7 +2046,7 @@ func (ec *executionContext) _OrderEvent_contractEvents(ctx context.Context, fiel
 	return ec.marshalNContractEvent2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐContractEventᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_chainId(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV3_chainId(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV3) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2633,7 +2054,7 @@ func (ec *executionContext) _OrderWithMetadata_chainId(ctx context.Context, fiel
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "OrderWithMetadata",
+		Object:   "OrderV3",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -2659,7 +2080,7 @@ func (ec *executionContext) _OrderWithMetadata_chainId(ctx context.Context, fiel
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_exchangeAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV3_exchangeAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV3) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2667,7 +2088,7 @@ func (ec *executionContext) _OrderWithMetadata_exchangeAddress(ctx context.Conte
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "OrderWithMetadata",
+		Object:   "OrderV3",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -2693,7 +2114,7 @@ func (ec *executionContext) _OrderWithMetadata_exchangeAddress(ctx context.Conte
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_makerAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV3_makerAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV3) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2701,7 +2122,7 @@ func (ec *executionContext) _OrderWithMetadata_makerAddress(ctx context.Context,
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "OrderWithMetadata",
+		Object:   "OrderV3",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -2727,7 +2148,7 @@ func (ec *executionContext) _OrderWithMetadata_makerAddress(ctx context.Context,
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_makerAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV3_makerAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV3) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2735,7 +2156,7 @@ func (ec *executionContext) _OrderWithMetadata_makerAssetData(ctx context.Contex
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "OrderWithMetadata",
+		Object:   "OrderV3",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -2761,7 +2182,7 @@ func (ec *executionContext) _OrderWithMetadata_makerAssetData(ctx context.Contex
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_makerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV3_makerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV3) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2769,7 +2190,7 @@ func (ec *executionContext) _OrderWithMetadata_makerAssetAmount(ctx context.Cont
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "OrderWithMetadata",
+		Object:   "OrderV3",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -2795,7 +2216,7 @@ func (ec *executionContext) _OrderWithMetadata_makerAssetAmount(ctx context.Cont
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_makerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV3_makerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV3) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2803,7 +2224,7 @@ func (ec *executionContext) _OrderWithMetadata_makerFeeAssetData(ctx context.Con
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "OrderWithMetadata",
+		Object:   "OrderV3",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -2829,7 +2250,7 @@ func (ec *executionContext) _OrderWithMetadata_makerFeeAssetData(ctx context.Con
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_makerFee(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV3_makerFee(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV3) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2837,7 +2258,7 @@ func (ec *executionContext) _OrderWithMetadata_makerFee(ctx context.Context, fie
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "OrderWithMetadata",
+		Object:   "OrderV3",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -2863,7 +2284,7 @@ func (ec *executionContext) _OrderWithMetadata_makerFee(ctx context.Context, fie
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_takerAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV3_takerAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV3) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2871,7 +2292,7 @@ func (ec *executionContext) _OrderWithMetadata_takerAddress(ctx context.Context,
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "OrderWithMetadata",
+		Object:   "OrderV3",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -2897,7 +2318,7 @@ func (ec *executionContext) _OrderWithMetadata_takerAddress(ctx context.Context,
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_takerAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV3_takerAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV3) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2905,7 +2326,7 @@ func (ec *executionContext) _OrderWithMetadata_takerAssetData(ctx context.Contex
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "OrderWithMetadata",
+		Object:   "OrderV3",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -2931,7 +2352,7 @@ func (ec *executionContext) _OrderWithMetadata_takerAssetData(ctx context.Contex
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_takerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV3_takerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV3) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2939,7 +2360,7 @@ func (ec *executionContext) _OrderWithMetadata_takerAssetAmount(ctx context.Cont
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "OrderWithMetadata",
+		Object:   "OrderV3",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -2965,7 +2386,7 @@ func (ec *executionContext) _OrderWithMetadata_takerAssetAmount(ctx context.Cont
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_takerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV3_takerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV3) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2973,7 +2394,7 @@ func (ec *executionContext) _OrderWithMetadata_takerFeeAssetData(ctx context.Con
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "OrderWithMetadata",
+		Object:   "OrderV3",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -2999,7 +2420,7 @@ func (ec *executionContext) _OrderWithMetadata_takerFeeAssetData(ctx context.Con
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_takerFee(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV3_takerFee(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV3) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3007,7 +2428,7 @@ func (ec *executionContext) _OrderWithMetadata_takerFee(ctx context.Context, fie
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "OrderWithMetadata",
+		Object:   "OrderV3",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -3033,7 +2454,7 @@ func (ec *executionContext) _OrderWithMetadata_takerFee(ctx context.Context, fie
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_senderAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV3_senderAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV3) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3041,7 +2462,7 @@ func (ec *executionContext) _OrderWithMetadata_senderAddress(ctx context.Context
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "OrderWithMetadata",
+		Object:   "OrderV3",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -3067,7 +2488,7 @@ func (ec *executionContext) _OrderWithMetadata_senderAddress(ctx context.Context
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_feeRecipientAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV3_feeRecipientAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV3) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3075,7 +2496,7 @@ func (ec *executionContext) _OrderWithMetadata_feeRecipientAddress(ctx context.C
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "OrderWithMetadata",
+		Object:   "OrderV3",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -3101,7 +2522,7 @@ func (ec *executionContext) _OrderWithMetadata_feeRecipientAddress(ctx context.C
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_expirationTimeSeconds(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV3_expirationTimeSeconds(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV3) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3109,7 +2530,7 @@ func (ec *executionContext) _OrderWithMetadata_expirationTimeSeconds(ctx context
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "OrderWithMetadata",
+		Object:   "OrderV3",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -3135,7 +2556,7 @@ func (ec *executionContext) _OrderWithMetadata_expirationTimeSeconds(ctx context
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_salt(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV3_salt(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV3) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3143,7 +2564,7 @@ func (ec *executionContext) _OrderWithMetadata_salt(ctx context.Context, field g
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "OrderWithMetadata",
+		Object:   "OrderV3",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -3169,7 +2590,7 @@ func (ec *executionContext) _OrderWithMetadata_salt(ctx context.Context, field g
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_signature(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV3_signature(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV3) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3177,7 +2598,7 @@ func (ec *executionContext) _OrderWithMetadata_signature(ctx context.Context, fi
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "OrderWithMetadata",
+		Object:   "OrderV3",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -3203,7 +2624,7 @@ func (ec *executionContext) _OrderWithMetadata_signature(ctx context.Context, fi
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_hash(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadataV3_chainId(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadataV3) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3211,7 +2632,585 @@ func (ec *executionContext) _OrderWithMetadata_hash(ctx context.Context, field g
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "OrderWithMetadata",
+		Object:   "OrderWithMetadataV3",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ChainID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderWithMetadataV3_exchangeAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadataV3) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderWithMetadataV3",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExchangeAddress, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderWithMetadataV3_makerAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadataV3) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderWithMetadataV3",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MakerAddress, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderWithMetadataV3_makerAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadataV3) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderWithMetadataV3",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MakerAssetData, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderWithMetadataV3_makerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadataV3) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderWithMetadataV3",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MakerAssetAmount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderWithMetadataV3_makerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadataV3) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderWithMetadataV3",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MakerFeeAssetData, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderWithMetadataV3_makerFee(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadataV3) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderWithMetadataV3",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MakerFee, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderWithMetadataV3_takerAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadataV3) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderWithMetadataV3",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TakerAddress, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderWithMetadataV3_takerAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadataV3) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderWithMetadataV3",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TakerAssetData, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderWithMetadataV3_takerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadataV3) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderWithMetadataV3",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TakerAssetAmount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderWithMetadataV3_takerFeeAssetData(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadataV3) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderWithMetadataV3",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TakerFeeAssetData, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderWithMetadataV3_takerFee(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadataV3) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderWithMetadataV3",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TakerFee, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderWithMetadataV3_senderAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadataV3) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderWithMetadataV3",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SenderAddress, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderWithMetadataV3_feeRecipientAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadataV3) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderWithMetadataV3",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FeeRecipientAddress, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderWithMetadataV3_expirationTimeSeconds(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadataV3) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderWithMetadataV3",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExpirationTimeSeconds, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderWithMetadataV3_salt(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadataV3) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderWithMetadataV3",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Salt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderWithMetadataV3_signature(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadataV3) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderWithMetadataV3",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Signature, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderWithMetadataV3_hash(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadataV3) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderWithMetadataV3",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -3237,7 +3236,7 @@ func (ec *executionContext) _OrderWithMetadata_hash(ctx context.Context, field g
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderWithMetadata_fillableTakerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderWithMetadataV3_fillableTakerAssetAmount(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderWithMetadataV3) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3245,7 +3244,7 @@ func (ec *executionContext) _OrderWithMetadata_fillableTakerAssetAmount(ctx cont
 		}
 	}()
 	fc := &graphql.FieldContext{
-		Object:   "OrderWithMetadata",
+		Object:   "OrderWithMetadataV3",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -3304,9 +3303,9 @@ func (ec *executionContext) _Query_order(ctx context.Context, field graphql.Coll
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*gqltypes.OrderWithMetadata)
+	res := resTmp.(*gqltypes.OrderWithMetadataV3)
 	fc.Result = res
-	return ec.marshalOOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadata(ctx, field.Selections, res)
+	return ec.marshalOOrderWithMetadataV32ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadataV3(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_orders(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3345,9 +3344,9 @@ func (ec *executionContext) _Query_orders(ctx context.Context, field graphql.Col
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*gqltypes.OrderWithMetadata)
+	res := resTmp.([]*gqltypes.OrderWithMetadataV3)
 	fc.Result = res
-	return ec.marshalNOrderWithMetadata2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadataᚄ(ctx, field.Selections, res)
+	return ec.marshalNOrderWithMetadataV32ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadataV3ᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_stats(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3513,9 +3512,9 @@ func (ec *executionContext) _RejectedOrderResult_order(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*gqltypes.Order)
+	res := resTmp.(*gqltypes.OrderV3)
 	fc.Result = res
-	return ec.marshalNOrder2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrder(ctx, field.Selections, res)
+	return ec.marshalNOrderV32ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderV3(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _RejectedOrderResult_code(ctx context.Context, field graphql.CollectedField, obj *gqltypes.RejectedOrderResult) (ret graphql.Marshaler) {
@@ -5200,8 +5199,8 @@ func (ec *executionContext) unmarshalInputAddOrdersOpts(ctx context.Context, obj
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputNewOrder(ctx context.Context, obj interface{}) (gqltypes.NewOrder, error) {
-	var it gqltypes.NewOrder
+func (ec *executionContext) unmarshalInputNewOrderV3(ctx context.Context, obj interface{}) (gqltypes.NewOrderV3, error) {
+	var it gqltypes.NewOrderV3
 	var asMap = obj.(map[string]interface{})
 
 	for k, v := range asMap {
@@ -5565,113 +5564,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 	return out
 }
 
-var orderImplementors = []string{"Order"}
-
-func (ec *executionContext) _Order(ctx context.Context, sel ast.SelectionSet, obj *gqltypes.Order) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, orderImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("Order")
-		case "chainId":
-			out.Values[i] = ec._Order_chainId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "exchangeAddress":
-			out.Values[i] = ec._Order_exchangeAddress(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "makerAddress":
-			out.Values[i] = ec._Order_makerAddress(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "makerAssetData":
-			out.Values[i] = ec._Order_makerAssetData(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "makerAssetAmount":
-			out.Values[i] = ec._Order_makerAssetAmount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "makerFeeAssetData":
-			out.Values[i] = ec._Order_makerFeeAssetData(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "makerFee":
-			out.Values[i] = ec._Order_makerFee(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "takerAddress":
-			out.Values[i] = ec._Order_takerAddress(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "takerAssetData":
-			out.Values[i] = ec._Order_takerAssetData(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "takerAssetAmount":
-			out.Values[i] = ec._Order_takerAssetAmount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "takerFeeAssetData":
-			out.Values[i] = ec._Order_takerFeeAssetData(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "takerFee":
-			out.Values[i] = ec._Order_takerFee(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "senderAddress":
-			out.Values[i] = ec._Order_senderAddress(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "feeRecipientAddress":
-			out.Values[i] = ec._Order_feeRecipientAddress(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "expirationTimeSeconds":
-			out.Values[i] = ec._Order_expirationTimeSeconds(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "salt":
-			out.Values[i] = ec._Order_salt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "signature":
-			out.Values[i] = ec._Order_signature(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
 var orderEventImplementors = []string{"OrderEvent"}
 
 func (ec *executionContext) _OrderEvent(ctx context.Context, sel ast.SelectionSet, obj *gqltypes.OrderEvent) graphql.Marshaler {
@@ -5714,109 +5606,216 @@ func (ec *executionContext) _OrderEvent(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
-var orderWithMetadataImplementors = []string{"OrderWithMetadata"}
+var orderV3Implementors = []string{"OrderV3"}
 
-func (ec *executionContext) _OrderWithMetadata(ctx context.Context, sel ast.SelectionSet, obj *gqltypes.OrderWithMetadata) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, orderWithMetadataImplementors)
+func (ec *executionContext) _OrderV3(ctx context.Context, sel ast.SelectionSet, obj *gqltypes.OrderV3) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, orderV3Implementors)
 
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("OrderWithMetadata")
+			out.Values[i] = graphql.MarshalString("OrderV3")
 		case "chainId":
-			out.Values[i] = ec._OrderWithMetadata_chainId(ctx, field, obj)
+			out.Values[i] = ec._OrderV3_chainId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "exchangeAddress":
-			out.Values[i] = ec._OrderWithMetadata_exchangeAddress(ctx, field, obj)
+			out.Values[i] = ec._OrderV3_exchangeAddress(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "makerAddress":
-			out.Values[i] = ec._OrderWithMetadata_makerAddress(ctx, field, obj)
+			out.Values[i] = ec._OrderV3_makerAddress(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "makerAssetData":
-			out.Values[i] = ec._OrderWithMetadata_makerAssetData(ctx, field, obj)
+			out.Values[i] = ec._OrderV3_makerAssetData(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "makerAssetAmount":
-			out.Values[i] = ec._OrderWithMetadata_makerAssetAmount(ctx, field, obj)
+			out.Values[i] = ec._OrderV3_makerAssetAmount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "makerFeeAssetData":
-			out.Values[i] = ec._OrderWithMetadata_makerFeeAssetData(ctx, field, obj)
+			out.Values[i] = ec._OrderV3_makerFeeAssetData(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "makerFee":
-			out.Values[i] = ec._OrderWithMetadata_makerFee(ctx, field, obj)
+			out.Values[i] = ec._OrderV3_makerFee(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "takerAddress":
-			out.Values[i] = ec._OrderWithMetadata_takerAddress(ctx, field, obj)
+			out.Values[i] = ec._OrderV3_takerAddress(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "takerAssetData":
-			out.Values[i] = ec._OrderWithMetadata_takerAssetData(ctx, field, obj)
+			out.Values[i] = ec._OrderV3_takerAssetData(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "takerAssetAmount":
-			out.Values[i] = ec._OrderWithMetadata_takerAssetAmount(ctx, field, obj)
+			out.Values[i] = ec._OrderV3_takerAssetAmount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "takerFeeAssetData":
-			out.Values[i] = ec._OrderWithMetadata_takerFeeAssetData(ctx, field, obj)
+			out.Values[i] = ec._OrderV3_takerFeeAssetData(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "takerFee":
-			out.Values[i] = ec._OrderWithMetadata_takerFee(ctx, field, obj)
+			out.Values[i] = ec._OrderV3_takerFee(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "senderAddress":
-			out.Values[i] = ec._OrderWithMetadata_senderAddress(ctx, field, obj)
+			out.Values[i] = ec._OrderV3_senderAddress(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "feeRecipientAddress":
-			out.Values[i] = ec._OrderWithMetadata_feeRecipientAddress(ctx, field, obj)
+			out.Values[i] = ec._OrderV3_feeRecipientAddress(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "expirationTimeSeconds":
-			out.Values[i] = ec._OrderWithMetadata_expirationTimeSeconds(ctx, field, obj)
+			out.Values[i] = ec._OrderV3_expirationTimeSeconds(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "salt":
-			out.Values[i] = ec._OrderWithMetadata_salt(ctx, field, obj)
+			out.Values[i] = ec._OrderV3_salt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "signature":
-			out.Values[i] = ec._OrderWithMetadata_signature(ctx, field, obj)
+			out.Values[i] = ec._OrderV3_signature(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var orderWithMetadataV3Implementors = []string{"OrderWithMetadataV3"}
+
+func (ec *executionContext) _OrderWithMetadataV3(ctx context.Context, sel ast.SelectionSet, obj *gqltypes.OrderWithMetadataV3) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, orderWithMetadataV3Implementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("OrderWithMetadataV3")
+		case "chainId":
+			out.Values[i] = ec._OrderWithMetadataV3_chainId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "exchangeAddress":
+			out.Values[i] = ec._OrderWithMetadataV3_exchangeAddress(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "makerAddress":
+			out.Values[i] = ec._OrderWithMetadataV3_makerAddress(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "makerAssetData":
+			out.Values[i] = ec._OrderWithMetadataV3_makerAssetData(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "makerAssetAmount":
+			out.Values[i] = ec._OrderWithMetadataV3_makerAssetAmount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "makerFeeAssetData":
+			out.Values[i] = ec._OrderWithMetadataV3_makerFeeAssetData(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "makerFee":
+			out.Values[i] = ec._OrderWithMetadataV3_makerFee(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "takerAddress":
+			out.Values[i] = ec._OrderWithMetadataV3_takerAddress(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "takerAssetData":
+			out.Values[i] = ec._OrderWithMetadataV3_takerAssetData(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "takerAssetAmount":
+			out.Values[i] = ec._OrderWithMetadataV3_takerAssetAmount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "takerFeeAssetData":
+			out.Values[i] = ec._OrderWithMetadataV3_takerFeeAssetData(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "takerFee":
+			out.Values[i] = ec._OrderWithMetadataV3_takerFee(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "senderAddress":
+			out.Values[i] = ec._OrderWithMetadataV3_senderAddress(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "feeRecipientAddress":
+			out.Values[i] = ec._OrderWithMetadataV3_feeRecipientAddress(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "expirationTimeSeconds":
+			out.Values[i] = ec._OrderWithMetadataV3_expirationTimeSeconds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "salt":
+			out.Values[i] = ec._OrderWithMetadataV3_salt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "signature":
+			out.Values[i] = ec._OrderWithMetadataV3_signature(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "hash":
-			out.Values[i] = ec._OrderWithMetadata_hash(ctx, field, obj)
+			out.Values[i] = ec._OrderWithMetadataV3_hash(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "fillableTakerAssetAmount":
-			out.Values[i] = ec._OrderWithMetadata_fillableTakerAssetAmount(ctx, field, obj)
+			out.Values[i] = ec._OrderWithMetadataV3_fillableTakerAssetAmount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -6469,11 +6468,11 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 	return res
 }
 
-func (ec *executionContext) unmarshalNNewOrder2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrder(ctx context.Context, v interface{}) (gqltypes.NewOrder, error) {
-	return ec.unmarshalInputNewOrder(ctx, v)
+func (ec *executionContext) unmarshalNNewOrderV32githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrderV3(ctx context.Context, v interface{}) (gqltypes.NewOrderV3, error) {
+	return ec.unmarshalInputNewOrderV3(ctx, v)
 }
 
-func (ec *executionContext) unmarshalNNewOrder2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrderᚄ(ctx context.Context, v interface{}) ([]*gqltypes.NewOrder, error) {
+func (ec *executionContext) unmarshalNNewOrderV32ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrderV3ᚄ(ctx context.Context, v interface{}) ([]*gqltypes.NewOrderV3, error) {
 	var vSlice []interface{}
 	if v != nil {
 		if tmp1, ok := v.([]interface{}); ok {
@@ -6483,9 +6482,9 @@ func (ec *executionContext) unmarshalNNewOrder2ᚕᚖgithubᚗcomᚋ0xProjectᚋ
 		}
 	}
 	var err error
-	res := make([]*gqltypes.NewOrder, len(vSlice))
+	res := make([]*gqltypes.NewOrderV3, len(vSlice))
 	for i := range vSlice {
-		res[i], err = ec.unmarshalNNewOrder2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrder(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNNewOrderV32ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrderV3(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -6493,26 +6492,12 @@ func (ec *executionContext) unmarshalNNewOrder2ᚕᚖgithubᚗcomᚋ0xProjectᚋ
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalNNewOrder2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrder(ctx context.Context, v interface{}) (*gqltypes.NewOrder, error) {
+func (ec *executionContext) unmarshalNNewOrderV32ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrderV3(ctx context.Context, v interface{}) (*gqltypes.NewOrderV3, error) {
 	if v == nil {
 		return nil, nil
 	}
-	res, err := ec.unmarshalNNewOrder2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrder(ctx, v)
+	res, err := ec.unmarshalNNewOrderV32githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrderV3(ctx, v)
 	return &res, err
-}
-
-func (ec *executionContext) marshalNOrder2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrder(ctx context.Context, sel ast.SelectionSet, v gqltypes.Order) graphql.Marshaler {
-	return ec._Order(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNOrder2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrder(ctx context.Context, sel ast.SelectionSet, v *gqltypes.Order) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	return ec._Order(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNOrderEndState2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderEndState(ctx context.Context, v interface{}) (gqltypes.OrderEndState, error) {
@@ -6608,11 +6593,25 @@ func (ec *executionContext) unmarshalNOrderSort2ᚖgithubᚗcomᚋ0xProjectᚋ0x
 	return &res, err
 }
 
-func (ec *executionContext) marshalNOrderWithMetadata2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadata(ctx context.Context, sel ast.SelectionSet, v gqltypes.OrderWithMetadata) graphql.Marshaler {
-	return ec._OrderWithMetadata(ctx, sel, &v)
+func (ec *executionContext) marshalNOrderV32githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderV3(ctx context.Context, sel ast.SelectionSet, v gqltypes.OrderV3) graphql.Marshaler {
+	return ec._OrderV3(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNOrderWithMetadata2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadataᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqltypes.OrderWithMetadata) graphql.Marshaler {
+func (ec *executionContext) marshalNOrderV32ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderV3(ctx context.Context, sel ast.SelectionSet, v *gqltypes.OrderV3) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._OrderV3(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNOrderWithMetadataV32githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadataV3(ctx context.Context, sel ast.SelectionSet, v gqltypes.OrderWithMetadataV3) graphql.Marshaler {
+	return ec._OrderWithMetadataV3(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNOrderWithMetadataV32ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadataV3ᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqltypes.OrderWithMetadataV3) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -6636,7 +6635,7 @@ func (ec *executionContext) marshalNOrderWithMetadata2ᚕᚖgithubᚗcomᚋ0xPro
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadata(ctx, sel, v[i])
+			ret[i] = ec.marshalNOrderWithMetadataV32ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadataV3(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -6649,14 +6648,14 @@ func (ec *executionContext) marshalNOrderWithMetadata2ᚕᚖgithubᚗcomᚋ0xPro
 	return ret
 }
 
-func (ec *executionContext) marshalNOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadata(ctx context.Context, sel ast.SelectionSet, v *gqltypes.OrderWithMetadata) graphql.Marshaler {
+func (ec *executionContext) marshalNOrderWithMetadataV32ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadataV3(ctx context.Context, sel ast.SelectionSet, v *gqltypes.OrderWithMetadataV3) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
 		}
 		return graphql.Null
 	}
-	return ec._OrderWithMetadata(ctx, sel, v)
+	return ec._OrderWithMetadataV3(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNRejectedOrderCode2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐRejectedOrderCode(ctx context.Context, v interface{}) (gqltypes.RejectedOrderCode, error) {
@@ -7120,15 +7119,15 @@ func (ec *executionContext) unmarshalOOrderSort2ᚕᚖgithubᚗcomᚋ0xProject�
 	return res, nil
 }
 
-func (ec *executionContext) marshalOOrderWithMetadata2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadata(ctx context.Context, sel ast.SelectionSet, v gqltypes.OrderWithMetadata) graphql.Marshaler {
-	return ec._OrderWithMetadata(ctx, sel, &v)
+func (ec *executionContext) marshalOOrderWithMetadataV32githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadataV3(ctx context.Context, sel ast.SelectionSet, v gqltypes.OrderWithMetadataV3) graphql.Marshaler {
+	return ec._OrderWithMetadataV3(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalOOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadata(ctx context.Context, sel ast.SelectionSet, v *gqltypes.OrderWithMetadata) graphql.Marshaler {
+func (ec *executionContext) marshalOOrderWithMetadataV32ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadataV3(ctx context.Context, sel ast.SelectionSet, v *gqltypes.OrderWithMetadataV3) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
-	return ec._OrderWithMetadata(ctx, sel, v)
+	return ec._OrderWithMetadataV3(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {

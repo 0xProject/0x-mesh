@@ -17,8 +17,8 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-// Order represents an unsigned 0x order
-type Order struct {
+// Order represents an unsigned 0x v3 order
+type OrderV3 struct {
 	ChainID               *big.Int       `json:"chainId"`
 	ExchangeAddress       common.Address `json:"exchangeAddress"`
 	MakerAddress          common.Address `json:"makerAddress"`
@@ -40,9 +40,9 @@ type Order struct {
 	hash *common.Hash
 }
 
-// SignedOrder represents a signed 0x order
-type SignedOrder struct {
-	Order
+// SignedOrder represents a signed 0x v3 order
+type SignedOrderV3 struct {
+	OrderV3
 	Signature []byte `json:"signature"`
 }
 
@@ -129,8 +129,9 @@ type OrderEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 	// OrderHash is the EIP712 hash of the 0x order
 	OrderHash common.Hash `json:"orderHash"`
+	// FIXME - This will need to be updated to support v3 and v4 orders
 	// SignedOrder is the signed 0x order struct
-	SignedOrder *SignedOrder `json:"signedOrder"`
+	SignedOrder *SignedOrderV3 `json:"signedOrder"`
 	// EndState is the end state of this order at the time this event was generated
 	EndState OrderEventEndState `json:"endState"`
 	// FillableTakerAssetAmount is the amount for which this order is still fillable
@@ -142,9 +143,10 @@ type OrderEvent struct {
 }
 
 type orderEventJSON struct {
-	Timestamp                time.Time            `json:"timestamp"`
-	OrderHash                string               `json:"orderHash"`
-	SignedOrder              *SignedOrder         `json:"signedOrder"`
+	Timestamp time.Time `json:"timestamp"`
+	OrderHash string    `json:"orderHash"`
+	// FIXME - This will need to be updated to support v3 and v4 orders
+	SignedOrder              *SignedOrderV3       `json:"signedOrder"`
 	EndState                 string               `json:"endState"`
 	FillableTakerAssetAmount string               `json:"fillableTakerAssetAmount"`
 	ContractEvents           []*contractEventJSON `json:"contractEvents"`
@@ -418,12 +420,12 @@ var eip712OrderTypes = gethsigner.Types{
 }
 
 // ResetHash resets the cached order hash. Usually only required for testing.
-func (o *Order) ResetHash() {
+func (o *OrderV3) ResetHash() {
 	o.hash = nil
 }
 
 // ComputeOrderHash computes a 0x order hash
-func (o *Order) ComputeOrderHash() (common.Hash, error) {
+func (o *OrderV3) ComputeOrderHash() (common.Hash, error) {
 	if o.hash != nil {
 		return *o.hash, nil
 	}
@@ -476,7 +478,7 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 }
 
 // SignOrder signs the 0x order with the supplied Signer
-func SignOrder(signer signer.Signer, order *Order) (*SignedOrder, error) {
+func SignOrder(signer signer.Signer, order *OrderV3) (*SignedOrderV3, error) {
 	if order == nil {
 		return nil, errors.New("cannot sign nil order")
 	}
@@ -496,15 +498,15 @@ func SignOrder(signer signer.Signer, order *Order) (*SignedOrder, error) {
 	copy(signature[1:33], ecSignature.R[:])
 	copy(signature[33:65], ecSignature.S[:])
 	signature[65] = byte(EthSignSignature)
-	signedOrder := &SignedOrder{
-		Order:     *order,
+	signedOrder := &SignedOrderV3{
+		OrderV3:   *order,
 		Signature: signature,
 	}
 	return signedOrder, nil
 }
 
 // SignTestOrder signs the 0x order with the local test signer
-func SignTestOrder(order *Order) (*SignedOrder, error) {
+func SignTestOrder(order *OrderV3) (*SignedOrderV3, error) {
 	testSigner := signer.NewTestSigner()
 	signedOrder, err := SignOrder(testSigner, order)
 	if err != nil {
@@ -515,7 +517,7 @@ func SignTestOrder(order *Order) (*SignedOrder, error) {
 
 // Trim converts the order to a LibOrderOrder, which is the format expected by
 // our smart contracts. It removes the ChainID and ExchangeAddress fields.
-func (s *SignedOrder) Trim() wrappers.LibOrderOrder {
+func (s *SignedOrderV3) Trim() wrappers.LibOrderOrder {
 	return wrappers.LibOrderOrder{
 		MakerAddress:          s.MakerAddress,
 		TakerAddress:          s.TakerAddress,
@@ -535,7 +537,7 @@ func (s *SignedOrder) Trim() wrappers.LibOrderOrder {
 }
 
 // SignedOrderJSON is an unmodified JSON representation of a SignedOrder
-type SignedOrderJSON struct {
+type SignedOrderV3JSON struct {
 	ChainID               int64  `json:"chainId"`
 	ExchangeAddress       string `json:"exchangeAddress"`
 	MakerAddress          string `json:"makerAddress"`
@@ -556,7 +558,7 @@ type SignedOrderJSON struct {
 }
 
 // MarshalJSON implements a custom JSON marshaller for the SignedOrder type
-func (s SignedOrder) MarshalJSON() ([]byte, error) {
+func (s SignedOrderV3) MarshalJSON() ([]byte, error) {
 	makerAssetData := "0x"
 	if len(s.MakerAssetData) != 0 {
 		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerAssetData))
@@ -581,7 +583,7 @@ func (s SignedOrder) MarshalJSON() ([]byte, error) {
 		signature = fmt.Sprintf("0x%s", common.Bytes2Hex(s.Signature))
 	}
 
-	signedOrderBytes, err := json.Marshal(SignedOrderJSON{
+	signedOrderBytes, err := json.Marshal(SignedOrderV3JSON{
 		ChainID:               s.ChainID.Int64(),
 		ExchangeAddress:       strings.ToLower(s.ExchangeAddress.Hex()),
 		MakerAddress:          strings.ToLower(s.MakerAddress.Hex()),
@@ -604,8 +606,8 @@ func (s SignedOrder) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON implements a custom JSON unmarshaller for the SignedOrder type
-func (s *SignedOrder) UnmarshalJSON(data []byte) error {
-	var signedOrderJSON SignedOrderJSON
+func (s *SignedOrderV3) UnmarshalJSON(data []byte) error {
+	var signedOrderJSON SignedOrderV3JSON
 	err := json.Unmarshal(data, &signedOrderJSON)
 	if err != nil {
 		return err

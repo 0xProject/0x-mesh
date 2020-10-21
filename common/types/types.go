@@ -71,15 +71,15 @@ type AddOrdersOpts struct {
 
 // OrderInfo represents an fillable order and how much it could be filled for.
 type OrderInfo struct {
-	OrderHash                common.Hash         `json:"orderHash"`
-	SignedOrder              *zeroex.SignedOrder `json:"signedOrder"`
-	FillableTakerAssetAmount *big.Int            `json:"fillableTakerAssetAmount"`
+	OrderHash                common.Hash           `json:"orderHash"`
+	SignedOrder              *zeroex.SignedOrderV3 `json:"signedOrder"`
+	FillableTakerAssetAmount *big.Int              `json:"fillableTakerAssetAmount"`
 }
 
 type orderInfoJSON struct {
-	OrderHash                string              `json:"orderHash"`
-	SignedOrder              *zeroex.SignedOrder `json:"signedOrder"`
-	FillableTakerAssetAmount string              `json:"fillableTakerAssetAmount"`
+	OrderHash                string                `json:"orderHash"`
+	SignedOrderV3            *zeroex.SignedOrderV3 `json:"signedOrder"`
+	FillableTakerAssetAmount string                `json:"fillableTakerAssetAmount"`
 }
 
 // MarshalJSON is a custom Marshaler for OrderInfo
@@ -100,7 +100,7 @@ func (o *OrderInfo) UnmarshalJSON(data []byte) error {
 	}
 
 	o.OrderHash = common.HexToHash(orderInfoJSON.OrderHash)
-	o.SignedOrder = orderInfoJSON.SignedOrder
+	o.SignedOrder = orderInfoJSON.SignedOrderV3
 	var ok bool
 	o.FillableTakerAssetAmount, ok = math.ParseBig256(orderInfoJSON.FillableTakerAssetAmount)
 	if !ok {
@@ -109,7 +109,7 @@ func (o *OrderInfo) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type OrderWithMetadata struct {
+type OrderWithMetadataV3 struct {
 	Hash                     common.Hash    `json:"hash"`
 	ChainID                  *big.Int       `json:"chainID"`
 	ExchangeAddress          common.Address `json:"exchangeAddress"`
@@ -168,9 +168,9 @@ type OrderWithMetadata struct {
 	KeepUnfunded bool `json:"keepUnfunded"`
 }
 
-func (order OrderWithMetadata) SignedOrder() *zeroex.SignedOrder {
-	return &zeroex.SignedOrder{
-		Order: zeroex.Order{
+func (order OrderWithMetadataV3) SignedOrderV3() *zeroex.SignedOrderV3 {
+	return &zeroex.SignedOrderV3{
+		OrderV3: zeroex.OrderV3{
 			ChainID:               order.ChainID,
 			ExchangeAddress:       order.ExchangeAddress,
 			MakerAddress:          order.MakerAddress,

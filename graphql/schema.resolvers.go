@@ -13,7 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-func (r *mutationResolver) AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error) {
+func (r *mutationResolver) AddOrders(ctx context.Context, orders []*gqltypes.NewOrderV3, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error) {
 	signedOrders := gqltypes.NewOrdersToSignedOrders(orders)
 	commonTypeOpts := gqltypes.AddOrderOptsToCommonType(opts)
 	results, err := r.app.AddOrders(ctx, signedOrders, commonTypeOpts)
@@ -23,7 +23,7 @@ func (r *mutationResolver) AddOrders(ctx context.Context, orders []*gqltypes.New
 	return gqltypes.AddOrdersResultsFromValidationResults(results)
 }
 
-func (r *queryResolver) Order(ctx context.Context, hash string) (*gqltypes.OrderWithMetadata, error) {
+func (r *queryResolver) Order(ctx context.Context, hash string) (*gqltypes.OrderWithMetadataV3, error) {
 	order, err := r.app.GetOrder(common.HexToHash(hash))
 	if err != nil {
 		if err == db.ErrNotFound {
@@ -34,7 +34,7 @@ func (r *queryResolver) Order(ctx context.Context, hash string) (*gqltypes.Order
 	return gqltypes.OrderWithMetadataFromCommonType(order), nil
 }
 
-func (r *queryResolver) Orders(ctx context.Context, sort []*gqltypes.OrderSort, filters []*gqltypes.OrderFilter, limit *int) ([]*gqltypes.OrderWithMetadata, error) {
+func (r *queryResolver) Orders(ctx context.Context, sort []*gqltypes.OrderSort, filters []*gqltypes.OrderFilter, limit *int) ([]*gqltypes.OrderWithMetadataV3, error) {
 	// TODO(albrow): More validation of query args. We can assume
 	//               basic structure is correct but may need to validate
 	//               some of the semantics.

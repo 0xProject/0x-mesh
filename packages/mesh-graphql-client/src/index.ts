@@ -85,7 +85,7 @@ const statsQuery = gql`
 
 const addOrdersMutation = gql`
     mutation AddOrders(
-        $orders: [NewOrder!]!
+        $orders: [NewOrderV3!]!
         $opts: AddOrdersOpts = {
             pinned: false
             keepCancelled: false

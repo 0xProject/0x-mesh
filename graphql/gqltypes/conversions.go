@@ -62,9 +62,9 @@ func LatestBlockFromCommonType(latestBlock types.LatestBlock) *LatestBlock {
 	}
 }
 
-func NewOrderToSignedOrder(newOrder *NewOrder) *zeroex.SignedOrder {
-	return &zeroex.SignedOrder{
-		Order: zeroex.Order{
+func NewOrderToSignedOrder(newOrder *NewOrderV3) *zeroex.SignedOrderV3 {
+	return &zeroex.SignedOrderV3{
+		OrderV3: zeroex.OrderV3{
 			ChainID:               math.MustParseBig256(newOrder.ChainID),
 			ExchangeAddress:       common.HexToAddress(newOrder.ExchangeAddress),
 			MakerAddress:          common.HexToAddress(newOrder.MakerAddress),
@@ -86,16 +86,16 @@ func NewOrderToSignedOrder(newOrder *NewOrder) *zeroex.SignedOrder {
 	}
 }
 
-func NewOrdersToSignedOrders(newOrders []*NewOrder) []*zeroex.SignedOrder {
-	result := make([]*zeroex.SignedOrder, len(newOrders))
+func NewOrdersToSignedOrders(newOrders []*NewOrderV3) []*zeroex.SignedOrderV3 {
+	result := make([]*zeroex.SignedOrderV3, len(newOrders))
 	for i, newOrder := range newOrders {
 		result[i] = NewOrderToSignedOrder(newOrder)
 	}
 	return result
 }
 
-func NewOrderFromSignedOrder(signedOrder *zeroex.SignedOrder) *NewOrder {
-	return &NewOrder{
+func NewOrderFromSignedOrder(signedOrder *zeroex.SignedOrderV3) *NewOrderV3 {
+	return &NewOrderV3{
 		ChainID:               signedOrder.ChainID.String(),
 		ExchangeAddress:       strings.ToLower(signedOrder.ExchangeAddress.Hex()),
 		MakerAddress:          strings.ToLower(signedOrder.MakerAddress.Hex()),
@@ -116,16 +116,16 @@ func NewOrderFromSignedOrder(signedOrder *zeroex.SignedOrder) *NewOrder {
 	}
 }
 
-func NewOrdersFromSignedOrders(signedOrders []*zeroex.SignedOrder) []*NewOrder {
-	result := make([]*NewOrder, len(signedOrders))
+func NewOrdersFromSignedOrders(signedOrders []*zeroex.SignedOrderV3) []*NewOrderV3 {
+	result := make([]*NewOrderV3, len(signedOrders))
 	for i, order := range signedOrders {
 		result[i] = NewOrderFromSignedOrder(order)
 	}
 	return result
 }
 
-func OrderWithMetadataFromCommonType(order *types.OrderWithMetadata) *OrderWithMetadata {
-	return &OrderWithMetadata{
+func OrderWithMetadataFromCommonType(order *types.OrderWithMetadataV3) *OrderWithMetadataV3 {
+	return &OrderWithMetadataV3{
 		Hash:                     order.Hash.Hex(),
 		ChainID:                  order.ChainID.String(),
 		ExchangeAddress:          strings.ToLower(order.ExchangeAddress.Hex()),
@@ -148,8 +148,8 @@ func OrderWithMetadataFromCommonType(order *types.OrderWithMetadata) *OrderWithM
 	}
 }
 
-func OrdersWithMetadataFromCommonType(orders []*types.OrderWithMetadata) []*OrderWithMetadata {
-	result := make([]*OrderWithMetadata, len(orders))
+func OrdersWithMetadataFromCommonType(orders []*types.OrderWithMetadataV3) []*OrderWithMetadataV3 {
+	result := make([]*OrderWithMetadataV3, len(orders))
 	for i, order := range orders {
 		result[i] = OrderWithMetadataFromCommonType(order)
 	}
@@ -169,7 +169,7 @@ func AddOrdersResultsFromValidationResults(validationResults *ordervalidator.Val
 
 func AcceptedOrderResultFromOrderInfo(info *ordervalidator.AcceptedOrderInfo) *AcceptedOrderResult {
 	return &AcceptedOrderResult{
-		Order: &OrderWithMetadata{
+		Order: &OrderWithMetadataV3{
 			Hash:                     info.OrderHash.String(),
 			ChainID:                  info.SignedOrder.ChainID.String(),
 			ExchangeAddress:          strings.ToLower(info.SignedOrder.ExchangeAddress.Hex()),
@@ -213,7 +213,7 @@ func RejectedOrderResultFromOrderInfo(info *ordervalidator.RejectedOrderInfo) (*
 	}
 	return &RejectedOrderResult{
 		Hash: hash,
-		Order: &Order{
+		Order: &OrderV3{
 			ChainID:               info.SignedOrder.ChainID.String(),
 			ExchangeAddress:       strings.ToLower(info.SignedOrder.ExchangeAddress.Hex()),
 			MakerAddress:          strings.ToLower(info.SignedOrder.MakerAddress.Hex()),
@@ -251,7 +251,7 @@ func RejectedOrderResultsFromOrderInfos(infos []*ordervalidator.RejectedOrderInf
 
 func OrderEventFromZeroExType(event *zeroex.OrderEvent) *OrderEvent {
 	return &OrderEvent{
-		Order: &OrderWithMetadata{
+		Order: &OrderWithMetadataV3{
 			Hash:                     event.OrderHash.String(),
 			ChainID:                  event.SignedOrder.ChainID.String(),
 			ExchangeAddress:          strings.ToLower(event.SignedOrder.ExchangeAddress.Hex()),

@@ -33,11 +33,11 @@ func TestAddOrdersSuccess(t *testing.T) {
 	client, _ := buildAndStartGraphQLServer(t, ctx, wg)
 
 	// Create a new valid order.
-	signedTestOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	signedTestOrder := scenario.NewSignedTestOrderV3(t, orderopts.SetupMakerState(true))
 	time.Sleep(blockProcessingWaitTime)
 
 	// Send the "AddOrders" request to the GraphQL server.
-	validationResponse, err := client.AddOrders(ctx, []*zeroex.SignedOrder{signedTestOrder})
+	validationResponse, err := client.AddOrders(ctx, []*zeroex.SignedOrderV3{signedTestOrder})
 	require.NoError(t, err)
 
 	// Ensure that the validation results contain only the order that was
@@ -86,10 +86,10 @@ func TestGetOrder(t *testing.T) {
 	client, _ := buildAndStartGraphQLServer(t, ctx, wg)
 
 	orderOptions := orderopts.SetupMakerState(true)
-	signedTestOrder := scenario.NewSignedTestOrder(t, orderOptions)
+	signedTestOrder := scenario.NewSignedTestOrderV3(t, orderOptions)
 	time.Sleep(blockProcessingWaitTime)
 
-	validationResponse, err := client.AddOrders(ctx, []*zeroex.SignedOrder{signedTestOrder})
+	validationResponse, err := client.AddOrders(ctx, []*zeroex.SignedOrderV3{signedTestOrder})
 	require.NoError(t, err)
 	assert.Len(t, validationResponse.Accepted, 1)
 	assert.Len(t, validationResponse.Rejected, 0)
@@ -137,7 +137,7 @@ func TestFindOrders(t *testing.T) {
 	// Create 10 new valid orders.
 	numOrders := 10
 	orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
-	signedTestOrders := scenario.NewSignedTestOrdersBatch(t, numOrders, orderOptions)
+	signedTestOrders := scenario.NewSignedTestOrdersV3Batch(t, numOrders, orderOptions)
 	time.Sleep(blockProcessingWaitTime)
 
 	// Send the newly created order to "AddOrders." The order is valid, and this should

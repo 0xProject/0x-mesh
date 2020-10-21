@@ -310,11 +310,11 @@ type Metadata struct {
 	StartOfCurrentUTCDay              time.Time `db:"startOfCurrentUTCDay"`
 }
 
-func OrderToCommonType(order *Order) *types.OrderWithMetadata {
+func OrderToCommonType(order *Order) *types.OrderWithMetadataV3 {
 	if order == nil {
 		return nil
 	}
-	return &types.OrderWithMetadata{
+	return &types.OrderWithMetadataV3{
 		Hash:                     order.Hash,
 		ChainID:                  order.ChainID.Int,
 		ExchangeAddress:          order.ExchangeAddress,
@@ -350,7 +350,7 @@ func OrderToCommonType(order *Order) *types.OrderWithMetadata {
 	}
 }
 
-func OrderFromCommonType(order *types.OrderWithMetadata) *Order {
+func OrderFromCommonType(order *types.OrderWithMetadataV3) *Order {
 	if order == nil {
 		return nil
 	}
@@ -391,7 +391,7 @@ func OrderFromCommonType(order *types.OrderWithMetadata) *Order {
 	}
 }
 
-func OrdersFromCommonType(orders []*types.OrderWithMetadata) []*Order {
+func OrdersFromCommonType(orders []*types.OrderWithMetadataV3) []*Order {
 	result := make([]*Order, len(orders))
 	for i, order := range orders {
 		result[i] = OrderFromCommonType(order)
@@ -399,8 +399,8 @@ func OrdersFromCommonType(orders []*types.OrderWithMetadata) []*Order {
 	return result
 }
 
-func OrdersToCommonType(orders []*Order) []*types.OrderWithMetadata {
-	result := make([]*types.OrderWithMetadata, len(orders))
+func OrdersToCommonType(orders []*Order) []*types.OrderWithMetadataV3 {
+	result := make([]*types.OrderWithMetadataV3, len(orders))
 	for i, order := range orders {
 		result[i] = OrderToCommonType(order)
 	}

@@ -16,7 +16,7 @@ type Client struct {
 
 const (
 	addOrdersMutation = `mutation AddOrders(
-	$orders: [NewOrder!]!,
+	$orders: [NewOrderV3!]!,
 	$opts: AddOrdersOpts = {
 		pinned: false,
 		keepCancelled: false,
@@ -178,7 +178,7 @@ type AddOrdersOpts struct {
 }
 
 // AddOrders adds orders to 0x Mesh and broadcasts them throughout the 0x Mesh network.
-func (c *Client) AddOrders(ctx context.Context, orders []*zeroex.SignedOrder, opts ...AddOrdersOpts) (*AddOrdersResults, error) {
+func (c *Client) AddOrders(ctx context.Context, orders []*zeroex.SignedOrderV3, opts ...AddOrdersOpts) (*AddOrdersResults, error) {
 	req := graphql.NewRequest(addOrdersMutation)
 
 	// Set up args
@@ -208,7 +208,7 @@ func (c *Client) GetOrder(ctx context.Context, hash common.Hash) (*OrderWithMeta
 	req.Var("hash", hash.Hex())
 
 	var resp struct {
-		Order *gqltypes.OrderWithMetadata `json:"order"`
+		Order *gqltypes.OrderWithMetadataV3 `json:"order"`
 	}
 	if err := c.Run(ctx, req, &resp); err != nil {
 		return nil, err
@@ -253,7 +253,7 @@ func (c *Client) FindOrders(ctx context.Context, opts ...FindOrdersOpts) ([]*Ord
 	}
 
 	var resp struct {
-		Orders []*gqltypes.OrderWithMetadata `json:"orders"`
+		Orders []*gqltypes.OrderWithMetadataV3 `json:"orders"`
 	}
 	if err := c.Run(ctx, req, &resp); err != nil {
 		return nil, err

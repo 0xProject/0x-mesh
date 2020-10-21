@@ -1,12 +1,11 @@
 """
-Arbitrary value of any type.
-"""
+Arbitrary value of any type.  """
 scalar Any
 
 """
 A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format.)
 """
-type Order {
+type OrderV3 {
     chainId: String!
     exchangeAddress: String!
     makerAddress: String!
@@ -29,7 +28,7 @@ type Order {
 """
 A signed 0x order along with some additional metadata about the order which is not part of the 0x protocol specification.
 """
-type OrderWithMetadata {
+type OrderWithMetadataV3 {
     chainId: String!
     exchangeAddress: String!
     makerAddress: String!
@@ -163,7 +162,7 @@ type Query {
     """
     Returns the order with the specified hash, or null if no order is found with that hash.
     """
-    order(hash: String!): OrderWithMetadata
+    order(hash: String!): OrderWithMetadataV3
     """
     Returns an array of orders that satisfy certain criteria.
     """
@@ -182,7 +181,7 @@ type Query {
         The maximum number of orders to be included in the results. Defaults to 20.
         """
         limit: Int = 20
-    ): [OrderWithMetadata!]!
+    ): [OrderWithMetadataV3!]!
     """
     Returns the current stats.
     """
@@ -192,7 +191,7 @@ type Query {
 """
 A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format).
 """
-input NewOrder {
+input NewOrderV3 {
     chainId: String!
     exchangeAddress: String!
     makerAddress: String!
@@ -232,7 +231,7 @@ type AcceptedOrderResult {
     """
     The order that was accepted, including metadata.
     """
-    order: OrderWithMetadata!
+    order: OrderWithMetadataV3!
     """
     Whether or not the order is new. Set to true if this is the first time this Mesh node has accepted the order
     and false otherwise.
@@ -248,7 +247,7 @@ type RejectedOrderResult {
     """
     The order that was rejected.
     """
-    order: Order!
+    order: OrderV3!
     """
     A machine-readable code indicating why the order was rejected. This code is designed to
     be used by programs and applications and will never change without breaking backwards-compatibility.
@@ -292,7 +291,7 @@ type Mutation {
     Adds one or more orders to Mesh.
     """
     addOrders(
-        orders: [NewOrder!]!,
+        orders: [NewOrderV3!]!,
         opts: AddOrdersOpts = {
             pinned: false,
             keepCancelled: false,
@@ -335,7 +334,7 @@ type OrderEvent {
     """
     The order that was affected.
     """
-    order: OrderWithMetadata!
+    order: OrderWithMetadataV3!
     """
     A way of classifying the effect that the order event had on the order. You can
     think of different end states as different "types" of order events.

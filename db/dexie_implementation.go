@@ -106,7 +106,7 @@ func (db *DB) DHTStore() ds.Batching {
 	}
 }
 
-func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []common.Hash, added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error) {
+func (db *DB) AddOrders(orders []*types.OrderWithMetadataV3) (alreadyStored []common.Hash, added []*types.OrderWithMetadataV3, removed []*types.OrderWithMetadataV3, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = jsutil.RecoverError(r)
@@ -150,7 +150,7 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []comm
 	return alreadyStored, added, removed, nil
 }
 
-func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err error) {
+func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadataV3, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = jsutil.RecoverError(r)
@@ -203,7 +203,7 @@ func (db *DB) GetOrderStatuses(hashes []common.Hash) (statuses []*StoredOrderSta
 	return statuses, nil
 }
 
-func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadata, err error) {
+func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadataV3, err error) {
 	if err := checkOrderQuery(query); err != nil {
 		return nil, err
 	}
@@ -260,7 +260,7 @@ func (db *DB) DeleteOrder(hash common.Hash) (err error) {
 	return nil
 }
 
-func (db *DB) DeleteOrders(query *OrderQuery) (deletedOrders []*types.OrderWithMetadata, err error) {
+func (db *DB) DeleteOrders(query *OrderQuery) (deletedOrders []*types.OrderWithMetadataV3, err error) {
 	if err := checkOrderQuery(query); err != nil {
 		return nil, err
 	}
@@ -283,7 +283,7 @@ func (db *DB) DeleteOrders(query *OrderQuery) (deletedOrders []*types.OrderWithM
 	return dexietypes.OrdersToCommonType(dexieOrders)
 }
 
-func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) (err error) {
+func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadataV3) (updatedOrder *types.OrderWithMetadataV3, err error)) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = jsutil.RecoverError(r)
