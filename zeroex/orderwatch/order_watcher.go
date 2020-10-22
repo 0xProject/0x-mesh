@@ -1634,7 +1634,7 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	return results, nil
 }
 
-func (w *Watcher) onchainOrderValidation(ctx context.Context, orders []*zeroex.SignedOrderV3) (*types.MiniHeader, *ordervalidator.ValidationResults, error) {
+func (w *Watcher) onchainOrderValidation(ctx context.Context, orders []*zeroex.SignedOrder) (*types.MiniHeader, *ordervalidator.ValidationResults, error) {
 	// HACK(fabio): While we wait for EIP-1898 support in Parity, we have no choice but to do the `eth_call`
 	// at the latest known block _number_. As outlined in the `Rationale` section of EIP-1898, this approach cannot account
 	// for the block being re-org'd out before the `eth_call` and then back in before the `eth_getBlockByNumber`
@@ -1653,9 +1653,9 @@ func (w *Watcher) onchainOrderValidation(ctx context.Context, orders []*zeroex.S
 	return latestBlock, zeroexResults, nil
 }
 
-func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrderV3, pinned bool) (*ordervalidator.ValidationResults, []*zeroex.SignedOrderV3, error) {
+func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, pinned bool) (*ordervalidator.ValidationResults, []*zeroex.SignedOrder, error) {
 	results := &ordervalidator.ValidationResults{}
-	validMeshOrders := []*zeroex.SignedOrderV3{}
+	validMeshOrders := []*zeroex.SignedOrder{}
 
 	// Calculate max expiration time based on number of orders stored.
 	// This value is *exclusive*. Any incoming orders with an expiration time

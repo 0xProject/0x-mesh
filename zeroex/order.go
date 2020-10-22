@@ -40,10 +40,39 @@ type OrderV3 struct {
 	hash *common.Hash
 }
 
-// SignedOrder represents a signed 0x v3 order
-type SignedOrderV3 struct {
-	OrderV3
-	Signature []byte `json:"signature"`
+type OrderV4 struct {
+	ChainID          *big.Int       `json:"chainId"`
+	Exchange         common.Address `json:"exchangeAddress"`
+	Maker            common.Address `json:"maker"`
+	MakerToken       common.Address `json:"makerToken"`
+	MakerAssetAmount *big.Int       `json:"makerAssetAmount"`
+	MakerFee         *big.Int       `json:"makerFee"`
+	Taker            common.Address `json:"taker"`
+	TakerToken       common.Address `json:"takerToken"`
+	TakerAssetAmount *big.Int       `json:"takerAssetAmount"`
+	TakerFee         *big.Int       `json:"takerFee"`
+	Sender           common.Address `json:"sender"`
+	FeeRecipient     common.Address `json:"feeRecipient"`
+	Expiry           *big.Int       `json:"expiry"`
+	Salt             *big.Int       `json:"salt"`
+	Pool             *big.Int       `json:"pool"`
+	Origin           *big.Int       `json:"origin"`
+
+	// Cache hash for performance
+	hash *common.Hash
+}
+
+// FIXME(jalextowle) Version should be a string
+type SignedOrder struct {
+	Version   int64
+	Order     interface{}
+	Signature []byte
+}
+
+type signedOrderJSON struct {
+	Version   int64
+	Order     json.RawMessage
+	Signature []byte
 }
 
 // SignatureType represents the type of 0x signature encountered
@@ -129,9 +158,8 @@ type OrderEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 	// OrderHash is the EIP712 hash of the 0x order
 	OrderHash common.Hash `json:"orderHash"`
-	// FIXME - This will need to be updated to support v3 and v4 orders
-	// SignedOrder is the signed 0x order struct
-	SignedOrder *SignedOrderV3 `json:"signedOrder"`
+	// SignedOrder is the 0x signed order interface
+	SignedOrder *SignedOrder `json:"signedOrder"`
 	// EndState is the end state of this order at the time this event was generated
 	EndState OrderEventEndState `json:"endState"`
 	// FillableTakerAssetAmount is the amount for which this order is still fillable
@@ -143,10 +171,9 @@ type OrderEvent struct {
 }
 
 type orderEventJSON struct {
-	Timestamp time.Time `json:"timestamp"`
-	OrderHash string    `json:"orderHash"`
-	// FIXME - This will need to be updated to support v3 and v4 orders
-	SignedOrder              *SignedOrderV3       `json:"signedOrder"`
+	Timestamp                time.Time            `json:"timestamp"`
+	OrderHash                string               `json:"orderHash"`
+	SignedOrder              *SignedOrder         `json:"signedOrder"`
 	EndState                 string               `json:"endState"`
 	FillableTakerAssetAmount string               `json:"fillableTakerAssetAmount"`
 	ContractEvents           []*contractEventJSON `json:"contractEvents"`
@@ -164,7 +191,8 @@ func (o OrderEvent) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// UnmarshalJSON implements a custom JSON unmarshaller for the OrderEvent type
+// FIXME(jalextowle): This will need to implement custom json unmarshalling in a
+// similar way to how contract events are unmarshalled.
 func (o *OrderEvent) UnmarshalJSON(data []byte) error {
 	var orderEventJSON orderEventJSON
 	err := json.Unmarshal(data, &orderEventJSON)
@@ -478,7 +506,7 @@ func (o *OrderV3) ComputeOrderHash() (common.Hash, error) {
 }
 
 // SignOrder signs the 0x order with the supplied Signer
-func SignOrder(signer signer.Signer, order *OrderV3) (*SignedOrderV3, error) {
+func SignOrder(signer signer.Signer, order *OrderV3) (*SignedOrder, error) {
 	if order == nil {
 		return nil, errors.New("cannot sign nil order")
 	}
@@ -498,15 +526,15 @@ func SignOrder(signer signer.Signer, order *OrderV3) (*SignedOrderV3, error) {
 	copy(signature[1:33], ecSignature.R[:])
 	copy(signature[33:65], ecSignature.S[:])
 	signature[65] = byte(EthSignSignature)
-	signedOrder := &SignedOrderV3{
-		OrderV3:   *order,
+	signedOrder := &SignedOrder{
+		Order:     *order,
 		Signature: signature,
 	}
 	return signedOrder, nil
 }
 
 // SignTestOrder signs the 0x order with the local test signer
-func SignTestOrder(order *OrderV3) (*SignedOrderV3, error) {
+func SignTestOrder(order *OrderV3) (*SignedOrder, error) {
 	testSigner := signer.NewTestSigner()
 	signedOrder, err := SignOrder(testSigner, order)
 	if err != nil {
@@ -515,28 +543,38 @@ func SignTestOrder(order *OrderV3) (*SignedOrderV3, error) {
 	return signedOrder, nil
 }
 
+// FIXME(jalextowle): We'll need to implement trim on both order types. For now,
+// we can get away with throwing an error if we can't cast to OrderV3.
+//
 // Trim converts the order to a LibOrderOrder, which is the format expected by
 // our smart contracts. It removes the ChainID and ExchangeAddress fields.
-func (s *SignedOrderV3) Trim() wrappers.LibOrderOrder {
-	return wrappers.LibOrderOrder{
-		MakerAddress:          s.MakerAddress,
-		TakerAddress:          s.TakerAddress,
-		FeeRecipientAddress:   s.FeeRecipientAddress,
-		SenderAddress:         s.SenderAddress,
-		MakerAssetAmount:      s.MakerAssetAmount,
-		TakerAssetAmount:      s.TakerAssetAmount,
-		MakerFee:              s.MakerFee,
-		TakerFee:              s.TakerFee,
-		ExpirationTimeSeconds: s.ExpirationTimeSeconds,
-		Salt:                  s.Salt,
-		MakerAssetData:        s.MakerAssetData,
-		MakerFeeAssetData:     s.MakerFeeAssetData,
-		TakerAssetData:        s.TakerAssetData,
-		TakerFeeAssetData:     s.TakerFeeAssetData,
+func (s *SignedOrder) Trim() wrappers.LibOrderOrder {
+	switch o := s.Order.(type) {
+	case *OrderV3:
+		return wrappers.LibOrderOrder{
+			MakerAddress:          o.MakerAddress,
+			TakerAddress:          o.TakerAddress,
+			FeeRecipientAddress:   o.FeeRecipientAddress,
+			SenderAddress:         o.SenderAddress,
+			MakerAssetAmount:      o.MakerAssetAmount,
+			TakerAssetAmount:      o.TakerAssetAmount,
+			MakerFee:              o.MakerFee,
+			TakerFee:              o.TakerFee,
+			ExpirationTimeSeconds: o.ExpirationTimeSeconds,
+			Salt:                  o.Salt,
+			MakerAssetData:        o.MakerAssetData,
+			MakerFeeAssetData:     o.MakerFeeAssetData,
+			TakerAssetData:        o.TakerAssetData,
+			TakerFeeAssetData:     o.TakerFeeAssetData,
+		}
+	default:
+		panic("Can't trim non-v3 order")
 	}
 }
 
-// SignedOrderJSON is an unmodified JSON representation of a SignedOrder
+// FIXME(jalextowle): What low-level messaging format should Mesh use?
+//
+// SignedOrderV3JSON is an unmodified JSON representation of a SignedOrder
 type SignedOrderV3JSON struct {
 	ChainID               int64  `json:"chainId"`
 	ExchangeAddress       string `json:"exchangeAddress"`
@@ -557,110 +595,287 @@ type SignedOrderV3JSON struct {
 	Signature             string `json:"signature"`
 }
 
-// MarshalJSON implements a custom JSON marshaller for the SignedOrder type
-func (s SignedOrderV3) MarshalJSON() ([]byte, error) {
-	makerAssetData := "0x"
-	if len(s.MakerAssetData) != 0 {
-		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerAssetData))
-	}
-	// Note(albrow): Because of how our smart contracts work, most fields of an
-	// order cannot be null. However, makerAssetFeeData and takerAssetFeeData are
-	// the exception. For these fields, "0x" is used to indicate a null value.
-	makerFeeAssetData := "0x"
-	if len(s.MakerFeeAssetData) != 0 {
-		makerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerFeeAssetData))
-	}
-	takerAssetData := "0x"
-	if len(s.TakerAssetData) != 0 {
-		takerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.TakerAssetData))
-	}
-	takerFeeAssetData := "0x"
-	if len(s.TakerFeeAssetData) != 0 {
-		takerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.TakerFeeAssetData))
-	}
-	signature := "0x"
-	if len(s.Signature) != 0 {
-		signature = fmt.Sprintf("0x%s", common.Bytes2Hex(s.Signature))
-	}
-
-	signedOrderBytes, err := json.Marshal(SignedOrderV3JSON{
-		ChainID:               s.ChainID.Int64(),
-		ExchangeAddress:       strings.ToLower(s.ExchangeAddress.Hex()),
-		MakerAddress:          strings.ToLower(s.MakerAddress.Hex()),
-		MakerAssetData:        makerAssetData,
-		MakerFeeAssetData:     makerFeeAssetData,
-		MakerAssetAmount:      s.MakerAssetAmount.String(),
-		MakerFee:              s.MakerFee.String(),
-		TakerAddress:          strings.ToLower(s.TakerAddress.Hex()),
-		TakerAssetData:        takerAssetData,
-		TakerFeeAssetData:     takerFeeAssetData,
-		TakerAssetAmount:      s.TakerAssetAmount.String(),
-		TakerFee:              s.TakerFee.String(),
-		SenderAddress:         strings.ToLower(s.SenderAddress.Hex()),
-		FeeRecipientAddress:   strings.ToLower(s.FeeRecipientAddress.Hex()),
-		ExpirationTimeSeconds: s.ExpirationTimeSeconds.String(),
-		Salt:                  s.Salt.String(),
-		Signature:             signature,
-	})
-	return signedOrderBytes, err
+// FIXME(jalextowle): Should this have a Maker field?
+// The answer to that question really depends on how this struct is interacted with.
+// If it's typically used when messaging with other peers, we probably need to come up with a new
+// communication mechanism.
+//
+// SignedOrderJSON is an unmodified JSON representation of a SignedOrder
+type SignedOrderV4JSON struct {
+	Version          int64  `json:"version"`
+	ChainID          int64  `json:"chainId"`
+	Exchange         string `json:"exchange"`
+	Maker            string `json:"maker"`
+	MakerToken       string `json:"makerToken"`
+	MakerAssetAmount string `json:"makerAssetAmount"`
+	MakerFee         string `json:"makerFee"`
+	Taker            string `json:"taker"`
+	TakerToken       string `json:"takerToken"`
+	TakerAssetAmount string `json:"takerAssetAmount"`
+	TakerFee         string `json:"takerFee"`
+	Sender           string `json:"sender"`
+	FeeRecipient     string `json:"feeRecipient"`
+	Expiry           string `json:"expiry"`
+	Salt             string `json:"salt"`
+	Pool             string `json:"pool"`
+	Origin           string `json:"origin"`
+	Signature        string `json:"signature"`
 }
 
+// FIXME
+//
+// MarshalJSON implements a custom JSON marshaller for the SignedOrder type
+func (s SignedOrder) MarshalJSON() ([]byte, error) {
+	switch o := s.Order.(type) {
+	case *OrderV3:
+		makerAssetData := "0x"
+		if len(o.MakerAssetData) != 0 {
+			makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(o.MakerAssetData))
+		}
+		// Note(albrow): Because of how our smart contracts work, most fields of an
+		// order cannot be null. However, makerAssetFeeData and takerAssetFeeData are
+		// the exception. For these fields, "0x" is used to indicate a null value.
+		makerFeeAssetData := "0x"
+		if len(o.MakerFeeAssetData) != 0 {
+			makerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(o.MakerFeeAssetData))
+		}
+		takerAssetData := "0x"
+		if len(o.TakerAssetData) != 0 {
+			takerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(o.TakerAssetData))
+		}
+		takerFeeAssetData := "0x"
+		if len(o.TakerFeeAssetData) != 0 {
+			takerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(o.TakerFeeAssetData))
+		}
+		signature := "0x"
+		if len(s.Signature) != 0 {
+			signature = fmt.Sprintf("0x%s", common.Bytes2Hex(s.Signature))
+		}
+
+		signedOrderBytes, err := json.Marshal(SignedOrderV3JSON{
+			ChainID:               o.ChainID.Int64(),
+			ExchangeAddress:       strings.ToLower(o.ExchangeAddress.Hex()),
+			MakerAddress:          strings.ToLower(o.MakerAddress.Hex()),
+			MakerAssetData:        makerAssetData,
+			MakerFeeAssetData:     makerFeeAssetData,
+			MakerAssetAmount:      o.MakerAssetAmount.String(),
+			MakerFee:              o.MakerFee.String(),
+			TakerAddress:          strings.ToLower(o.TakerAddress.Hex()),
+			TakerAssetData:        takerAssetData,
+			TakerFeeAssetData:     takerFeeAssetData,
+			TakerAssetAmount:      o.TakerAssetAmount.String(),
+			TakerFee:              o.TakerFee.String(),
+			SenderAddress:         strings.ToLower(o.SenderAddress.Hex()),
+			FeeRecipientAddress:   strings.ToLower(o.FeeRecipientAddress.Hex()),
+			ExpirationTimeSeconds: o.ExpirationTimeSeconds.String(),
+			Salt:                  o.Salt.String(),
+			Signature:             signature,
+		})
+		return signedOrderBytes, err
+	case *OrderV4:
+		signature := "0x"
+		if len(s.Signature) != 0 {
+			signature = fmt.Sprintf("0x%s", common.Bytes2Hex(s.Signature))
+		}
+
+		signedOrderBytes, err := json.Marshal(SignedOrderV4JSON{
+			ChainID:          o.ChainID.Int64(),
+			Exchange:         strings.ToLower(o.Exchange.Hex()),
+			Maker:            strings.ToLower(o.Maker.Hex()),
+			MakerToken:       strings.ToLower(o.MakerToken.Hex()),
+			MakerAssetAmount: o.MakerAssetAmount.String(),
+			MakerFee:         o.MakerFee.String(),
+			Taker:            strings.ToLower(o.Taker.Hex()),
+			TakerToken:       strings.ToLower(o.TakerToken.Hex()),
+			TakerAssetAmount: o.TakerAssetAmount.String(),
+			TakerFee:         o.TakerFee.String(),
+			Sender:           strings.ToLower(o.Sender.Hex()),
+			FeeRecipient:     strings.ToLower(o.FeeRecipient.Hex()),
+			Expiry:           o.Expiry.String(),
+			Salt:             o.Salt.String(),
+			Signature:        signature,
+		})
+		return signedOrderBytes, err
+	default:
+		return nil, errors.New("Can't marshal unrecognized order type")
+	}
+}
+
+type versionJSON struct {
+	version int `json:"version"`
+}
+
+type signedOrderV3JSON struct {
+	Version               int64  `json:"version"`
+	ChainID               int64  `json:"chainId"`
+	ExchangeAddress       string `json:"exchangeAddress"`
+	MakerAddress          string `json:"makerAddress"`
+	MakerAssetData        string `json:"makerAssetData"`
+	MakerFeeAssetData     string `json:"makerFeeAssetData"`
+	MakerAssetAmount      string `json:"makerAssetAmount"`
+	MakerFee              string `json:"makerFee"`
+	TakerAddress          string `json:"takerAddress"`
+	TakerAssetData        string `json:"takerAssetData"`
+	TakerFeeAssetData     string `json:"takerFeeAssetData"`
+	TakerAssetAmount      string `json:"takerAssetAmount"`
+	TakerFee              string `json:"takerFee"`
+	SenderAddress         string `json:"senderAddress"`
+	FeeRecipientAddress   string `json:"feeRecipientAddress"`
+	ExpirationTimeSeconds string `json:"expirationTimeSeconds"`
+	Salt                  string `json:"salt"`
+	Signature             string `json:"signature"`
+}
+
+type signedOrderV4JSON struct {
+	Version          int64  `json:"version"`
+	ChainID          int64  `json:"chainId"`
+	Exchange         string `json:"exchange"`
+	Maker            string `json:"maker"`
+	MakerToken       string `json:"makerToken"`
+	MakerAssetAmount string `json:"makerAssetAmount"`
+	MakerFee         string `json:"makerFee"`
+	Taker            string `json:"taker"`
+	TakerToken       string `json:"takerToken"`
+	TakerAssetAmount string `json:"takerAssetAmount"`
+	TakerFee         string `json:"takerFee"`
+	Sender           string `json:"sender"`
+	FeeRecipient     string `json:"feeRecipient"`
+	Expiry           string `json:"expiry"`
+	Salt             string `json:"salt"`
+	Pool             string `json:"pool"`
+	Origin           string `json:"origin"`
+	Signature        string `json:"signature"`
+}
+
+// FIXME(jalextowle): I think we'll need to unmarshal in stages. First, we'll unmarshal
+// enough to see what the version is. After that, we'll unmarshal again, using that
+// knowledge to guide our decoding.
+//
 // UnmarshalJSON implements a custom JSON unmarshaller for the SignedOrder type
-func (s *SignedOrderV3) UnmarshalJSON(data []byte) error {
-	var signedOrderJSON SignedOrderV3JSON
-	err := json.Unmarshal(data, &signedOrderJSON)
+func (s *SignedOrder) UnmarshalJSON(data []byte) error {
+	var v versionJSON
+	err := json.Unmarshal(data, &v)
 	if err != nil {
 		return err
 	}
-	var ok bool
-	s.ChainID = big.NewInt(signedOrderJSON.ChainID)
-	s.ExchangeAddress = common.HexToAddress(signedOrderJSON.ExchangeAddress)
-	s.MakerAddress = common.HexToAddress(signedOrderJSON.MakerAddress)
-	s.MakerAssetData = common.FromHex(signedOrderJSON.MakerAssetData)
-	s.MakerFeeAssetData = common.FromHex(signedOrderJSON.MakerFeeAssetData)
-	if signedOrderJSON.MakerAssetAmount != "" {
-		s.MakerAssetAmount, ok = math.ParseBig256(signedOrderJSON.MakerAssetAmount)
-		if !ok {
-			s.MakerAssetAmount = nil
+	switch v.version {
+	case 3:
+		var signedOrder signedOrderV3JSON
+		err := json.Unmarshal(data, &signedOrder)
+		if err != nil {
+			return err
 		}
-	}
-	if signedOrderJSON.MakerFee != "" {
-		s.MakerFee, ok = math.ParseBig256(signedOrderJSON.MakerFee)
-		if !ok {
-			s.MakerFee = nil
+		var ok bool
+		o := &OrderV3{}
+		o.ChainID = big.NewInt(signedOrder.ChainID)
+		o.ExchangeAddress = common.HexToAddress(signedOrder.ExchangeAddress)
+		o.MakerAddress = common.HexToAddress(signedOrder.MakerAddress)
+		o.MakerAssetData = common.FromHex(signedOrder.MakerAssetData)
+		o.MakerFeeAssetData = common.FromHex(signedOrder.MakerFeeAssetData)
+		if signedOrder.MakerAssetAmount != "" {
+			o.MakerAssetAmount, ok = math.ParseBig256(signedOrder.MakerAssetAmount)
+			if !ok {
+				o.MakerAssetAmount = nil
+			}
 		}
-	}
-	s.TakerAddress = common.HexToAddress(signedOrderJSON.TakerAddress)
-	s.TakerAssetData = common.FromHex(signedOrderJSON.TakerAssetData)
-	s.TakerFeeAssetData = common.FromHex(signedOrderJSON.TakerFeeAssetData)
-	if signedOrderJSON.TakerAssetAmount != "" {
-		s.TakerAssetAmount, ok = math.ParseBig256(signedOrderJSON.TakerAssetAmount)
-		if !ok {
-			s.TakerAssetAmount = nil
+		if signedOrder.MakerFee != "" {
+			o.MakerFee, ok = math.ParseBig256(signedOrder.MakerFee)
+			if !ok {
+				o.MakerFee = nil
+			}
 		}
-	}
-	if signedOrderJSON.TakerFee != "" {
-		s.TakerFee, ok = math.ParseBig256(signedOrderJSON.TakerFee)
-		if !ok {
-			s.TakerFee = nil
+		o.TakerAddress = common.HexToAddress(signedOrder.TakerAddress)
+		o.TakerAssetData = common.FromHex(signedOrder.TakerAssetData)
+		o.TakerFeeAssetData = common.FromHex(signedOrder.TakerFeeAssetData)
+		if signedOrder.TakerAssetAmount != "" {
+			o.TakerAssetAmount, ok = math.ParseBig256(signedOrder.TakerAssetAmount)
+			if !ok {
+				o.TakerAssetAmount = nil
+			}
 		}
-	}
-	s.SenderAddress = common.HexToAddress(signedOrderJSON.SenderAddress)
-	s.FeeRecipientAddress = common.HexToAddress(signedOrderJSON.FeeRecipientAddress)
-	if signedOrderJSON.ExpirationTimeSeconds != "" {
-		s.ExpirationTimeSeconds, ok = math.ParseBig256(signedOrderJSON.ExpirationTimeSeconds)
-		if !ok {
-			s.ExpirationTimeSeconds = nil
+		if signedOrder.TakerFee != "" {
+			o.TakerFee, ok = math.ParseBig256(signedOrder.TakerFee)
+			if !ok {
+				o.TakerFee = nil
+			}
 		}
-	}
-	if signedOrderJSON.Salt != "" {
-		s.Salt, ok = math.ParseBig256(signedOrderJSON.Salt)
-		if !ok {
-			s.Salt = nil
+		o.SenderAddress = common.HexToAddress(signedOrder.SenderAddress)
+		o.FeeRecipientAddress = common.HexToAddress(signedOrder.FeeRecipientAddress)
+		if signedOrder.ExpirationTimeSeconds != "" {
+			o.ExpirationTimeSeconds, ok = math.ParseBig256(signedOrder.ExpirationTimeSeconds)
+			if !ok {
+				o.ExpirationTimeSeconds = nil
+			}
 		}
+		if signedOrder.Salt != "" {
+			o.Salt, ok = math.ParseBig256(signedOrder.Salt)
+			if !ok {
+				o.Salt = nil
+			}
+		}
+		s.Order = o
+		s.Version = signedOrder.Version
+		s.Signature = common.FromHex(signedOrder.Signature)
+		return nil
+	case 4:
+		var signedOrder signedOrderV4JSON
+		err := json.Unmarshal(data, &signedOrder)
+		if err != nil {
+			return err
+		}
+		var ok bool
+		o := &OrderV4{}
+		o.ChainID = big.NewInt(signedOrder.ChainID)
+		o.Exchange = common.HexToAddress(signedOrder.Exchange)
+		o.Maker = common.HexToAddress(signedOrder.Maker)
+		o.MakerToken = common.HexToAddress(signedOrder.MakerToken)
+		if signedOrder.MakerFee != "" {
+			o.MakerFee, ok = math.ParseBig256(signedOrder.MakerFee)
+			if !ok {
+				o.MakerFee = nil
+			}
+		}
+		o.Taker = common.HexToAddress(signedOrder.Taker)
+		o.TakerToken = common.HexToAddress(signedOrder.TakerToken)
+		if signedOrder.TakerFee != "" {
+			o.TakerFee, ok = math.ParseBig256(signedOrder.TakerFee)
+			if !ok {
+				o.TakerFee = nil
+			}
+		}
+		o.Sender = common.HexToAddress(signedOrder.Sender)
+		o.FeeRecipient = common.HexToAddress(signedOrder.FeeRecipient)
+		if signedOrder.Expiry != "" {
+			o.Expiry, ok = math.ParseBig256(signedOrder.Expiry)
+			if !ok {
+				o.Expiry = nil
+			}
+		}
+		if signedOrder.Salt != "" {
+			o.Salt, ok = math.ParseBig256(signedOrder.Salt)
+			if !ok {
+				o.Salt = nil
+			}
+		}
+		if signedOrder.Pool != "" {
+			o.Salt, ok = math.ParseBig256(signedOrder.Pool)
+			if !ok {
+				o.Pool = nil
+			}
+		}
+		if signedOrder.Origin != "" {
+			o.Salt, ok = math.ParseBig256(signedOrder.Origin)
+			if !ok {
+				o.Pool = nil
+			}
+		}
+		s.Order = o
+		s.Version = signedOrder.Version
+		s.Signature = common.FromHex(signedOrder.Signature)
+		return nil
+	default:
+		return errors.New("")
 	}
-	s.Signature = common.FromHex(signedOrderJSON.Signature)
-	return nil
 }
 
 // keccak256 calculates and returns the Keccak256 hash of the input data.

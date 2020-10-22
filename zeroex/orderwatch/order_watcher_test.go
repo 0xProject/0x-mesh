@@ -1890,11 +1890,11 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 		switch orderEvent.EndState {
 		case zeroex.ESOrderAdded:
 			numAdded += 1
-			orderExpirationTime := orderEvent.SignedOrder.ExpirationTimeSeconds
+			orderExpirationTime := orderEvent.SignedOrder.(*zeroex.SignedOrderV3).ExpirationTimeSeconds
 			assert.True(t, orderExpirationTime.Cmp(storedMaxExpirationTime) == -1, "ADDED order has an expiration time of %s which is *greater than* the maximum of %s", orderExpirationTime, storedMaxExpirationTime)
 		case zeroex.ESStoppedWatching:
 			numStoppedWatching += 1
-			orderExpirationTime := orderEvent.SignedOrder.ExpirationTimeSeconds
+			orderExpirationTime := orderEvent.SignedOrder.(*zeroex.SignedOrderV3).ExpirationTimeSeconds
 			assert.True(t, orderExpirationTime.Cmp(storedMaxExpirationTime) != -1, "STOPPED_WATCHING order has an expiration time of %s which is *less than* the maximum of %s", orderExpirationTime, storedMaxExpirationTime)
 		default:
 			t.Errorf("unexpected order event type: %s", orderEvent.EndState)

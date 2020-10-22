@@ -110,7 +110,12 @@ func (r *subscriptionResolver) OrderEvents(ctx context.Context) (<-chan []*gqlty
 					panic(err)
 				}
 			case orderEvents := <-zeroExChan:
-				gqlChan <- gqltypes.OrderEventsFromZeroExType(orderEvents)
+				event, err := gqltypes.OrderEventsFromZeroExType(orderEvents)
+				if err != nil {
+					subscription.Unsubscribe()
+					panic(err)
+				}
+				gqlChan <- event
 			}
 		}
 	}()
