@@ -248,6 +248,7 @@ export class MeshGraphQLClient {
     // NOTE(jalextowle): BrowserLink doesn't support subscriptions at this time.
     private readonly _subscriptionClient?: SubscriptionClient;
     private readonly _client: ApolloClient<NormalizedCacheObject>;
+    private readonly _onReconnectedCallbacks: (() => void)[] = [];
     constructor(linkConfig: LinkConfig) {
         let link: ApolloLink;
         if (linkConfig.httpUrl && linkConfig.webSocketUrl) {
@@ -265,12 +266,23 @@ export class MeshGraphQLClient {
             const wsSubClient = new SubscriptionClient(
                 linkConfig.webSocketUrl,
                 {
-                    reconnect: false,
+                    reconnect: true,
                 },
                 // Use ws in Node.js and native WebSocket in browsers.
                 (process as any).browser ? undefined : ws,
             );
             const wsLink = new WebSocketLink(wsSubClient);
+
+            // HACK(kimpers): See https://github.com/apollographql/apollo-client/issues/5115#issuecomment-572318778
+            // @ts-ignore at the time of writing the field is private and untyped
+            const subscriptionClient = wsLink.subscriptionClient as SubscriptionClient;
+
+            subscriptionClient.onReconnected(() => {
+                for (const cb of this._onReconnectedCallbacks) {
+                    cb();
+                }
+            });
+
             const splitLink = split(
                 ({ query }) => {
                     const definition = getMainDefinition(query);
@@ -389,6 +401,10 @@ export class MeshGraphQLClient {
             throw new Error('received no data');
         }
         return resp.data.orders.map(fromStringifiedOrderWithMetadata);
+    }
+
+    public onReconnected(cb: () => void): void {
+        this._onReconnectedCallbacks.push(cb);
     }
 
     public onOrderEvents(): Observable<OrderEvent[]> {
