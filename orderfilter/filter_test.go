@@ -384,20 +384,20 @@ func testFilterTopic(t *testing.T, generateFilter func(int, string, ethereum.Con
 		chainID           int
 		customOrderSchema string
 		// orderJSON must be valid according to the filter
-		orderJSON     []byte
-		expectedTopic string
+		orderJSON      []byte
+		expectedTopics []string
 	}{
 		{
 			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
 			orderJSON:         standardValidOrderJSON,
-			expectedTopic:     "/0x-orders/version/3/chain/1337/schema/e30=",
+			expectedTopics:    []string{"/0x-orders/version/3/chain/1337/schema/e30="},
 		},
 		{
 			chainID:           constants.TestChainID,
 			customOrderSchema: `{"properties":{"senderAddress":{"type":"string","pattern":"0x00000000000000000000000000000000ba5eba11"}}}`,
 			orderJSON:         orderWithSpecificSenderAddressJSON,
-			expectedTopic:     "/0x-orders/version/3/chain/1337/schema/eyJwcm9wZXJ0aWVzIjp7InNlbmRlckFkZHJlc3MiOnsicGF0dGVybiI6IjB4MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDBiYTVlYmExMSIsInR5cGUiOiJzdHJpbmcifX19",
+			expectedTopics:    []string{"/0x-orders/version/3/chain/1337/schema/eyJwcm9wZXJ0aWVzIjp7InNlbmRlckFkZHJlc3MiOnsicGF0dGVybiI6IjB4MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDBiYTVlYmExMSIsInR5cGUiOiJzdHJpbmcifX19"},
 		},
 		{
 			// Same as above but the JSON schema has extra whitespace and some
@@ -405,7 +405,7 @@ func testFilterTopic(t *testing.T, generateFilter func(int, string, ethereum.Con
 			chainID:           constants.TestChainID,
 			customOrderSchema: `{"properties": {"senderAddress": {"pattern": "0x00000000000000000000000000000000ba5eba11", "type": "string"}}}`,
 			orderJSON:         orderWithSpecificSenderAddressJSON,
-			expectedTopic:     "/0x-orders/version/3/chain/1337/schema/eyJwcm9wZXJ0aWVzIjp7InNlbmRlckFkZHJlc3MiOnsicGF0dGVybiI6IjB4MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDBiYTVlYmExMSIsInR5cGUiOiJzdHJpbmcifX19",
+			expectedTopics:    []string{"/0x-orders/version/3/chain/1337/schema/eyJwcm9wZXJ0aWVzIjp7InNlbmRlckFkZHJlc3MiOnsicGF0dGVybiI6IjB4MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDBiYTVlYmExMSIsInR5cGUiOiJzdHJpbmcifX19"},
 		},
 	}
 
@@ -416,10 +416,10 @@ func testFilterTopic(t *testing.T, generateFilter func(int, string, ethereum.Con
 		result, err := originalFilter.ValidateOrderJSON(tc.orderJSON)
 		require.NoError(t, err, tcInfo)
 		assert.Empty(t, result.Errors(), "original filter should validate the given order\n"+tcInfo)
-		assert.Equal(t, tc.expectedTopic, originalFilter.Topic(), tcInfo)
-		newFilter, err := NewFromTopic(originalFilter.Topic(), contractAddresses)
+		assert.Equal(t, tc.expectedTopics, originalFilter.Topics(), tcInfo)
+		newFilter, err := NewFromTopic(originalFilter.Topics(), contractAddresses)
 		require.NoError(t, err, tcInfo)
-		assert.Equal(t, tc.expectedTopic, newFilter.Topic(), tcInfo)
+		assert.Equal(t, tc.expectedTopics, newFilter.Topics(), tcInfo)
 		result, err = newFilter.ValidateOrderJSON(tc.orderJSON)
 		require.NoError(t, err, tcInfo)
 		assert.Empty(t, result.Errors(), "filter generated from topic should validate the same order\n"+tcInfo)
@@ -428,8 +428,8 @@ func testFilterTopic(t *testing.T, generateFilter func(int, string, ethereum.Con
 
 func TestDefaultOrderSchemaTopic(t *testing.T) {
 	chainID := 1337
-	defaultTopic, err := GetDefaultTopic(chainID, contractAddresses)
+	defaultTopics, err := GetDefaultTopics(chainID, contractAddresses)
 	require.NoError(t, err)
-	expectedTopic := "/0x-orders/version/3/chain/1337/schema/e30="
-	assert.Equal(t, expectedTopic, defaultTopic, "the topic for the default filter should not change")
+	expectedTopics := []string{"/0x-orders/version/3/chain/1337/schema/e30="}
+	assert.Equal(t, expectedTopics, defaultTopics, "the topic for the default filter should not change")
 }

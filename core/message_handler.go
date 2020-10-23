@@ -16,6 +16,10 @@ import (
 // Ensure that App implements p2p.MessageHandler.
 var _ p2p.MessageHandler = &App{}
 
+// FIXME(jalextowle): It's important to ensure that this function correctly decodes
+// the messages for v4.
+//
+//
 func (app *App) HandleMessages(ctx context.Context, messages []*p2p.Message) error {
 	// First we validate the messages and decode them into orders.
 	orders := []*zeroex.SignedOrder{}

@@ -37,12 +37,13 @@ func GetDefaultFilter(chainID int, contractAddresses ethereum.ContractAddresses)
 	return New(chainID, DefaultCustomOrderSchema, contractAddresses)
 }
 
-func GetDefaultTopic(chainID int, contractAddresses ethereum.ContractAddresses) (string, error) {
+// FIXME(jalextowle), is this doing the right thing?
+func GetDefaultTopics(chainID int, contractAddresses ethereum.ContractAddresses) ([]string, error) {
 	defaultFilter, err := GetDefaultFilter(chainID, contractAddresses)
 	if err != nil {
-		return "", err
+		return []string{""}, err
 	}
-	return defaultFilter.Topic(), nil
+	return defaultFilter.Topics(), nil
 }
 
 // MatchOrder returns true if the order passes the filter. It only returns an
@@ -56,12 +57,14 @@ func (f *Filter) MatchOrder(order *zeroex.SignedOrder) (bool, error) {
 	return result.Valid(), nil
 }
 
-func NewFromTopic(topic string, contractAddresses ethereum.ContractAddresses) (*Filter, error) {
+func NewFromTopic(topics []string, contractAddresses ethereum.ContractAddresses) (*Filter, error) {
 	// TODO(albrow): Use a cache for topic -> filter
 	var version int
 	var chainIDAndSchema string
-	if _, err := fmt.Sscanf(topic, topicVersionFormat, &version, &chainIDAndSchema); err != nil {
-		return nil, fmt.Errorf("could not parse topic version for topic: %q", topic)
+	// FIXME(jalextwole): This will need to be able to support multiple different order
+	// versions
+	if _, err := fmt.Sscanf(topics[0], topicVersionFormat, &version, &chainIDAndSchema); err != nil {
+		return nil, fmt.Errorf("could not parse topic version for topic: %q", topics[0])
 	}
 	if version != pubsubTopicVersion {
 		return nil, WrongTopicVersionError{
@@ -72,7 +75,7 @@ func NewFromTopic(topic string, contractAddresses ethereum.ContractAddresses) (*
 	var chainID int
 	var base64EncodedSchema string
 	if _, err := fmt.Sscanf(chainIDAndSchema, topicChainIDAndSchemaFormat, &chainID, &base64EncodedSchema); err != nil {
-		return nil, fmt.Errorf("could not parse chainID and schema from topic: %q", topic)
+		return nil, fmt.Errorf("could not parse chainID and schema from topic: %q", topics[0])
 	}
 	customOrderSchema, err := base64.URLEncoding.DecodeString(base64EncodedSchema)
 	if err != nil {
@@ -88,17 +91,24 @@ func (f *Filter) Rendezvous() string {
 	return fmt.Sprintf(fullRendezvousFormat, rendezvousVersion, f.chainID, f.encodedSchema)
 }
 
-func (f *Filter) Topic() string {
+// FIXME(jalextowle): We'll need to update the orderfilter implementation to accomodate
+// v4 orders.
+//
+func (f *Filter) Topics() []string {
 	if f.encodedSchema == "" {
 		f.encodedSchema = f.generateEncodedSchema()
 	}
-	return fmt.Sprintf(fullTopicFormat, pubsubTopicVersion, f.chainID, f.encodedSchema)
+	// FIXME(jalextowle): Add v4 topics when they are ready
+	return []string{fmt.Sprintf(fullTopicFormat, pubsubTopicVersion, f.chainID, f.encodedSchema)}
 }
 
 // Dummy declaration to ensure that ValidatePubSubMessage matches the expected
 // signature for pubsub.Validator.
 var _ pubsub.Validator = (&Filter{}).ValidatePubSubMessage
 
+// FIXME(jalextowle): We'll need to update the orderfilter implementation to accomodate
+// v4 orders.
+//
 // ValidatePubSubMessage is an implementation of pubsub.Validator and will
 // return true if the contents of the message pass the message JSON Schema.
 func (f *Filter) ValidatePubSubMessage(ctx context.Context, sender peer.ID, msg *pubsub.Message) bool {

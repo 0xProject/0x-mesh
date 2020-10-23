@@ -64,7 +64,7 @@ const statsQuery = gql`
     query Stats {
         stats {
             version
-            pubSubTopic
+            pubSubTopics
             rendezvous
             peerID
             ethereumChainID

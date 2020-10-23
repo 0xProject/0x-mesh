@@ -15,10 +15,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
+// FIXME(jalextowle): It would be great to collect stats on v3 vs v4 orders
 // Stats is the return value for core.GetStats. Also used in the browser interface.
 type Stats struct {
 	Version                           string      `json:"version"`
-	PubSubTopic                       string      `json:"pubSubTopic"`
+	PubSubTopics                      []string    `json:"pubSubTopic"`
 	Rendezvous                        string      `json:"rendezvous"`
 	SecondaryRendezvous               []string    `json:"secondaryRendezvous"`
 	PeerID                            string      `json:"peerID"`

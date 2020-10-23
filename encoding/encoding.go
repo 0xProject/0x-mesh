@@ -13,15 +13,23 @@ type orderMessage struct {
 	Topics      []string            `json:"topics"`
 }
 
+// FIXME(jalextowle): This encoding function has to be implemented for message_handler.go
+// FIXME(jalextowle): We'll also need to select the correct topic for this order when
+// we send it out.
+//
 // OrderToRawMessage encodes an order into an order message to be sent over the wire
-func OrderToRawMessage(topic string, order *zeroex.SignedOrder) ([]byte, error) {
+func OrderToRawMessage(topics []string, order *zeroex.SignedOrder) ([]byte, error) {
+	// FIXME(jalextowle): What is the best way to make this topic selection
+	// nice?
 	return json.Marshal(orderMessage{
 		MessageType: "order",
 		Order:       order,
-		Topics:      []string{topic},
+		Topics:      []string{topics[0]},
 	})
 }
 
+// FIXME(jalextowle): This encoding function has to be implemented for message_handler.go
+//
 // RawMessageToOrder decodes an order message sent over the wire into an order
 func RawMessageToOrder(data []byte) (*zeroex.SignedOrder, error) {
 	var orderMessage orderMessage

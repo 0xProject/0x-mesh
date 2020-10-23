@@ -231,7 +231,7 @@ func TestGetStats(t *testing.T) {
 	assert.NotEqual(t, actualStats.Version, "")
 	actualStats.Version = ""
 	expectedStats := &gqlclient.Stats{
-		PubSubTopic:     "/0x-orders/version/3/chain/1337/schema/e30=",
+		PubSubTopics:    []string{"/0x-orders/version/3/chain/1337/schema/e30="},
 		Rendezvous:      "/0x-mesh/network/1337/version/2",
 		PeerID:          peerID,
 		EthereumChainID: 1337,

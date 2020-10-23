@@ -405,34 +405,43 @@ func unquoteConfig(config Config) Config {
 	return config
 }
 
-func getPublishTopics(chainID int, contractAddresses ethereum.ContractAddresses, customFilter *orderfilter.Filter) ([]string, error) {
-	defaultTopic, err := orderfilter.GetDefaultTopic(chainID, contractAddresses)
+func getPublishTopics(chainID int, contractAddresses ethereum.ContractAddresses, customFilter *orderfilter.Filter) (topics []string, err error) {
+	topicSet := map[string]interface{}{}
+	defaultTopics, err := orderfilter.GetDefaultTopics(chainID, contractAddresses)
 	if err != nil {
 		return nil, err
 	}
-	customTopic := customFilter.Topic()
-	if defaultTopic == customTopic {
-		// If we're just using the default order filter, we don't need to publish to
-		// multiple topics.
-		return []string{defaultTopic}, nil
-	} else {
-		// If we are using a custom order filter, publish to *both* the default
-		// topic and the custom topic. All orders that match the custom order filter
-		// must necessarily match the default filter. This also allows us to
-		// implement cross-topic forwarding in the future.
-		// See https://github.com/0xProject/0x-mesh/pull/563
-		return []string{defaultTopic, customTopic}, nil
+	customTopics := customFilter.Topics()
+	for _, defaultTopic := range defaultTopics {
+		topicSet[defaultTopic] = struct{}{}
 	}
+	for _, customTopic := range customTopics {
+		topicSet[customTopic] = struct{}{}
+	}
+	for k := range topicSet {
+		topics = append(topics, k)
+	}
+	return topics, nil
 }
 
 func (app *App) getRendezvousPoints() ([]string, error) {
 	defaultRendezvousPoint := fmt.Sprintf("/0x-mesh/network/%d/version/2", app.config.EthereumChainID)
-	defaultTopic, err := orderfilter.GetDefaultTopic(app.chainID, *app.contractAddresses)
+	defaultTopics, err := orderfilter.GetDefaultTopics(app.chainID, *app.contractAddresses)
 	if err != nil {
 		return nil, err
 	}
-	customTopic := app.orderFilter.Topic()
-	if defaultTopic == customTopic {
+	customTopics := app.orderFilter.Topics()
+	isDefaultOrderFilter := true
+LOOP:
+	for _, defaultTopic := range defaultTopics {
+		for _, customTopic := range customTopics {
+			if defaultTopic != customTopic {
+				isDefaultOrderFilter = false
+				break LOOP
+			}
+		}
+	}
+	if isDefaultOrderFilter {
 		// If we're just using the default order filter, we don't need to use multiple
 		// rendezvous points.
 		return []string{defaultRendezvousPoint}, nil
@@ -612,7 +621,7 @@ func (app *App) Start() error {
 		return err
 	}
 	nodeConfig := p2p.Config{
-		SubscribeTopic:         app.orderFilter.Topic(),
+		SubscribeTopics:        app.orderFilter.Topics(),
 		PublishTopics:          publishTopics,
 		TCPPort:                app.config.P2PTCPPort,
 		WebSocketsPort:         app.config.P2PWebSocketsPort,
@@ -666,7 +675,7 @@ func (app *App) Start() error {
 		addrs := app.node.Multiaddrs()
 		log.WithFields(map[string]interface{}{
 			"addresses": addrs,
-			"topic":     app.orderFilter.Topic(),
+			"topics":    app.orderFilter.Topics(),
 		}).Info("starting p2p node")
 
 		wg.Add(1)
@@ -992,7 +1001,7 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 func (app *App) shareOrder(order *zeroex.SignedOrder) error {
 	<-app.started
 
-	encoded, err := encoding.OrderToRawMessage(app.orderFilter.Topic(), order)
+	encoded, err := encoding.OrderToRawMessage(app.orderFilter.Topics(), order)
 	if err != nil {
 		return err
 	}
@@ -1065,7 +1074,7 @@ func (app *App) GetStats() (*types.Stats, error) {
 
 	response := &types.Stats{
 		Version:                           version,
-		PubSubTopic:                       app.orderFilter.Topic(),
+		PubSubTopics:                      app.orderFilter.Topics(),
 		Rendezvous:                        rendezvousPoints[0],
 		SecondaryRendezvous:               rendezvousPoints[1:],
 		PeerID:                            app.peerID.String(),
@@ -1102,7 +1111,7 @@ func (app *App) periodicallyLogStats(ctx context.Context) {
 		}
 		log.WithFields(log.Fields{
 			"version":                           stats.Version,
-			"pubSubTopic":                       stats.PubSubTopic,
+			"pubSubTopics":                      stats.PubSubTopics,
 			"rendezvous":                        stats.Rendezvous,
 			"ethereumChainID":                   stats.EthereumChainID,
 			"latestBlock":                       stats.LatestBlock,

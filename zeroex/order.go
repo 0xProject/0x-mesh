@@ -40,6 +40,8 @@ type Order struct {
 	hash *common.Hash
 }
 
+// FIXME(jalextowle): Decide on a new order format
+//
 // SignedOrder represents a signed 0x order
 type SignedOrder struct {
 	Order

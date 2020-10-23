@@ -99,15 +99,17 @@ type Node struct {
 	// TODO(jalextowle): Make this linter compliant
 	routingDiscovery discovery.Discovery //nolint:staticcheck
 	pubsub           *pubsub.PubSub
-	sub              *pubsub.Subscription
-	banner           *banner.Banner
+	// FIXME(jalextowle): We'll need subscriptions for each network
+	subs               map[string]*pubsub.Subscription
+	subscriptionTopics []string
+	banner             *banner.Banner
 }
 
 // Config contains configuration options for a Node.
 type Config struct {
-	// SubscribeTopic is the topic to subscribe to for new messages. Only messages
+	// SubscribeTopics are the topic to subscribe to for new messages. Only messages
 	// that are published on this topic will be received and processed.
-	SubscribeTopic string
+	SubscribeTopics []string
 	// PublishTopics are the topics to publish messages to. Messages may be
 	// published to more than one topic (e.g. a topic for all orders and a topic
 	// for orders with a specific asset).
@@ -275,20 +277,24 @@ func New(ctx context.Context, config Config) (*Node, error) {
 
 	// Create the Node.
 	node := &Node{
-		ctx:              ctx,
-		config:           config,
-		messageHandler:   config.MessageHandler,
-		host:             basicHost,
-		connManager:      connManager,
-		dht:              kadDHT,
-		routingDiscovery: routingDiscovery,
-		pubsub:           ps,
-		banner:           banner,
+		ctx:                ctx,
+		config:             config,
+		messageHandler:     config.MessageHandler,
+		host:               basicHost,
+		connManager:        connManager,
+		dht:                kadDHT,
+		routingDiscovery:   routingDiscovery,
+		pubsub:             ps,
+		subscriptionTopics: config.SubscribeTopics,
+		subs:               map[string]*pubsub.Subscription{},
+		banner:             banner,
 	}
 
 	return node, nil
 }
 
+// FIXME(jalextowle): Verify that v4 orders can be accepted by this function
+//
 // registerValidators registers all the validators we use for incoming and
 // outgoing GossipSub messages.
 func registerValidators(ctx context.Context, basicHost host.Host, config Config, ps *pubsub.PubSub) error {
@@ -308,11 +314,21 @@ func registerValidators(ctx context.Context, basicHost host.Host, config Config,
 	}
 	validators.Add("message rate limiting", rateValidator.Validate)
 
+	// FIXME(jalextowle): We'll need to update this piece of the code. We
+	// may end up having several CustomMessageValidators.
+	//
+	// IDEA(jalextowle): We can keep the customMessageValidator if it has a
+	// sense of versioning. this probably requires us to support versioning
+	// within the orderfilter.
+	//
 	// Add the custom validator if there is one.
 	if config.CustomMessageValidator != nil {
 		validators.Add("custom", config.CustomMessageValidator)
 	}
 
+	// FIXME(jalextowle): We'll need new validators for different order types
+	// These validators may be mutually excludisve
+	//
 	// Register the set of validators for all topics that we publish and/or
 	// subscribe to.
 	//
@@ -327,7 +343,7 @@ func registerValidators(ctx context.Context, basicHost host.Host, config Config,
 	// in the database that don't match the current filter. In most cases, the
 	// subscribe topic will be one of the publish topics so it doesn't matter much
 	// in practice in the current implementation.
-	allTopics := stringset.NewFromSlice(append(config.PublishTopics, config.SubscribeTopic))
+	allTopics := stringset.NewFromSlice(append(config.PublishTopics, config.SubscribeTopics...))
 	for topic := range allTopics {
 		if err := ps.RegisterTopicValidator(topic, validators.Validate, pubsub.WithValidatorInline(true)); err != nil {
 			return err
@@ -539,6 +555,10 @@ func (n *Node) startMessageHandler(ctx context.Context) error {
 	}
 }
 
+// FIXME(jalextowle): Make sure that this works properly with v4 orders
+//
+// FIXME(jalextowle): Could we put the two subscriptions into seperate go routines?
+// Alternatively, could we add the subscriptions to receiveBatch?
 func (n *Node) receiveAndHandleMessages(ctx context.Context) error {
 	// Receive up to maxReceiveBatch messages.
 	incoming, err := n.receiveBatch(ctx)
@@ -643,9 +663,16 @@ func logPeerConnectionError(peerInfo peer.AddrInfo, connectionErr error) {
 	}
 }
 
+// FIXME(jalextowle): One way to try to fairly weight resources is to receive
+// from a random subscription at the start of calling receiveBatch, continue to
+// call that subscription until the context is cancelled, the context deadline is
+// exceeded, or the message was .
+//
 // receiveBatch returns up to maxReceiveBatch messages which are received from
 // peers. There is no guarantee that the messages are unique.
 func (n *Node) receiveBatch(ctx context.Context) ([]*Message, error) {
+	// Pick a random topic to receive orders for in this batch.
+	topic := n.subscriptionTopics[mathrand.Intn(len(n.subscriptionTopics))]
 	messages := []*Message{}
 	for {
 		if len(messages) >= maxReceiveBatch {
@@ -658,7 +685,7 @@ func (n *Node) receiveBatch(ctx context.Context) ([]*Message, error) {
 		default:
 		}
 		receiveCtx, receiveCancel := context.WithTimeout(n.ctx, receiveTimeout)
-		msg, err := n.receive(receiveCtx)
+		msg, err := n.receive(receiveCtx, topic)
 		receiveCancel()
 		if err != nil {
 			if err == context.Canceled || err == context.DeadlineExceeded {
@@ -673,6 +700,10 @@ func (n *Node) receiveBatch(ctx context.Context) ([]*Message, error) {
 	}
 }
 
+// FIXME(jalextowle): We'll need to add new publish topics the v4 orders.
+// We'll also need to only send some data to certain topics. We'll need to have
+// send switch on the type of the order
+//
 // Send sends a message continaing the given data to all connected peers.
 func (n *Node) Send(data []byte) error {
 	// Note: If there is an error, we still try to publish to any remaining
@@ -690,19 +721,21 @@ func (n *Node) Send(data []byte) error {
 	return firstErr
 }
 
+// FIXME(jalextowle): We'll need to add a subscription for the v4 orders.
+//
 // receive returns the next pending message. It blocks if no messages are
 // available. If the given context is canceled, it returns nil, ctx.Err().
-func (n *Node) receive(ctx context.Context) (*Message, error) {
-	if n.sub == nil {
-		var err error
+func (n *Node) receive(ctx context.Context, topic string) (*Message, error) {
+	if _, ok := n.subs[topic]; !ok {
 		// TODO(jalextowle): This should be replaced with `pubsub.Join`
 		// and `topic.Publish`
-		n.sub, err = n.pubsub.Subscribe(n.config.SubscribeTopic) //nolint:staticcheck
+		sub, err := n.pubsub.Subscribe(topic) //nolint:staticcheck
 		if err != nil {
 			return nil, err
 		}
+		n.subs[topic] = sub
 	}
-	msg, err := n.sub.Next(ctx)
+	msg, err := n.subs[topic].Next(ctx)
 	if err != nil {
 		return nil, err
 	}

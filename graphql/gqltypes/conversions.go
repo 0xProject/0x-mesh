@@ -36,10 +36,10 @@ func AddOrderOptsToCommonType(opts *AddOrdersOpts) *types.AddOrdersOpts {
 
 func StatsFromCommonType(stats *types.Stats) *Stats {
 	return &Stats{
-		Version:     stats.Version,
-		PubSubTopic: stats.PubSubTopic,
-		Rendezvous:  stats.Rendezvous,
-		PeerID:      stats.PeerID,
+		Version:      stats.Version,
+		PubSubTopics: stats.PubSubTopics,
+		Rendezvous:   stats.Rendezvous,
+		PeerID:       stats.PeerID,
 		// TODO(albrow): This should be a big.Int in core package.
 		EthereumChainID: stats.EthereumChainID,
 		// TODO(albrow): LatestBlock should be a pointer in core package.

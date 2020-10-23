@@ -31,7 +31,7 @@ export interface OrderEventResponse {
 
 export interface Stats {
     version: string;
-    pubSubTopic: string;
+    pubSubTopics: string[];
     rendezvous: string;
     secondaryRendezvous: string[];
     peerID: string;
@@ -211,7 +211,7 @@ export interface StringifiedLatestBlock {
 
 export interface StringifiedStats {
     version: string;
-    pubSubTopic: string;
+    pubSubTopics: string[];
     rendezvous: string;
     secondaryRendezvous: string[];
     peerID: string;

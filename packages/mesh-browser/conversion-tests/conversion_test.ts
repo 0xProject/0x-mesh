@@ -697,7 +697,7 @@ function testSignedOrders(signedOrders: WrapperSignedOrder[]): void {
 function testStats(stats: WrapperStats[]): void {
     const printer = prettyPrintTestCase('stats', 'RealisticStats');
     printer('version', stats[0].version === 'development');
-    printer('pubSubTopic', stats[0].pubSubTopic === 'someTopic');
+    printer('pubSubTopics', stats[0].pubSubTopics[0] === 'someTopic');
     printer('rendezvous', stats[0].rendezvous === '/0x-mesh/network/1337/version/2');
     printer(
         'secondaryRendezvous',
