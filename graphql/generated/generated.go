@@ -147,7 +147,8 @@ type ComplexityRoot struct {
 		NumOrdersIncludingRemoved         func(childComplexity int) int
 		NumPeers                          func(childComplexity int) int
 		PeerID                            func(childComplexity int) int
-		PubSubTopics                      func(childComplexity int) int
+		PubSubTopicsV3                    func(childComplexity int) int
+		PubSubTopicsV4                    func(childComplexity int) int
 		Rendezvous                        func(childComplexity int) int
 		SecondaryRendezvous               func(childComplexity int) int
 		StartOfCurrentUTCDay              func(childComplexity int) int
@@ -698,12 +699,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Stats.PeerID(childComplexity), true
 
-	case "Stats.pubSubTopics":
-		if e.complexity.Stats.PubSubTopics == nil {
+	case "Stats.pubSubTopicsV3":
+		if e.complexity.Stats.PubSubTopicsV3 == nil {
 			break
 		}
 
-		return e.complexity.Stats.PubSubTopics(childComplexity), true
+		return e.complexity.Stats.PubSubTopicsV3(childComplexity), true
+
+	case "Stats.pubSubTopicsV4":
+		if e.complexity.Stats.PubSubTopicsV4 == nil {
+			break
+		}
+
+		return e.complexity.Stats.PubSubTopicsV4(childComplexity), true
 
 	case "Stats.rendezvous":
 		if e.complexity.Stats.Rendezvous == nil {
@@ -963,7 +971,8 @@ Contains configuration options and various stats for Mesh.
 """
 type Stats {
     version: String!
-    pubSubTopics: [String!]!
+    pubSubTopicsV3: [String!]!
+    pubSubTopicsV4: [String!]!
     rendezvous: String!
     peerID: String!
     ethereumChainID: Int! # TODO(albrow): This should be String
@@ -3620,7 +3629,7 @@ func (ec *executionContext) _Stats_version(ctx context.Context, field graphql.Co
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Stats_pubSubTopics(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
+func (ec *executionContext) _Stats_pubSubTopicsV3(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3637,7 +3646,41 @@ func (ec *executionContext) _Stats_pubSubTopics(ctx context.Context, field graph
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.PubSubTopics, nil
+		return obj.PubSubTopicsV3, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Stats_pubSubTopicsV4(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Stats",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PubSubTopicsV4, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5955,8 +5998,13 @@ func (ec *executionContext) _Stats(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "pubSubTopics":
-			out.Values[i] = ec._Stats_pubSubTopics(ctx, field, obj)
+		case "pubSubTopicsV3":
+			out.Values[i] = ec._Stats_pubSubTopicsV3(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "pubSubTopicsV4":
+			out.Values[i] = ec._Stats_pubSubTopicsV4(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

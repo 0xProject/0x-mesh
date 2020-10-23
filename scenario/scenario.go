@@ -56,7 +56,7 @@ func defaultTestOrder() *zeroex.OrderV3 {
 		MakerAssetAmount:      big.NewInt(100),
 		TakerAssetAmount:      big.NewInt(42),
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		ExchangeAddress:       ganacheAddresses.Exchange,
+		ExchangeAddress:       ganacheAddresses.ExchangeV3,
 	}
 }
 

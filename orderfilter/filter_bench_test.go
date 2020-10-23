@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TODO(jalextowle): We should have benchmarks for V4 order validation
 func BenchmarkValidateOrder(b *testing.B) {
 	order := &zeroex.OrderV3{
 		ChainID:               big.NewInt(constants.TestChainID),
@@ -29,14 +30,14 @@ func BenchmarkValidateOrder(b *testing.B) {
 		Salt:                  math.MustParseBig256("1548619145450"),
 	}
 
-	filter, err := New(constants.TestChainID, DefaultCustomOrderSchema, contractAddresses)
+	filter, err := New(constants.TestChainID, DefaultCustomOrderSchema, DefaultCustomOrderSchema, contractAddresses)
 	require.NoError(b, err)
 	signedOrder, err := zeroex.SignTestOrder(order)
 	require.NoError(b, err)
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, err = filter.ValidateOrder(signedOrder)
+		_, err = filter.ValidateOrderV3(signedOrder)
 		b.StopTimer()
 		require.NoError(b, err)
 		b.StartTimer()

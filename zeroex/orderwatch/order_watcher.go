@@ -1754,7 +1754,9 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, pinn
 			})
 			continue
 		}
-		expectedExchangeAddress := w.contractAddresses.Exchange
+		// FIXME(jalextowle): This will need to be updated to suppport v4
+		// orders.
+		expectedExchangeAddress := w.contractAddresses.ExchangeV3
 		if o.ExchangeAddress != expectedExchangeAddress {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,

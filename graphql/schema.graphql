@@ -140,7 +140,8 @@ Contains configuration options and various stats for Mesh.
 """
 type Stats {
     version: String!
-    pubSubTopics: [String!]!
+    pubSubTopicsV3: [String!]!
+    pubSubTopicsV4: [String!]!
     rendezvous: String!
     peerID: String!
     ethereumChainID: Int! # TODO(albrow): This should be String

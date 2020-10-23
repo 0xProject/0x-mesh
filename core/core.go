@@ -166,8 +166,8 @@ type Config struct {
 	// enforcing a limit on maximum expiration time for incoming orders and remove
 	// any orders with an expiration time too far in the future.
 	MaxOrdersInStorage int `envvar:"MAX_ORDERS_IN_STORAGE" default:"100000"`
-	// CustomOrderFilter is a stringified JSON Schema which will be used for
-	// validating incoming orders. If provided, Mesh will only receive orders from
+	// CustomOrderFilterV3 is a stringified JSON Schema which will be used for
+	// validating incoming v3 orders. If provided, Mesh will only receive orders from
 	// other peers in the network with the same filter.
 	//
 	// Here is an example filter which will only allow orders with a specific
@@ -185,7 +185,28 @@ type Config struct {
 	// application in the filter. The default requirements for a valid order (e.g.
 	// all the required fields) are automatically included. For more information
 	// on JSON Schemas, see https://json-schema.org/
-	CustomOrderFilter string `envvar:"CUSTOM_ORDER_FILTER" default:"{}"`
+	CustomOrderFilterV3 string `envvar:"CUSTOM_ORDER_FILTER_V3" default:"{}"`
+	// CustomOrderFilterV4 is a stringified JSON Schema which will be used for
+	// validating incoming v4 orders. If provided, Mesh will only receive orders from
+	// other peers in the network with the same filter.
+	//
+	// Here is an example filter which will only allow orders with a specific
+	// makerToken:
+	//
+	//    {
+	//        "properties": {
+	//            "makerToken": {
+	// FIXME(jalextowle): Verify that this is the right syntax for addresses
+	//                "const": "0x871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"
+	//            }
+	//        }
+	//    }
+	//
+	// Note that you only need to include the requirements for your specific
+	// application in the filter. The default requirements for a valid order (e.g.
+	// all the required fields) are automatically included. For more information
+	// on JSON Schemas, see https://json-schema.org/
+	CustomOrderFilterV4 string `envvar:"CUSTOM_ORDER_FILTER_V4" default:"{}"`
 	// EthereumRPCClient is the client to use for all Ethereum RPC reuqests. It is only
 	// settable in browsers and cannot be set via environment variable. If
 	// provided, EthereumRPCURL will be ignored.
@@ -363,7 +384,7 @@ func newWithPrivateConfig(ctx context.Context, config Config, pConfig privateCon
 	}
 
 	// Initialize the order filter
-	orderFilter, err := orderfilter.New(config.EthereumChainID, config.CustomOrderFilter, contractAddresses)
+	orderFilter, err := orderfilter.New(config.EthereumChainID, config.CustomOrderFilterV3, config.CustomOrderFilterV4, contractAddresses)
 	if err != nil {
 		return nil, fmt.Errorf("invalid custom order filter: %s", err.Error())
 	}
@@ -405,52 +426,75 @@ func unquoteConfig(config Config) Config {
 	return config
 }
 
-func getPublishTopics(chainID int, contractAddresses ethereum.ContractAddresses, customFilter *orderfilter.Filter) (topics []string, err error) {
-	topicSet := map[string]interface{}{}
-	defaultTopics, err := orderfilter.GetDefaultTopics(chainID, contractAddresses)
+func getPublishTopicsV3(chainID int, contractAddresses ethereum.ContractAddresses, customFilter *orderfilter.Filter) (topics []string, err error) {
+	defaultTopic, err := orderfilter.GetDefaultTopicV3(chainID, contractAddresses)
 	if err != nil {
 		return nil, err
 	}
-	customTopics := customFilter.Topics()
-	for _, defaultTopic := range defaultTopics {
-		topicSet[defaultTopic] = struct{}{}
+	customTopic := customFilter.TopicV3()
+	if defaultTopic == customTopic {
+		// If we're just using the default order filter, we don't need to publish to
+		// multiple topics.
+		return []string{defaultTopic}, nil
+	} else {
+		// If we are using a custom order filter, publish to *both* the default
+		// topic and the custom topic. All orders that match the custom order filter
+		// must necessarily match the default filter. This also allows us to
+		// implement cross-topic forwarding in the future.
+		// See https://github.com/0xProject/0x-mesh/pull/563
+		return []string{defaultTopic, customTopic}, nil
 	}
-	for _, customTopic := range customTopics {
-		topicSet[customTopic] = struct{}{}
-	}
-	for k := range topicSet {
-		topics = append(topics, k)
-	}
-	return topics, nil
 }
 
-func (app *App) getRendezvousPoints() ([]string, error) {
-	defaultRendezvousPoint := fmt.Sprintf("/0x-mesh/network/%d/version/2", app.config.EthereumChainID)
-	defaultTopics, err := orderfilter.GetDefaultTopics(app.chainID, *app.contractAddresses)
+func getPublishTopicsV4(chainID int, contractAddresses ethereum.ContractAddresses, customFilter *orderfilter.Filter) (topics []string, err error) {
+	defaultTopic, err := orderfilter.GetDefaultTopicV4(chainID, contractAddresses)
 	if err != nil {
 		return nil, err
 	}
-	customTopics := app.orderFilter.Topics()
-	isDefaultOrderFilter := true
-LOOP:
-	for _, defaultTopic := range defaultTopics {
-		for _, customTopic := range customTopics {
-			if defaultTopic != customTopic {
-				isDefaultOrderFilter = false
-				break LOOP
-			}
-		}
-	}
-	if isDefaultOrderFilter {
-		// If we're just using the default order filter, we don't need to use multiple
-		// rendezvous points.
-		return []string{defaultRendezvousPoint}, nil
+	customTopic := customFilter.TopicV4()
+	if defaultTopic == customTopic {
+		// If we're just using the default order filter, we don't need to publish to
+		// multiple topics.
+		return []string{defaultTopic}, nil
 	} else {
+		// If we are using a custom order filter, publish to *both* the default
+		// topic and the custom topic. All orders that match the custom order filter
+		// must necessarily match the default filter. This also allows us to
+		// implement cross-topic forwarding in the future.
+		// See https://github.com/0xProject/0x-mesh/pull/563
+		return []string{defaultTopic, customTopic}, nil
+	}
+}
+
+func (app *App) getRendezvousPoints() (rendezvousPoints []string, err error) {
+	defaultV3RendezvousPoint := fmt.Sprintf("/0x-mesh/network/%d/version/2", app.config.EthereumChainID)
+	defaultTopicV3, err := orderfilter.GetDefaultTopicV3(app.chainID, *app.contractAddresses)
+	if err != nil {
+		return nil, err
+	}
+	customTopicV3 := app.orderFilter.TopicV3()
+	// FIXME(jalextowle): Using version = 4 to avoid getting into bad backwards compatability situations
+	defaultV4RendezvousPoint := fmt.Sprintf("/0x-mesh/network/%d/version/4", app.config.EthereumChainID)
+	defaultTopicV4, err := orderfilter.GetDefaultTopicV4(app.chainID, *app.contractAddresses)
+	rendezvousPoints = []string{defaultV3RendezvousPoint, defaultV4RendezvousPoint}
+	if err != nil {
+		return nil, err
+	}
+	customTopicV4 := app.orderFilter.TopicV4()
+	rendezvousPoints = append(rendezvousPoints, defaultV4RendezvousPoint)
+	if defaultTopicV3 != customTopicV3 {
 		// If we are using a custom order filter, use *both* the default
 		// rendezvous point and a separate one specific to the filter. The
 		// filter-specific rendezvous point takes priority.
-		return []string{app.orderFilter.Rendezvous(), defaultRendezvousPoint}, nil
+		rendezvousPoints = append(rendezvousPoints, app.orderFilter.RendezvousV3())
 	}
+	if defaultTopicV4 != customTopicV4 {
+		// If we are using a custom order filter, use *both* the default
+		// rendezvous point and a separate one specific to the filter. The
+		// filter-specific rendezvous point takes priority.
+		rendezvousPoints = append(rendezvousPoints, app.orderFilter.RendezvousV4())
+	}
+	return rendezvousPoints, nil
 }
 
 func initPrivateKey(path string) (p2pcrypto.PrivKey, error) {
@@ -494,7 +538,11 @@ func initMetadata(chainID int, database *db.DB) error {
 
 func (app *App) Start() error {
 	// Get the publish topics depending on our custom order filter.
-	publishTopics, err := getPublishTopics(app.config.EthereumChainID, *app.contractAddresses, app.orderFilter)
+	publishTopicsV3, err := getPublishTopicsV3(app.config.EthereumChainID, *app.contractAddresses, app.orderFilter)
+	if err != nil {
+		return err
+	}
+	publishTopicsV4, err := getPublishTopicsV4(app.config.EthereumChainID, *app.contractAddresses, app.orderFilter)
 	if err != nil {
 		return err
 	}
@@ -621,19 +669,22 @@ func (app *App) Start() error {
 		return err
 	}
 	nodeConfig := p2p.Config{
-		SubscribeTopics:        app.orderFilter.Topics(),
-		PublishTopics:          publishTopics,
-		TCPPort:                app.config.P2PTCPPort,
-		WebSocketsPort:         app.config.P2PWebSocketsPort,
-		Insecure:               false,
-		PrivateKey:             app.privKey,
-		MessageHandler:         app,
-		RendezvousPoints:       rendezvousPoints,
-		UseBootstrapList:       app.config.UseBootstrapList,
-		BootstrapList:          bootstrapList,
-		DB:                     app.db,
-		CustomMessageValidator: app.orderFilter.ValidatePubSubMessage,
-		MaxBytesPerSecond:      app.config.MaxBytesPerSecond,
+		SubscribeTopicV3:         app.orderFilter.TopicV3(),
+		SubscribeTopicV4:         app.orderFilter.TopicV4(),
+		PublishTopicsV3:          publishTopicsV3,
+		PublishTopicsV4:          publishTopicsV4,
+		TCPPort:                  app.config.P2PTCPPort,
+		WebSocketsPort:           app.config.P2PWebSocketsPort,
+		Insecure:                 false,
+		PrivateKey:               app.privKey,
+		MessageHandler:           app,
+		RendezvousPoints:         rendezvousPoints,
+		UseBootstrapList:         app.config.UseBootstrapList,
+		BootstrapList:            bootstrapList,
+		DB:                       app.db,
+		CustomMessageValidatorV3: app.orderFilter.ValidatePubSubMessageV3,
+		CustomMessageValidatorV4: app.orderFilter.ValidatePubSubMessageV4,
+		MaxBytesPerSecond:        app.config.MaxBytesPerSecond,
 	}
 	app.node, err = p2p.New(innerCtx, nodeConfig)
 	if err != nil {
@@ -675,7 +726,8 @@ func (app *App) Start() error {
 		addrs := app.node.Multiaddrs()
 		log.WithFields(map[string]interface{}{
 			"addresses": addrs,
-			"topics":    app.orderFilter.Topics(),
+			"topicV3":   app.orderFilter.TopicV3(),
+			"topicV4":   app.orderFilter.TopicV4(),
 		}).Info("starting p2p node")
 
 		wg.Add(1)
@@ -903,6 +955,9 @@ func (app *App) AddOrders(ctx context.Context, signedOrders []*zeroex.SignedOrde
 	return app.AddOrdersRaw(ctx, signedOrdersRaw, opts)
 }
 
+// FIXME(jalextowle): We will likely need to pull out version specific logic of AddOrdersRaw out so that
+// the p2p package can use it's knowledge of the order JSON schema to avoid inefficient decoding strategies
+//
 // AddOrdersRaw is like AddOrders but accepts raw JSON messages.
 func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMessage, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	<-app.started
@@ -915,7 +970,8 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 	schemaValidOrders := []*zeroex.SignedOrder{}
 	for _, signedOrderRaw := range signedOrdersRaw {
 		signedOrderBytes := []byte(*signedOrderRaw)
-		result, err := app.orderFilter.ValidateOrderJSON(signedOrderBytes)
+		// FIXME(jalextowle): We need a better solution for v4 orders
+		result, err := app.orderFilter.ValidateOrderV3JSON(signedOrderBytes)
 		if err != nil {
 			signedOrder := &zeroex.SignedOrder{}
 			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
@@ -1006,11 +1062,22 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 func (app *App) shareOrder(order *zeroex.SignedOrder) error {
 	<-app.started
 
-	encoded, err := encoding.OrderToRawMessage(app.orderFilter.Topics(), order)
-	if err != nil {
-		return err
+	switch order.Order.(type) {
+	case *zeroex.OrderV3:
+		encoded, err := encoding.OrderToRawMessage(app.orderFilter.TopicV3(), order)
+		if err != nil {
+			return err
+		}
+		return app.node.SendV3(encoded)
+	case *zeroex.OrderV4:
+		encoded, err := encoding.OrderToRawMessage(app.orderFilter.TopicV4(), order)
+		if err != nil {
+			return err
+		}
+		return app.node.SendV4(encoded)
+	default:
+		return errors.New("Can't share unknown order version")
 	}
-	return app.node.Send(encoded)
 }
 
 // AddPeer can be used to manually connect to a new peer.
@@ -1079,7 +1146,8 @@ func (app *App) GetStats() (*types.Stats, error) {
 
 	response := &types.Stats{
 		Version:                           version,
-		PubSubTopics:                      app.orderFilter.Topics(),
+		PubSubTopicV3:                     app.orderFilter.TopicV3(),
+		PubSubTopicV4:                     app.orderFilter.TopicV4(),
 		Rendezvous:                        rendezvousPoints[0],
 		SecondaryRendezvous:               rendezvousPoints[1:],
 		PeerID:                            app.peerID.String(),
@@ -1116,7 +1184,8 @@ func (app *App) periodicallyLogStats(ctx context.Context) {
 		}
 		log.WithFields(log.Fields{
 			"version":                           stats.Version,
-			"pubSubTopics":                      stats.PubSubTopics,
+			"pubSubTopicV3":                     stats.PubSubTopicV3,
+			"pubSubTopicV4":                     stats.PubSubTopicV4,
 			"rendezvous":                        stats.Rendezvous,
 			"ethereumChainID":                   stats.EthereumChainID,
 			"latestBlock":                       stats.LatestBlock,
