@@ -329,7 +329,7 @@ func registerSignedOrderTest(description string) {
 
 func registerStatsTest(description string) {
 	registerStatsField(description, "version")
-	registerStatsField(description, "pubSubTopic")
+	registerStatsField(description, "pubSubTopics")
 	registerStatsField(description, "rendezvous")
 	registerStatsField(description, "secondaryRendezvous")
 	registerStatsField(description, "peerID")

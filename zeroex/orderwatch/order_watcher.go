@@ -64,6 +64,7 @@ var errNoBlocksStored = errors.New("no blocks were stored in the database")
 
 // Watcher watches all order-relevant state and handles the state transitions
 type Watcher struct {
+	chainID                    int
 	db                         *db.DB
 	blockWatcher               *blockwatch.Watcher
 	eventDecoder               *decoder.Decoder
@@ -118,6 +119,7 @@ func New(config Config) (*Watcher, error) {
 	}
 
 	w := &Watcher{
+		chainID:                    config.ChainID,
 		db:                         config.DB,
 		blockWatcher:               config.BlockWatcher,
 		contractAddressToSeenCount: map[common.Address]uint{},
@@ -1000,13 +1002,13 @@ func (w *Watcher) permanentlyDeleteStaleRemovedOrders() error {
 // true, the orders will be marked as pinned. Pinned orders will not be affected
 // by any DDoS prevention or incentive mechanisms and will always stay in
 // storage until they are no longer fillable.
-func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validationBlock *types.MiniHeader, pinned bool, opts *types.AddOrdersOpts) ([]*zeroex.OrderEvent, error) {
+func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validationBlock *types.MiniHeader, opts *types.AddOrdersOpts) ([]*zeroex.OrderEvent, error) {
 	now := time.Now().UTC()
 	orderEvents := []*zeroex.OrderEvent{}
 	dbOrders := []*types.OrderWithMetadata{}
 
 	for _, orderInfo := range orderInfos {
-		dbOrder, err := w.orderInfoToOrderWithMetadata(orderInfo, pinned, now, validationBlock, opts)
+		dbOrder, err := w.orderInfoToOrderWithMetadata(orderInfo, now, validationBlock, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -1120,38 +1122,43 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 	return orderEvents, nil
 }
 
-func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.AcceptedOrderInfo, pinned bool, now time.Time, validationBlock *types.MiniHeader, opts *types.AddOrdersOpts) (*types.OrderWithMetadata, error) {
-	parsedMakerAssetData, err := db.ParseContractAddressesAndTokenIdsFromAssetData(w.assetDataDecoder, orderInfo.SignedOrder.MakerAssetData, w.contractAddresses)
+func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.AcceptedOrderInfo, now time.Time, validationBlock *types.MiniHeader, opts *types.AddOrdersOpts) (*types.OrderWithMetadata, error) {
+	// FIXME
+	o, ok := orderInfo.SignedOrder.Order.(*zeroex.OrderV3)
+	if !ok {
+		panic("Can't use non-v3 orders")
+	}
+	parsedMakerAssetData, err := db.ParseContractAddressesAndTokenIdsFromAssetData(w.assetDataDecoder, o.MakerAssetData, w.contractAddresses)
 	if err != nil {
 		return nil, err
 	}
-	parsedMakerFeeAssetData, err := db.ParseContractAddressesAndTokenIdsFromAssetData(w.assetDataDecoder, orderInfo.SignedOrder.MakerFeeAssetData, w.contractAddresses)
+	parsedMakerFeeAssetData, err := db.ParseContractAddressesAndTokenIdsFromAssetData(w.assetDataDecoder, o.MakerFeeAssetData, w.contractAddresses)
 	if err != nil {
 		return nil, err
 	}
 	return &types.OrderWithMetadata{
 		Hash:                     orderInfo.OrderHash,
-		ChainID:                  orderInfo.SignedOrder.ChainID,
-		ExchangeAddress:          orderInfo.SignedOrder.ExchangeAddress,
-		MakerAddress:             orderInfo.SignedOrder.MakerAddress,
-		MakerAssetData:           orderInfo.SignedOrder.MakerAssetData,
-		MakerFeeAssetData:        orderInfo.SignedOrder.MakerFeeAssetData,
-		MakerAssetAmount:         orderInfo.SignedOrder.MakerAssetAmount,
-		MakerFee:                 orderInfo.SignedOrder.MakerFee,
-		TakerAddress:             orderInfo.SignedOrder.TakerAddress,
-		TakerAssetData:           orderInfo.SignedOrder.TakerAssetData,
-		TakerFeeAssetData:        orderInfo.SignedOrder.TakerFeeAssetData,
-		TakerAssetAmount:         orderInfo.SignedOrder.TakerAssetAmount,
-		TakerFee:                 orderInfo.SignedOrder.TakerFee,
-		SenderAddress:            orderInfo.SignedOrder.SenderAddress,
-		FeeRecipientAddress:      orderInfo.SignedOrder.FeeRecipientAddress,
-		ExpirationTimeSeconds:    orderInfo.SignedOrder.ExpirationTimeSeconds,
-		Salt:                     orderInfo.SignedOrder.Salt,
+		ChainID:                  o.ChainID,
+		ExchangeAddress:          o.ExchangeAddress,
+		MakerAddress:             o.MakerAddress,
+		MakerAssetData:           o.MakerAssetData,
+		MakerFeeAssetData:        o.MakerFeeAssetData,
+		MakerAssetAmount:         o.MakerAssetAmount,
+		MakerFee:                 o.MakerFee,
+		TakerAddress:             o.TakerAddress,
+		TakerAssetData:           o.TakerAssetData,
+		TakerFeeAssetData:        o.TakerFeeAssetData,
+		TakerAssetAmount:         o.TakerAssetAmount,
+		TakerFee:                 o.TakerFee,
+		SenderAddress:            o.SenderAddress,
+		FeeRecipientAddress:      o.FeeRecipientAddress,
+		ExpirationTimeSeconds:    o.ExpirationTimeSeconds,
+		Salt:                     o.Salt,
 		Signature:                orderInfo.SignedOrder.Signature,
 		IsRemoved:                false,
 		IsUnfillable:             orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0,
-		IsPinned:                 pinned,
-		IsExpired:                big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderInfo.SignedOrder.ExpirationTimeSeconds) >= 0,
+		IsPinned:                 opts.Pinned,
+		IsExpired:                big.NewInt(validationBlock.Timestamp.Unix()).Cmp(o.ExpirationTimeSeconds) >= 0,
 		LastUpdated:              now,
 		ParsedMakerAssetData:     parsedMakerAssetData,
 		ParsedMakerFeeAssetData:  parsedMakerFeeAssetData,
@@ -1554,11 +1561,11 @@ func (w *Watcher) generateOrderEventsIfChanged(
 
 // ValidateAndStoreValidOrders applies general 0x validation and Mesh-specific validation to
 // the given orders and if they are valid, adds them to the OrderWatcher
-func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, chainID int, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
+func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	if len(orders) == 0 {
 		return &ordervalidator.ValidationResults{}, nil
 	}
-	results, validMeshOrders, err := w.meshSpecificOrderValidation(orders, chainID, pinned)
+	results, validMeshOrders, err := w.meshSpecificOrderValidation(orders, opts.Pinned)
 	if err != nil {
 		return nil, err
 	}
@@ -1606,7 +1613,7 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	// Add the order to the OrderWatcher. This also saves the order in the
 	// database.
 	allOrderEvents := []*zeroex.OrderEvent{}
-	orderEvents, err := w.add(newOrderInfos, validationBlock, pinned, opts)
+	orderEvents, err := w.add(newOrderInfos, validationBlock, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -1651,7 +1658,7 @@ func (w *Watcher) onchainOrderValidation(ctx context.Context, orders []*zeroex.S
 	return latestBlock, zeroexResults, nil
 }
 
-func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chainID int, pinned bool) (*ordervalidator.ValidationResults, []*zeroex.SignedOrder, error) {
+func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, pinned bool) (*ordervalidator.ValidationResults, []*zeroex.SignedOrder, error) {
 	results := &ordervalidator.ValidationResults{}
 	validMeshOrders := []*zeroex.SignedOrder{}
 
@@ -1683,7 +1690,12 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 
 	validOrderHashes := []common.Hash{}
 	for _, order := range orders {
-		orderHash, err := order.ComputeOrderHash()
+		// FIXME
+		o, ok := order.Order.(*zeroex.OrderV3)
+		if !ok {
+			panic("Can't use non-v3 orders")
+		}
+		orderHash, err := o.ComputeOrderHash()
 		if err != nil {
 			logger.WithField("error", err).Error("could not compute order hash")
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
@@ -1694,7 +1706,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 			})
 			continue
 		}
-		if !pinned && order.ExpirationTimeSeconds.Cmp(maxExpirationTime) != -1 {
+		if !pinned && o.ExpirationTimeSeconds.Cmp(maxExpirationTime) != -1 {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,
@@ -1707,7 +1719,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 		// off-chain which is difficult to support since we need to prune
 		// canceled/invalidated orders from the database. We can special-case some
 		// sender addresses over time.
-		if order.SenderAddress != constants.NullAddress {
+		if o.SenderAddress != constants.NullAddress {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,
@@ -1724,7 +1736,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 		// orders.
 		// TODO(jalextowle): If any other addresses are whitelisted, create
 		// a isTakerAddressWhitelisted function.
-		if order.TakerAddress != constants.NullAddress && order.TakerAddress != w.contractAddresses.ExchangeProxyFlashWallet {
+		if o.TakerAddress != constants.NullAddress && o.TakerAddress != w.contractAddresses.ExchangeProxyFlashWallet {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,
@@ -1733,7 +1745,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 			})
 			continue
 		}
-		if order.ChainID.Cmp(big.NewInt(int64(chainID))) != 0 {
+		if o.ChainID.Cmp(big.NewInt(int64(w.chainID))) != 0 {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,
@@ -1742,11 +1754,10 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 			})
 			continue
 		}
-		// Only check the ExchangeAddress if we know the expected address for the
-		// given chainID/networkID. If we don't know it, the order could still be
-		// valid.
-		expectedExchangeAddress := w.contractAddresses.Exchange
-		if order.ExchangeAddress != expectedExchangeAddress {
+		// FIXME(jalextowle): This will need to be updated to suppport v4
+		// orders.
+		expectedExchangeAddress := w.contractAddresses.ExchangeV3
+		if o.ExchangeAddress != expectedExchangeAddress {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,

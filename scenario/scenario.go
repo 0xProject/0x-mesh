@@ -39,8 +39,8 @@ func init() {
 	ethClient = ethclient.NewClient(rpcClient)
 }
 
-func defaultTestOrder() *zeroex.Order {
-	return &zeroex.Order{
+func defaultTestOrder() *zeroex.OrderV3 {
+	return &zeroex.OrderV3{
 		ChainID:               big.NewInt(constants.TestChainID),
 		MakerAddress:          constants.GanacheAccount1,
 		TakerAddress:          constants.NullAddress,
@@ -56,7 +56,7 @@ func defaultTestOrder() *zeroex.Order {
 		MakerAssetAmount:      big.NewInt(100),
 		TakerAssetAmount:      big.NewInt(42),
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		ExchangeAddress:       ganacheAddresses.Exchange,
+		ExchangeAddress:       ganacheAddresses.ExchangeV3,
 	}
 }
 
@@ -68,13 +68,13 @@ func defaultConfig() *orderopts.Config {
 	}
 }
 
-func NewTestOrder(t *testing.T, opts ...orderopts.Option) *zeroex.Order {
+func NewTestOrder(t *testing.T, opts ...orderopts.Option) *zeroex.OrderV3 {
 	cfg := defaultConfig()
 	require.NoError(t, cfg.Apply(opts...))
 	return newTestOrder(cfg)
 }
 
-func newTestOrder(cfg *orderopts.Config) *zeroex.Order {
+func newTestOrder(cfg *orderopts.Config) *zeroex.OrderV3 {
 	return cfg.Order
 }
 
@@ -127,7 +127,8 @@ func NewSignedTestOrdersBatch(t *testing.T, numOrders int, optionsForIndex func(
 		// Add maker and taker balances as needed to the set of required balances.
 		if cfg.SetupMakerState {
 			makerBalancesForThisOrder := requiredMakerBalances(t, signedOrder)
-			makerBalances, found := allRequiredBalances[signedOrder.MakerAddress]
+			// FIXME
+			makerBalances, found := allRequiredBalances[signedOrder.Order.(*zeroex.OrderV3).MakerAddress]
 			if !found {
 				allRequiredBalances[order.MakerAddress] = makerBalancesForThisOrder
 			} else {
@@ -214,7 +215,8 @@ func isZero(x *big.Int) bool {
 // setting allowances and transferring the required balances.
 func setupMakerState(t *testing.T, order *zeroex.SignedOrder) {
 	requiredMakerBalances := requiredMakerBalances(t, order)
-	setupBalanceAndAllowance(t, order.MakerAddress, requiredMakerBalances)
+	// FIXME
+	setupBalanceAndAllowance(t, order.Order.(*zeroex.OrderV3).MakerAddress, requiredMakerBalances)
 }
 
 // setupTakerState sets up all the on-chain state needed by taker in order to fill the order.
@@ -243,18 +245,28 @@ func setupBalanceAndAllowance(t *testing.T, traderAddress common.Address, requir
 
 func requiredMakerBalances(t *testing.T, order *zeroex.SignedOrder) *tokenBalances {
 	balances := newTokenBalances()
-	balances.add(requiredBalancesForAssetData(t, order.MakerAssetData, order.MakerAssetAmount))
-	if len(order.MakerFeeAssetData) != 0 && !isZero(order.MakerFee) {
-		balances.add(requiredBalancesForAssetData(t, order.MakerFeeAssetData, order.MakerFee))
+	// FIXME
+	o, ok := order.Order.(*zeroex.OrderV3)
+	if !ok {
+		panic("Can't use non-v3 orders")
+	}
+	balances.add(requiredBalancesForAssetData(t, o.MakerAssetData, o.MakerAssetAmount))
+	if len(o.MakerFeeAssetData) != 0 && !isZero(o.MakerFee) {
+		balances.add(requiredBalancesForAssetData(t, o.MakerFeeAssetData, o.MakerFee))
 	}
 	return balances
 }
 
 func requiredTakerBalances(t *testing.T, order *zeroex.SignedOrder) *tokenBalances {
 	balances := newTokenBalances()
-	balances.add(requiredBalancesForAssetData(t, order.TakerAssetData, order.TakerAssetAmount))
-	if len(order.TakerFeeAssetData) != 0 && !isZero(order.TakerFee) {
-		balances.add(requiredBalancesForAssetData(t, order.TakerFeeAssetData, order.TakerFee))
+	// FIXME
+	o, ok := order.Order.(*zeroex.OrderV3)
+	if !ok {
+		panic("can't use non-v3 orders")
+	}
+	balances.add(requiredBalancesForAssetData(t, o.TakerAssetData, o.TakerAssetAmount))
+	if len(o.TakerFeeAssetData) != 0 && !isZero(o.TakerFee) {
+		balances.add(requiredBalancesForAssetData(t, o.TakerFeeAssetData, o.TakerFee))
 	}
 	return balances
 }

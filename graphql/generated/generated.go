@@ -72,7 +72,7 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddOrders func(childComplexity int, orders []*gqltypes.NewOrder, pinned *bool, opts *gqltypes.AddOrdersOpts) int
+		AddOrders func(childComplexity int, orders []*gqltypes.NewOrder, opts *gqltypes.AddOrdersOpts) int
 	}
 
 	Order struct {
@@ -147,7 +147,8 @@ type ComplexityRoot struct {
 		NumOrdersIncludingRemoved         func(childComplexity int) int
 		NumPeers                          func(childComplexity int) int
 		PeerID                            func(childComplexity int) int
-		PubSubTopic                       func(childComplexity int) int
+		PubSubTopicsV3                    func(childComplexity int) int
+		PubSubTopicsV4                    func(childComplexity int) int
 		Rendezvous                        func(childComplexity int) int
 		SecondaryRendezvous               func(childComplexity int) int
 		StartOfCurrentUTCDay              func(childComplexity int) int
@@ -160,7 +161,7 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, pinned *bool, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error)
+	AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error)
 }
 type QueryResolver interface {
 	Order(ctx context.Context, hash string) (*gqltypes.OrderWithMetadata, error)
@@ -294,7 +295,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.AddOrders(childComplexity, args["orders"].([]*gqltypes.NewOrder), args["pinned"].(*bool), args["opts"].(*gqltypes.AddOrdersOpts)), true
+		return e.complexity.Mutation.AddOrders(childComplexity, args["orders"].([]*gqltypes.NewOrder), args["opts"].(*gqltypes.AddOrdersOpts)), true
 
 	case "Order.chainId":
 		if e.complexity.Order.ChainID == nil {
@@ -698,12 +699,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Stats.PeerID(childComplexity), true
 
-	case "Stats.pubSubTopic":
-		if e.complexity.Stats.PubSubTopic == nil {
+	case "Stats.pubSubTopicsV3":
+		if e.complexity.Stats.PubSubTopicsV3 == nil {
 			break
 		}
 
-		return e.complexity.Stats.PubSubTopic(childComplexity), true
+		return e.complexity.Stats.PubSubTopicsV3(childComplexity), true
+
+	case "Stats.pubSubTopicsV4":
+		if e.complexity.Stats.PubSubTopicsV4 == nil {
+			break
+		}
+
+		return e.complexity.Stats.PubSubTopicsV4(childComplexity), true
 
 	case "Stats.rendezvous":
 		if e.complexity.Stats.Rendezvous == nil {
@@ -963,7 +971,8 @@ Contains configuration options and various stats for Mesh.
 """
 type Stats {
     version: String!
-    pubSubTopic: String!
+    pubSubTopicsV3: [String!]!
+    pubSubTopicsV4: [String!]!
     rendezvous: String!
     peerID: String!
     ethereumChainID: Int! # TODO(albrow): This should be String
@@ -1116,8 +1125,8 @@ type Mutation {
     """
     addOrders(
         orders: [NewOrder!]!,
-        pinned: Boolean = true,
         opts: AddOrdersOpts = {
+            pinned: false,
             keepCancelled: false,
             keepExpired: false,
             keepFullyFilled: false,
@@ -1127,6 +1136,11 @@ type Mutation {
 }
 
 input AddOrdersOpts {
+    """
+    Indicates that the order being added should be ignored when pruning the
+    database using spam prevention techniques.
+    """
+    pinned: Boolean = false
     """
     Indicates that the orders being added should be kept by the database after
     cancellation.
@@ -1284,22 +1298,14 @@ func (ec *executionContext) field_Mutation_addOrders_args(ctx context.Context, r
 		}
 	}
 	args["orders"] = arg0
-	var arg1 *bool
-	if tmp, ok := rawArgs["pinned"]; ok {
-		arg1, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["pinned"] = arg1
-	var arg2 *gqltypes.AddOrdersOpts
+	var arg1 *gqltypes.AddOrdersOpts
 	if tmp, ok := rawArgs["opts"]; ok {
-		arg2, err = ec.unmarshalOAddOrdersOpts2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddOrdersOpts(ctx, tmp)
+		arg1, err = ec.unmarshalOAddOrdersOpts2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddOrdersOpts(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["opts"] = arg2
+	args["opts"] = arg1
 	return args, nil
 }
 
@@ -1897,7 +1903,7 @@ func (ec *executionContext) _Mutation_addOrders(ctx context.Context, field graph
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AddOrders(rctx, args["orders"].([]*gqltypes.NewOrder), args["pinned"].(*bool), args["opts"].(*gqltypes.AddOrdersOpts))
+		return ec.resolvers.Mutation().AddOrders(rctx, args["orders"].([]*gqltypes.NewOrder), args["opts"].(*gqltypes.AddOrdersOpts))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3623,7 +3629,7 @@ func (ec *executionContext) _Stats_version(ctx context.Context, field graphql.Co
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Stats_pubSubTopic(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
+func (ec *executionContext) _Stats_pubSubTopicsV3(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3640,7 +3646,7 @@ func (ec *executionContext) _Stats_pubSubTopic(ctx context.Context, field graphq
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.PubSubTopic, nil
+		return obj.PubSubTopicsV3, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3652,9 +3658,43 @@ func (ec *executionContext) _Stats_pubSubTopic(ctx context.Context, field graphq
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.([]string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Stats_pubSubTopicsV4(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Stats",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PubSubTopicsV4, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Stats_rendezvous(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
@@ -5167,6 +5207,12 @@ func (ec *executionContext) unmarshalInputAddOrdersOpts(ctx context.Context, obj
 
 	for k, v := range asMap {
 		switch k {
+		case "pinned":
+			var err error
+			it.Pinned, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "keepCancelled":
 			var err error
 			it.KeepCancelled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -5952,8 +5998,13 @@ func (ec *executionContext) _Stats(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "pubSubTopic":
-			out.Values[i] = ec._Stats_pubSubTopic(ctx, field, obj)
+		case "pubSubTopicsV3":
+			out.Values[i] = ec._Stats_pubSubTopicsV3(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "pubSubTopicsV4":
+			out.Values[i] = ec._Stats_pubSubTopicsV4(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

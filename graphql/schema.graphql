@@ -140,7 +140,8 @@ Contains configuration options and various stats for Mesh.
 """
 type Stats {
     version: String!
-    pubSubTopic: String!
+    pubSubTopicsV3: [String!]!
+    pubSubTopicsV4: [String!]!
     rendezvous: String!
     peerID: String!
     ethereumChainID: Int! # TODO(albrow): This should be String
@@ -293,8 +294,8 @@ type Mutation {
     """
     addOrders(
         orders: [NewOrder!]!,
-        pinned: Boolean = true,
         opts: AddOrdersOpts = {
+            pinned: false,
             keepCancelled: false,
             keepExpired: false,
             keepFullyFilled: false,
@@ -304,6 +305,11 @@ type Mutation {
 }
 
 input AddOrdersOpts {
+    """
+    Indicates that the order being added should be ignored when pruning the
+    database using spam prevention techniques.
+    """
+    pinned: Boolean = false
     """
     Indicates that the orders being added should be kept by the database after
     cancellation.

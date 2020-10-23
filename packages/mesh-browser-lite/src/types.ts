@@ -229,6 +229,14 @@ export interface ContractAddresses {
     zrxToken?: string;
 }
 
+export interface AddOrdersOpts {
+    pinned?: boolean;
+    keepCancelled?: boolean;
+    keepExpired?: boolean;
+    keepFullyFilled?: boolean;
+    keepUnfunded?: boolean;
+}
+
 export enum Verbosity {
     Panic = 0,
     Fatal = 1,
@@ -259,10 +267,10 @@ export interface MeshWrapper {
     onOrderEvents(handler: (events: WrapperOrderEvent[]) => void): void;
     getStatsAsync(): Promise<WrapperStats>;
     getOrdersForPageAsync(perPage: number, minOrderHash?: string): Promise<WrapperGetOrdersResponse>;
-    addOrdersAsync(orders: WrapperSignedOrder[], pinned: boolean): Promise<WrapperValidationResults>;
+    addOrdersAsync(orders: WrapperSignedOrder[], opts: AddOrdersOpts): Promise<WrapperValidationResults>;
 
     // GraphQL API
-    gqlAddOrdersAsync(newOrders: WrapperSignedOrder[], pinned: boolean): Promise<WrapperAddOrderResults>;
+    gqlAddOrdersAsync(newOrders: WrapperSignedOrder[], opts?: AddOrdersOpts): Promise<WrapperAddOrderResults>;
     gqlGetOrderAsync(orderHash: string): Promise<WrapperOrderWithMetadata>;
     gqlFindOrdersAsync(
         sort: WrapperOrderSort[],
@@ -736,7 +744,7 @@ export interface LatestBlock {
 /** @ignore */
 export interface WrapperStats {
     version: string;
-    pubSubTopic: string;
+    pubSubTopics: string[];
     rendezvous: string;
     secondaryRendezvous: string[];
     peerID: string;
@@ -754,7 +762,7 @@ export interface WrapperStats {
 
 export interface Stats {
     version: string;
-    pubSubTopic: string;
+    pubSubTopics: string[];
     rendezvous: string;
     secondaryRendezvous: string[];
     peerID: string;

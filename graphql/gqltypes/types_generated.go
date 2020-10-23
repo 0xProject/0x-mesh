@@ -17,6 +17,9 @@ type AcceptedOrderResult struct {
 }
 
 type AddOrdersOpts struct {
+	// Indicates that the order being added should be ignored when pruning the
+	// database using spam prevention techniques.
+	Pinned *bool `json:"pinned"`
 	// Indicates that the orders being added should be kept by the database after
 	// cancellation.
 	KeepCancelled *bool `json:"keepCancelled"`
@@ -186,7 +189,8 @@ type RejectedOrderResult struct {
 // Contains configuration options and various stats for Mesh.
 type Stats struct {
 	Version                           string       `json:"version"`
-	PubSubTopic                       string       `json:"pubSubTopic"`
+	PubSubTopicsV3                    []string     `json:"pubSubTopicsV3"`
+	PubSubTopicsV4                    []string     `json:"pubSubTopicsV4"`
 	Rendezvous                        string       `json:"rendezvous"`
 	PeerID                            string       `json:"peerID"`
 	EthereumChainID                   int          `json:"ethereumChainID"`

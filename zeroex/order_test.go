@@ -18,7 +18,7 @@ import (
 
 var contractAddresses = ethereum.GanacheAddresses
 
-var testOrder = &Order{
+var testOrder = &OrderV3{
 	ChainID:               big.NewInt(constants.TestChainID),
 	MakerAddress:          constants.GanacheAccount0,
 	TakerAddress:          constants.NullAddress,
@@ -37,7 +37,7 @@ var testOrder = &Order{
 	ExchangeAddress:       contractAddresses.Exchange,
 }
 
-var testHashOrder = &Order{
+var testHashOrder = &OrderV3{
 	ChainID:               big.NewInt(constants.TestChainID),
 	ExchangeAddress:       common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
 	MakerAddress:          constants.NullAddress,
@@ -76,7 +76,12 @@ func TestSignOrder(t *testing.T) {
 func TestMarshalUnmarshalOrderEvent(t *testing.T) {
 	signedOrder, err := SignTestOrder(testOrder)
 	require.NoError(t, err)
-	orderHash, err := signedOrder.ComputeOrderHash()
+	// FIXME
+	o, ok := signedOrder.Order.(*OrderV3)
+	if !ok {
+		panic("Can't use non-v3 orders")
+	}
+	orderHash, err := o.ComputeOrderHash()
 	require.NoError(t, err)
 	orderEvent := OrderEvent{
 		Timestamp:                time.Now().UTC(),
@@ -108,8 +113,21 @@ func TestMarshalUnmarshalOrderEvent(t *testing.T) {
 
 	// We need to call ResetHash so that unexported hash field is equal in later
 	// assertions.
-	signedOrder.ResetHash()
+	// FIXME
+	o, ok = orderEvent.SignedOrder.Order.(*OrderV3)
+	if !ok {
+		panic("Can't use non-v3 orders")
+	}
+	o.ResetHash()
 
 	require.NoError(t, json.NewDecoder(buf).Decode(&decoded))
+	fmt.Printf("%+v\n", decoded.SignedOrder.Order)
+	// FIXME
+	o, ok = decoded.SignedOrder.Order.(*OrderV3)
+	fmt.Printf("%+v\n", o)
+	if !ok {
+		panic("Can't use non-v3 orders")
+	}
+	o.ResetHash()
 	assert.Equal(t, orderEvent, decoded)
 }

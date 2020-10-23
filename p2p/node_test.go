@@ -81,7 +81,7 @@ func newTestNode(t *testing.T, ctx context.Context, notifee p2pnet.Notifiee) *No
 	db, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 	config := Config{
-		SubscribeTopic:   testTopic,
+		SubscribeTopics:  []string{testTopic},
 		PublishTopics:    []string{testTopic},
 		PrivateKey:       privKey,
 		MessageHandler:   &dummyMessageHandler{},
@@ -217,15 +217,15 @@ func TestPingPong(t *testing.T) {
 	pingMessage := &Message{From: node0.host.ID(), Data: []byte("ping\n")}
 	require.NoError(t, node0.Send(pingMessage.Data))
 	const pingPongTimeout = 20 * time.Second
-	expectMessage(t, node1, pingMessage, pingPongTimeout)
+	expectMessage(t, node1, testTopic, pingMessage, pingPongTimeout)
 
 	// Send pong from node1 to node0
 	pongMessage := &Message{From: node1.host.ID(), Data: []byte("pong\n")}
 	require.NoError(t, node1.Send(pongMessage.Data))
-	expectMessage(t, node0, pongMessage, pingPongTimeout)
+	expectMessage(t, node0, testTopic, pongMessage, pingPongTimeout)
 }
 
-func expectMessage(t *testing.T, node *Node, expected *Message, timeout time.Duration) {
+func expectMessage(t *testing.T, node *Node, topic string, expected *Message, timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	for {
@@ -235,7 +235,7 @@ func expectMessage(t *testing.T, node *Node, expected *Message, timeout time.Dur
 			return
 		default:
 		}
-		actual, err := node.receive(ctx)
+		actual, err := node.receive(ctx, topic)
 		require.NoError(t, err)
 		// We might receive other messages. Ignore anything that doesn't match the
 		// expected message.
@@ -397,8 +397,8 @@ func TestRateValidatorGlobal(t *testing.T) {
 	db0, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 	node0Config := Config{
-		SubscribeTopic: testTopic,
-		PublishTopics:  []string{testTopic},
+		SubscribeTopics: []string{testTopic},
+		PublishTopics:   []string{testTopic},
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),
@@ -411,8 +411,8 @@ func TestRateValidatorGlobal(t *testing.T) {
 	db1, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 	node1Config := Config{
-		SubscribeTopic: testTopic,
-		PublishTopics:  []string{testTopic},
+		SubscribeTopics: []string{testTopic},
+		PublishTopics:   []string{testTopic},
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),
@@ -425,8 +425,8 @@ func TestRateValidatorGlobal(t *testing.T) {
 	db2, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 	node2Config := Config{
-		SubscribeTopic: testTopic,
-		PublishTopics:  []string{testTopic},
+		SubscribeTopics: []string{testTopic},
+		PublishTopics:   []string{testTopic},
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),
@@ -490,8 +490,8 @@ func TestRateValidatorPerPeer(t *testing.T) {
 	db0, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 	node0Config := Config{
-		SubscribeTopic: testTopic,
-		PublishTopics:  []string{testTopic},
+		SubscribeTopics: []string{testTopic},
+		PublishTopics:   []string{testTopic},
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),
@@ -504,8 +504,8 @@ func TestRateValidatorPerPeer(t *testing.T) {
 	db1, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 	node1Config := Config{
-		SubscribeTopic: testTopic,
-		PublishTopics:  []string{testTopic},
+		SubscribeTopics: []string{testTopic},
+		PublishTopics:   []string{testTopic},
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),
@@ -518,8 +518,8 @@ func TestRateValidatorPerPeer(t *testing.T) {
 	db2, err := db.New(ctx, db.TestOptions())
 	require.NoError(t, err)
 	node2Config := Config{
-		SubscribeTopic: testTopic,
-		PublishTopics:  []string{testTopic},
+		SubscribeTopics: []string{testTopic},
+		PublishTopics:   []string{testTopic},
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),

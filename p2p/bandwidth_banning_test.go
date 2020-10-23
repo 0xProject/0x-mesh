@@ -57,7 +57,7 @@ func TestBandwidthChecker(t *testing.T) {
 		From: node0.ID(),
 		Data: message,
 	}
-	expectMessage(t, node1, expectedMessage, 15*time.Second)
+	expectMessage(t, node1, testTopic, expectedMessage, 15*time.Second)
 
 	// Manually change the bandwidth limit for node1.
 	node1.banner.SetMaxBytesPerSecond(newMaxBytesPerSecond)

@@ -112,12 +112,15 @@ blockchainTests.resets('GraphQLClient', (env) => {
                 });
             });
 
+            // TODO(jalextowle): Implement tests for the other configurations
             it('accepts expired order with "keepExpired"', async () => {
                 const order = await orderFactory.newSignedOrderAsync({
                     expirationTimeSeconds: new BigNumber(0),
                 });
                 const hash = orderHashUtils.getOrderHashHex(order);
-                const validationResults = await deployment.client.addOrdersAsync([order], false, { keepExpired: true });
+                const validationResults = await deployment.client.addOrdersAsync([order], {
+                    keepExpired: true,
+                });
                 expect(validationResults).to.be.deep.eq({
                     accepted: [],
                     rejected: [
@@ -179,7 +182,7 @@ blockchainTests.resets('GraphQLClient', (env) => {
                 )}-${leftPad(now.getUTCDate())}T00:00:00Z`;
                 const expectedStats = {
                     version: '',
-                    pubSubTopic: '/0x-orders/version/3/chain/1337/schema/e30=',
+                    pubSubTopics: ['/0x-orders/version/3/chain/1337/schema/e30='],
                     rendezvous: '/0x-mesh/network/1337/version/2',
                     peerID: deployment.peerID,
                     ethereumChainID: 1337,

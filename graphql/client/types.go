@@ -140,7 +140,7 @@ type RejectedOrderResult struct {
 // Contains configuration options and various stats for Mesh.
 type Stats struct {
 	Version                           string       `json:"version"`
-	PubSubTopic                       string       `json:"pubSubTopic"`
+	PubSubTopics                      []string     `json:"pubSubTopic"`
 	Rendezvous                        string       `json:"rendezvous"`
 	PeerID                            string       `json:"peerID"`
 	EthereumChainID                   int          `json:"ethereumChainID"`

@@ -64,7 +64,7 @@ const statsQuery = gql`
     query Stats {
         stats {
             version
-            pubSubTopic
+            pubSubTopics
             rendezvous
             peerID
             ethereumChainID
@@ -86,10 +86,15 @@ const statsQuery = gql`
 const addOrdersMutation = gql`
     mutation AddOrders(
         $orders: [NewOrder!]!
-        $pinned: Boolean = true
-        $opts: AddOrdersOpts = { keepCancelled: false, keepExpired: false, keepFullyFilled: false, keepUnfunded: false }
+        $opts: AddOrdersOpts = {
+            pinned: false
+            keepCancelled: false
+            keepExpired: false
+            keepFullyFilled: false
+            keepUnfunded: false
+        }
     ) {
-        addOrders(orders: $orders, pinned: $pinned, opts: $opts) {
+        addOrders(orders: $orders, opts: $opts) {
             accepted {
                 order {
                     hash
@@ -332,17 +337,13 @@ export class MeshGraphQLClient {
         return fromStringifiedStats(stats);
     }
 
-    public async addOrdersAsync(
-        orders: SignedOrder[],
-        pinned: boolean = true,
-        opts?: AddOrdersOpts,
-    ): Promise<AddOrdersResults> {
+    public async addOrdersAsync(orders: SignedOrder[], opts?: AddOrdersOpts): Promise<AddOrdersResults> {
         const resp: FetchResult<AddOrdersResponse> = await this._client.mutate({
             mutation: addOrdersMutation,
             variables: {
                 orders: orders.map(toStringifiedSignedOrder),
-                pinned,
                 opts: {
+                    pinned: false,
                     keepCancelled: false,
                     keepExpired: false,
                     keepFullyFilled: false,
