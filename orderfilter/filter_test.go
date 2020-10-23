@@ -53,19 +53,20 @@ func TestFilterValidateOrder(t *testing.T) {
 	testFilterValidateOrder(t, generateDecodedFilter)
 }
 
+// FIXME(jalextowle): We need to generalize these tests
 func testFilterValidateOrder(t *testing.T, generateFilter func(int, string, ethereum.ContractAddresses) (*Filter, error)) {
 	testCases := []struct {
 		note              string
 		chainID           int
 		customOrderSchema string
-		order             *zeroex.Order
+		order             *zeroex.OrderV3
 		expectedErrors    []string
 	}{
 		{
 			note:              "happy path",
 			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
-			order: &zeroex.Order{
+			order: &zeroex.OrderV3{
 				ChainID:               big.NewInt(constants.TestChainID),
 				MakerAddress:          common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"),
 				MakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
@@ -86,7 +87,7 @@ func testFilterValidateOrder(t *testing.T, generateFilter func(int, string, ethe
 			note:              "wrong exchangeAddress",
 			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
-			order: &zeroex.Order{
+			order: &zeroex.OrderV3{
 				ChainID:               big.NewInt(constants.TestChainID),
 				MakerAddress:          common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"),
 				MakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
@@ -110,7 +111,7 @@ func testFilterValidateOrder(t *testing.T, generateFilter func(int, string, ethe
 			note:              "wrong chainID",
 			chainID:           constants.TestChainID,
 			customOrderSchema: DefaultCustomOrderSchema,
-			order: &zeroex.Order{
+			order: &zeroex.OrderV3{
 				ChainID:               big.NewInt(42),
 				MakerAddress:          common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"),
 				MakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
@@ -134,7 +135,7 @@ func testFilterValidateOrder(t *testing.T, generateFilter func(int, string, ethe
 			note:              "happy path w/ custom sender address",
 			chainID:           constants.TestChainID,
 			customOrderSchema: `{"properties":{"senderAddress":{"const":"0x00000000000000000000000000000000ba5eba11"}}}`,
-			order: &zeroex.Order{
+			order: &zeroex.OrderV3{
 				ChainID:               big.NewInt(constants.TestChainID),
 				MakerAddress:          common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"),
 				MakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
@@ -155,7 +156,7 @@ func testFilterValidateOrder(t *testing.T, generateFilter func(int, string, ethe
 			note:              "wrong custom sender address",
 			chainID:           constants.TestChainID,
 			customOrderSchema: `{"properties":{"senderAddress":{"const":"0x00000000000000000000000000000000ba5eba11"}}}`,
-			order: &zeroex.Order{
+			order: &zeroex.OrderV3{
 				ChainID:               big.NewInt(constants.TestChainID),
 				MakerAddress:          common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"),
 				MakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),

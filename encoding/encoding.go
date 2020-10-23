@@ -13,6 +13,7 @@ type orderMessage struct {
 	Topics      []string            `json:"topics"`
 }
 
+// To implement this, we'll need to implement a custom JSON Marshaler and Unmarshaler
 // FIXME(jalextowle): This encoding function has to be implemented for message_handler.go
 // FIXME(jalextowle): We'll also need to select the correct topic for this order when
 // we send it out.

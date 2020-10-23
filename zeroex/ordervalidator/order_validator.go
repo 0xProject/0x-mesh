@@ -304,11 +304,16 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 	rejectedOrderInfos := []*RejectedOrderInfo{}
 	offchainValidSignedOrders := []*zeroex.SignedOrder{}
 	for _, signedOrder := range signedOrders {
-		orderHash, err := signedOrder.ComputeOrderHash()
+		// FIXME
+		so, ok := signedOrder.Order.(*zeroex.OrderV3)
+		if !ok {
+			panic("Can't use non-v3 orders")
+		}
+		orderHash, err := so.ComputeOrderHash()
 		if err != nil {
 			log.WithError(err).WithField("signedOrder", signedOrder).Error("Computing the orderHash failed unexpectedly")
 		}
-		if !signedOrder.ExpirationTimeSeconds.IsInt64() {
+		if !so.ExpirationTimeSeconds.IsInt64() {
 			// Shouldn't happen because we separately enforce a max expiration time.
 			// See core/validation.go.
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
@@ -320,7 +325,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 			continue
 		}
 
-		if signedOrder.MakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
+		if so.MakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: signedOrder,
@@ -329,7 +334,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 			})
 			continue
 		}
-		if signedOrder.TakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
+		if so.TakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: signedOrder,
@@ -339,7 +344,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 			continue
 		}
 
-		isMakerAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerAssetData)
+		isMakerAssetDataSupported := o.isSupportedAssetData(so.MakerAssetData)
 		if !isMakerAssetDataSupported {
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
@@ -349,7 +354,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 			})
 			continue
 		}
-		isTakerAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerAssetData)
+		isTakerAssetDataSupported := o.isSupportedAssetData(so.TakerAssetData)
 		if !isTakerAssetDataSupported {
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:   orderHash,
@@ -362,8 +367,8 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 		// If the MakerFee is zero, the fee asset data will not affect the
 		// validity of the signed order.
 		// https://github.com/0xProject/0x-monorepo/blob/development/contracts/exchange/contracts/src/MixinAssetProxyDispatcher.sol#L90
-		if signedOrder.MakerFee.Cmp(big.NewInt(0)) == 1 && len(signedOrder.MakerFeeAssetData) != 0 {
-			isMakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerFeeAssetData)
+		if so.MakerFee.Cmp(big.NewInt(0)) == 1 && len(so.MakerFeeAssetData) != 0 {
+			isMakerFeeAssetDataSupported := o.isSupportedAssetData(so.MakerFeeAssetData)
 			if !isMakerFeeAssetDataSupported {
 				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 					OrderHash:   orderHash,
@@ -377,8 +382,8 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 		// If the TakerFee is zero, the fee asset data will not affect the
 		// validity of the signed order.
 		// https://github.com/0xProject/0x-monorepo/blob/development/contracts/exchange/contracts/src/MixinAssetProxyDispatcher.sol#L90
-		if signedOrder.TakerFee.Cmp(big.NewInt(0)) == 1 && len(signedOrder.TakerFeeAssetData) != 0 {
-			isTakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerFeeAssetData)
+		if so.TakerFee.Cmp(big.NewInt(0)) == 1 && len(so.TakerFeeAssetData) != 0 {
+			isTakerFeeAssetDataSupported := o.isSupportedAssetData(so.TakerFeeAssetData)
 			if !isTakerFeeAssetDataSupported {
 				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 					OrderHash:   orderHash,
@@ -474,7 +479,12 @@ func (o *OrderValidator) batchOnchainValidation(
 				}
 				log.WithFields(fields).Warning("Gave up on GetOrderRelevantStates request after backoff limit reached")
 				for _, signedOrder := range signedOrders {
-					orderHash, err := signedOrder.ComputeOrderHash()
+					// FIXME
+					so, ok := signedOrder.Order.(*zeroex.OrderV3)
+					if !ok {
+						panic("Can't use non-v3 orders")
+					}
+					orderHash, err := so.ComputeOrderHash()
 					if err != nil {
 						log.WithField("error", err).Error("Unexpectedly failed to generate orderHash")
 						continue
@@ -522,7 +532,12 @@ func (o *OrderValidator) batchOnchainValidation(
 				})
 				continue
 			case zeroex.OSFillable:
-				remainingTakerAssetAmount := big.NewInt(0).Sub(signedOrder.TakerAssetAmount, orderInfo.OrderTakerAssetFilledAmount)
+				// FIXME
+				so, ok := signedOrder.Order.(*zeroex.OrderV3)
+				if !ok {
+					panic("Can't use non-v3 orders")
+				}
+				remainingTakerAssetAmount := big.NewInt(0).Sub(so.TakerAssetAmount, orderInfo.OrderTakerAssetFilledAmount)
 				// If `fillableTakerAssetAmount` != `remainingTakerAssetAmount`, the order is partially fillable. We consider
 				// partially fillable orders as invalid
 				if fillableTakerAssetAmount.Cmp(remainingTakerAssetAmount) != 0 {
@@ -648,11 +663,16 @@ func numWords(bytes []byte) int {
 }
 
 func computeABIEncodedSignedOrderStringLength(signedOrder *zeroex.SignedOrder) int {
+	// FIXME
+	o, ok := signedOrder.Order.(*zeroex.OrderV3)
+	if !ok {
+		panic("Can't use non-v3 orders")
+	}
 	// The fixed size fields in a SignedOrder take up 1536 bytes. The variable length fields take up 64 characters per 256-bit word. This is because each byte in signedOrder is as two bytes in the JSON string.
-	return 1536 + 64*(numWords(signedOrder.Order.MakerAssetData)+
-		numWords(signedOrder.Order.TakerAssetData)+
-		numWords(signedOrder.Order.MakerFeeAssetData)+
-		numWords(signedOrder.Order.MakerFeeAssetData))
+	return 1536 + 64*(numWords(o.MakerAssetData)+
+		numWords(o.TakerAssetData)+
+		numWords(o.MakerFeeAssetData)+
+		numWords(o.MakerFeeAssetData))
 }
 
 // computeOptimalChunkSizes splits the signedOrders into chunks where the payload size of each chunk

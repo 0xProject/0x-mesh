@@ -180,7 +180,8 @@ func TestBatchValidateAValidOrder(t *testing.T) {
 	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock)
 	assert.Len(t, validationResults.Accepted, 1)
 	require.Len(t, validationResults.Rejected, 0)
-	orderHash, err := signedOrder.ComputeOrderHash()
+	// FIXME
+	orderHash, err := signedOrder.Order.(*zeroex.OrderV3).ComputeOrderHash()
 	require.NoError(t, err)
 	assert.Equal(t, orderHash, validationResults.Accepted[0].OrderHash)
 }
@@ -210,10 +211,13 @@ func TestBatchOffchainValidateZeroFeeAmount(t *testing.T) {
 	accepted, rejected := orderValidator.BatchOffchainValidation(signedOrders)
 	assert.Len(t, accepted, 1)
 	require.Len(t, rejected, 0)
-	signedTestOrder.ResetHash()
-	expectedOrderHash, err := signedTestOrder.ComputeOrderHash()
+	// FIXME
+	signedTestOrder.Order.(*zeroex.OrderV3).ResetHash()
+	// FIXME
+	expectedOrderHash, err := signedTestOrder.Order.(*zeroex.OrderV3).ComputeOrderHash()
 	require.NoError(t, err)
-	actualOrderHash, err := accepted[0].ComputeOrderHash()
+	// FIXME
+	actualOrderHash, err := accepted[0].Order.(*zeroex.OrderV3).ComputeOrderHash()
 	require.NoError(t, err)
 	assert.Equal(t, expectedOrderHash, actualOrderHash)
 }
@@ -248,8 +252,10 @@ func TestBatchOffchainValidateUnsupportedStaticCall(t *testing.T) {
 	accepted, rejected := orderValidator.BatchOffchainValidation(signedOrders)
 	assert.Len(t, accepted, 0)
 	require.Len(t, rejected, 1)
-	signedTestOrder.ResetHash()
-	expectedOrderHash, err := signedTestOrder.ComputeOrderHash()
+	// FIXME
+	signedTestOrder.Order.(*zeroex.OrderV3).ResetHash()
+	// FIXME
+	expectedOrderHash, err := signedTestOrder.Order.(*zeroex.OrderV3).ComputeOrderHash()
 	require.NoError(t, err)
 	assert.Equal(t, expectedOrderHash, rejected[0].OrderHash)
 	require.Equal(t, ROInvalidMakerFeeAssetData, rejected[0].Status)
@@ -283,10 +289,13 @@ func TestBatchOffchainValidateMaxGasPriceOrder(t *testing.T) {
 		accepted, rejected := orderValidator.BatchOffchainValidation(signedOrders)
 		assert.Len(t, accepted, 1)
 		require.Len(t, rejected, 0)
-		signedOrder.ResetHash()
-		expectedOrderHash, err := signedOrder.ComputeOrderHash()
+		// FIXME
+		signedOrder.Order.(*zeroex.OrderV3).ResetHash()
+		// FIXME
+		expectedOrderHash, err := signedOrder.Order.(*zeroex.OrderV3).ComputeOrderHash()
 		require.NoError(t, err)
-		actualOrderHash, err := accepted[0].ComputeOrderHash()
+		// FIXME
+		actualOrderHash, err := accepted[0].Order.(*zeroex.OrderV3).ComputeOrderHash()
 		require.NoError(t, err)
 		assert.Equal(t, expectedOrderHash, actualOrderHash)
 
@@ -322,7 +331,8 @@ func TestBatchValidateMaxGasPriceOrder(t *testing.T) {
 		validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock)
 		assert.Len(t, validationResults.Accepted, 1)
 		require.Len(t, validationResults.Rejected, 0)
-		expectedOrderHash, err := signedOrder.ComputeOrderHash()
+		// FIXME
+		expectedOrderHash, err := signedOrder.Order.(*zeroex.OrderV3).ComputeOrderHash()
 		require.NoError(t, err)
 		assert.Equal(t, expectedOrderHash, validationResults.Accepted[0].OrderHash)
 
@@ -335,7 +345,8 @@ func TestBatchValidateSignatureInvalid(t *testing.T) {
 	signedOrders := []*zeroex.SignedOrder{
 		signedOrder,
 	}
-	orderHash, err := signedOrder.ComputeOrderHash()
+	// FIXME
+	orderHash, err := signedOrder.Order.(*zeroex.OrderV3).ComputeOrderHash()
 	require.NoError(t, err)
 
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
@@ -421,10 +432,11 @@ func TestComputeABIEncodedSignedOrderStringByteLength(t *testing.T) {
 	testOrder := scenario.NewSignedTestOrder(t)
 
 	testMultiAssetOrder := scenario.NewSignedTestOrder(t)
-	testMultiAssetOrder.Order.MakerAssetData = common.Hex2Bytes("123412304102340120350120340123041023401234102341234234523452345234")
-	testMultiAssetOrder.Order.MakerAssetData = common.Hex2Bytes("132519348523094582039457283452")
-	testMultiAssetOrder.Order.MakerAssetData = multiAssetAssetData
-	testMultiAssetOrder.Order.MakerAssetData = common.Hex2Bytes("324857203942034562893723452345246529837")
+	// FIXME
+	testMultiAssetOrder.Order.(*zeroex.OrderV3).MakerAssetData = common.Hex2Bytes("123412304102340120350120340123041023401234102341234234523452345234")
+	testMultiAssetOrder.Order.(*zeroex.OrderV3).MakerAssetData = common.Hex2Bytes("132519348523094582039457283452")
+	testMultiAssetOrder.Order.(*zeroex.OrderV3).MakerAssetData = multiAssetAssetData
+	testMultiAssetOrder.Order.(*zeroex.OrderV3).MakerAssetData = common.Hex2Bytes("324857203942034562893723452345246529837")
 
 	testCases := []*zeroex.SignedOrder{testOrder, testMultiAssetOrder}
 

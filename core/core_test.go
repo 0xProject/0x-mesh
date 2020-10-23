@@ -351,9 +351,11 @@ func runOrdersyncTestCase(testCase ordersyncTestCase) func(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, newNodeOrdersResp.OrdersInfos, len(filteredOrders), "new node should have %d orders", len(originalOrders))
 		for _, expectedOrder := range filteredOrders {
-			orderHash, err := expectedOrder.ComputeOrderHash()
+			// FIXME
+			orderHash, err := expectedOrder.Order.(*zeroex.OrderV3).ComputeOrderHash()
 			require.NoError(t, err)
-			expectedOrder.ResetHash()
+			// FIXME
+			expectedOrder.Order.(*zeroex.OrderV3).ResetHash()
 			dbOrder, err := newNode.db.GetOrder(orderHash)
 			require.NoError(t, err)
 			actualOrder := dbOrder.SignedOrder()

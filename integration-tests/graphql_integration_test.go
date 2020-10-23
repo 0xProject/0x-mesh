@@ -45,26 +45,31 @@ func TestAddOrdersSuccess(t *testing.T) {
 	require.Len(t, validationResponse.Accepted, 1)
 	assert.Len(t, validationResponse.Rejected, 0)
 	accepted := validationResponse.Accepted[0]
-	expectedFillableTakerAssetAmount := signedTestOrder.TakerAssetAmount
-	expectedOrderHash, err := signedTestOrder.ComputeOrderHash()
+	// FIXME
+	o, ok := signedTestOrder.Order.(*zeroex.OrderV3)
+	if !ok {
+		panic("can't use non-v3 orders")
+	}
+	expectedFillableTakerAssetAmount := o.TakerAssetAmount
+	expectedOrderHash, err := o.ComputeOrderHash()
 	require.NoError(t, err, "could not compute order hash for standalone order")
 	expectedAcceptedOrder := &gqlclient.OrderWithMetadata{
-		ChainID:                  signedTestOrder.ChainID,
-		ExchangeAddress:          signedTestOrder.ExchangeAddress,
-		MakerAddress:             signedTestOrder.MakerAddress,
-		MakerAssetData:           signedTestOrder.MakerAssetData,
-		MakerAssetAmount:         signedTestOrder.MakerAssetAmount,
-		MakerFeeAssetData:        signedTestOrder.MakerFeeAssetData,
-		MakerFee:                 signedTestOrder.MakerFee,
-		TakerAddress:             signedTestOrder.TakerAddress,
-		TakerAssetData:           signedTestOrder.TakerAssetData,
-		TakerAssetAmount:         signedTestOrder.TakerAssetAmount,
-		TakerFeeAssetData:        signedTestOrder.TakerFeeAssetData,
-		TakerFee:                 signedTestOrder.TakerFee,
-		SenderAddress:            signedTestOrder.SenderAddress,
-		FeeRecipientAddress:      signedTestOrder.FeeRecipientAddress,
-		ExpirationTimeSeconds:    signedTestOrder.ExpirationTimeSeconds,
-		Salt:                     signedTestOrder.Salt,
+		ChainID:                  o.ChainID,
+		ExchangeAddress:          o.ExchangeAddress,
+		MakerAddress:             o.MakerAddress,
+		MakerAssetData:           o.MakerAssetData,
+		MakerAssetAmount:         o.MakerAssetAmount,
+		MakerFeeAssetData:        o.MakerFeeAssetData,
+		MakerFee:                 o.MakerFee,
+		TakerAddress:             o.TakerAddress,
+		TakerAssetData:           o.TakerAssetData,
+		TakerAssetAmount:         o.TakerAssetAmount,
+		TakerFeeAssetData:        o.TakerFeeAssetData,
+		TakerFee:                 o.TakerFee,
+		SenderAddress:            o.SenderAddress,
+		FeeRecipientAddress:      o.FeeRecipientAddress,
+		ExpirationTimeSeconds:    o.ExpirationTimeSeconds,
+		Salt:                     o.Salt,
 		Signature:                signedTestOrder.Signature,
 		Hash:                     expectedOrderHash,
 		FillableTakerAssetAmount: expectedFillableTakerAssetAmount,
@@ -94,28 +99,33 @@ func TestGetOrder(t *testing.T) {
 	assert.Len(t, validationResponse.Accepted, 1)
 	assert.Len(t, validationResponse.Rejected, 0)
 
-	expectedHash, err := signedTestOrder.ComputeOrderHash()
+	// FIXME
+	o, ok := signedTestOrder.Order.(*zeroex.OrderV3)
+	if !ok {
+		panic("can't use non-v3 orders")
+	}
+	expectedHash, err := o.ComputeOrderHash()
 	require.NoError(t, err)
 	expectedOrder := &gqlclient.OrderWithMetadata{
-		ChainID:                  signedTestOrder.ChainID,
-		ExchangeAddress:          signedTestOrder.ExchangeAddress,
-		MakerAddress:             signedTestOrder.MakerAddress,
-		MakerAssetData:           signedTestOrder.MakerAssetData,
-		MakerAssetAmount:         signedTestOrder.MakerAssetAmount,
-		MakerFeeAssetData:        signedTestOrder.MakerFeeAssetData,
-		MakerFee:                 signedTestOrder.MakerFee,
-		TakerAddress:             signedTestOrder.TakerAddress,
-		TakerAssetData:           signedTestOrder.TakerAssetData,
-		TakerAssetAmount:         signedTestOrder.TakerAssetAmount,
-		TakerFeeAssetData:        signedTestOrder.TakerFeeAssetData,
-		TakerFee:                 signedTestOrder.TakerFee,
-		SenderAddress:            signedTestOrder.SenderAddress,
-		FeeRecipientAddress:      signedTestOrder.FeeRecipientAddress,
-		ExpirationTimeSeconds:    signedTestOrder.ExpirationTimeSeconds,
-		Salt:                     signedTestOrder.Salt,
+		ChainID:                  o.ChainID,
+		ExchangeAddress:          o.ExchangeAddress,
+		MakerAddress:             o.MakerAddress,
+		MakerAssetData:           o.MakerAssetData,
+		MakerAssetAmount:         o.MakerAssetAmount,
+		MakerFeeAssetData:        o.MakerFeeAssetData,
+		MakerFee:                 o.MakerFee,
+		TakerAddress:             o.TakerAddress,
+		TakerAssetData:           o.TakerAssetData,
+		TakerAssetAmount:         o.TakerAssetAmount,
+		TakerFeeAssetData:        o.TakerFeeAssetData,
+		TakerFee:                 o.TakerFee,
+		SenderAddress:            o.SenderAddress,
+		FeeRecipientAddress:      o.FeeRecipientAddress,
+		ExpirationTimeSeconds:    o.ExpirationTimeSeconds,
+		Salt:                     o.Salt,
 		Signature:                signedTestOrder.Signature,
 		Hash:                     expectedHash,
-		FillableTakerAssetAmount: signedTestOrder.TakerAssetAmount,
+		FillableTakerAssetAmount: o.TakerAssetAmount,
 	}
 	actualOrder, err := client.GetOrder(ctx, expectedHash)
 	require.NoError(t, err)
@@ -153,28 +163,33 @@ func TestFindOrders(t *testing.T) {
 	require.Len(t, actualOrders, 10)
 	expectedOrders := make([]*gqlclient.OrderWithMetadata, len(signedTestOrders))
 	for i, signedOrder := range signedTestOrders {
-		hash, err := signedOrder.ComputeOrderHash()
+		// FIXME
+		o, ok := signedOrder.Order.(*zeroex.OrderV3)
+		if !ok {
+			panic("can't use non-v3 orders")
+		}
+		hash, err := o.ComputeOrderHash()
 		require.NoError(t, err)
 		expectedOrders[i] = &gqlclient.OrderWithMetadata{
-			ChainID:                  signedOrder.ChainID,
-			ExchangeAddress:          signedOrder.ExchangeAddress,
-			MakerAddress:             signedOrder.MakerAddress,
-			MakerAssetData:           signedOrder.MakerAssetData,
-			MakerAssetAmount:         signedOrder.MakerAssetAmount,
-			MakerFeeAssetData:        signedOrder.MakerFeeAssetData,
-			MakerFee:                 signedOrder.MakerFee,
-			TakerAddress:             signedOrder.TakerAddress,
-			TakerAssetData:           signedOrder.TakerAssetData,
-			TakerAssetAmount:         signedOrder.TakerAssetAmount,
-			TakerFeeAssetData:        signedOrder.TakerFeeAssetData,
-			TakerFee:                 signedOrder.TakerFee,
-			SenderAddress:            signedOrder.SenderAddress,
-			FeeRecipientAddress:      signedOrder.FeeRecipientAddress,
-			ExpirationTimeSeconds:    signedOrder.ExpirationTimeSeconds,
-			Salt:                     signedOrder.Salt,
+			ChainID:                  o.ChainID,
+			ExchangeAddress:          o.ExchangeAddress,
+			MakerAddress:             o.MakerAddress,
+			MakerAssetData:           o.MakerAssetData,
+			MakerAssetAmount:         o.MakerAssetAmount,
+			MakerFeeAssetData:        o.MakerFeeAssetData,
+			MakerFee:                 o.MakerFee,
+			TakerAddress:             o.TakerAddress,
+			TakerAssetData:           o.TakerAssetData,
+			TakerAssetAmount:         o.TakerAssetAmount,
+			TakerFeeAssetData:        o.TakerFeeAssetData,
+			TakerFee:                 o.TakerFee,
+			SenderAddress:            o.SenderAddress,
+			FeeRecipientAddress:      o.FeeRecipientAddress,
+			ExpirationTimeSeconds:    o.ExpirationTimeSeconds,
+			Salt:                     o.Salt,
 			Signature:                signedOrder.Signature,
 			Hash:                     hash,
-			FillableTakerAssetAmount: signedOrder.TakerAssetAmount,
+			FillableTakerAssetAmount: o.TakerAssetAmount,
 		}
 	}
 	assertOrdersAreUnsortedEqual(t, expectedOrders, actualOrders)
@@ -185,7 +200,8 @@ func TestFindOrders(t *testing.T) {
 			{
 				Field: gqlclient.OrderFieldChainID,
 				Kind:  gqlclient.FilterKindEqual,
-				Value: signedTestOrders[0].ChainID,
+				// FIXME
+				Value: signedTestOrders[0].Order.(*zeroex.OrderV3).ChainID,
 			},
 			{
 				Field: gqlclient.OrderFieldExpirationTimeSeconds,

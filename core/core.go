@@ -957,7 +957,12 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 			return nil, err
 		}
 
-		orderHash, err := signedOrder.ComputeOrderHash()
+		// FIXME
+		o, ok := signedOrder.Order.(*zeroex.OrderV3)
+		if !ok {
+			panic("Can't use non-v3 orders")
+		}
+		orderHash, err := o.ComputeOrderHash()
 		if err != nil {
 			return nil, err
 		}

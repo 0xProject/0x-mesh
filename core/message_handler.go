@@ -46,7 +46,12 @@ func (app *App) HandleMessages(ctx context.Context, messages []*p2p.Message) err
 			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
 			continue
 		}
-		orderHash, err := order.ComputeOrderHash()
+		// FIXME(jalextowle)
+		o, ok := order.Order.(*zeroex.OrderV3)
+		if !ok {
+			panic("Can't use non-v3 orders")
+		}
+		orderHash, err := o.ComputeOrderHash()
 		if err != nil {
 			return err
 		}
