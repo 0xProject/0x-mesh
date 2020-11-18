@@ -32,32 +32,32 @@ const concurrencyLimit = 5
 // disruptions, etc...), we categorize them into `Kind`s and uniquely identify the reasons for
 // machines with a `Code`
 type RejectedOrderInfo struct {
-	OrderHash   common.Hash         `json:"orderHash"`
-	SignedOrder *zeroex.SignedOrder `json:"signedOrder"`
-	Kind        RejectedOrderKind   `json:"kind"`
-	Status      RejectedOrderStatus `json:"status"`
+	OrderHash     common.Hash           `json:"orderHash"`
+	SignedV3Order *zeroex.SignedV3Order `json:"signedOrder"`
+	Kind          RejectedOrderKind     `json:"kind"`
+	Status        RejectedOrderStatus   `json:"status"`
 }
 
 // AcceptedOrderInfo represents an fillable order and how much it could be filled for
 type AcceptedOrderInfo struct {
-	OrderHash                common.Hash         `json:"orderHash"`
-	SignedOrder              *zeroex.SignedOrder `json:"signedOrder"`
-	FillableTakerAssetAmount *big.Int            `json:"fillableTakerAssetAmount"`
-	IsNew                    bool                `json:"isNew"`
+	OrderHash                common.Hash           `json:"orderHash"`
+	SignedV3Order            *zeroex.SignedV3Order `json:"signedOrder"`
+	FillableTakerAssetAmount *big.Int              `json:"fillableTakerAssetAmount"`
+	IsNew                    bool                  `json:"isNew"`
 }
 
 type acceptedOrderInfoJSON struct {
-	OrderHash                string              `json:"orderHash"`
-	SignedOrder              *zeroex.SignedOrder `json:"signedOrder"`
-	FillableTakerAssetAmount string              `json:"fillableTakerAssetAmount"`
-	IsNew                    bool                `json:"isNew"`
+	OrderHash                string                `json:"orderHash"`
+	SignedV3Order            *zeroex.SignedV3Order `json:"signedOrder"`
+	FillableTakerAssetAmount string                `json:"fillableTakerAssetAmount"`
+	IsNew                    bool                  `json:"isNew"`
 }
 
 // MarshalJSON is a custom Marshaler for AcceptedOrderInfo
 func (a AcceptedOrderInfo) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
 		"orderHash":                a.OrderHash.Hex(),
-		"signedOrder":              a.SignedOrder,
+		"signedOrder":              a.SignedV3Order,
 		"fillableTakerAssetAmount": a.FillableTakerAssetAmount.String(),
 		"isNew":                    a.IsNew,
 	})
@@ -72,7 +72,7 @@ func (a *AcceptedOrderInfo) UnmarshalJSON(data []byte) error {
 	}
 
 	a.OrderHash = common.HexToHash(acceptedOrderInfoJSON.OrderHash)
-	a.SignedOrder = acceptedOrderInfoJSON.SignedOrder
+	a.SignedV3Order = acceptedOrderInfoJSON.SignedV3Order
 	a.IsNew = acceptedOrderInfoJSON.IsNew
 	var ok bool
 	a.FillableTakerAssetAmount, ok = math.ParseBig256(acceptedOrderInfoJSON.FillableTakerAssetAmount)
@@ -251,7 +251,7 @@ func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLengt
 // retrieve up until the failure.
 // The `validationBlock` parameter lets the caller specify a specific block at which to validate
 // the orders. This can be set to the `latest` block or any other historical block.
-func (o *OrderValidator) BatchValidate(ctx context.Context, signedOrders []*zeroex.SignedOrder, areNewOrders bool, validationBlock *types.MiniHeader) *ValidationResults {
+func (o *OrderValidator) BatchValidate(ctx context.Context, signedOrders []*zeroex.SignedV3Order, areNewOrders bool, validationBlock *types.MiniHeader) *ValidationResults {
 	if len(signedOrders) == 0 {
 		return &ValidationResults{}
 	}
@@ -261,7 +261,7 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, signedOrders []*zero
 		Rejected: rejectedOrderInfos,
 	}
 
-	signedOrderChunks := [][]*zeroex.SignedOrder{}
+	signedOrderChunks := [][]*zeroex.SignedV3Order{}
 	chunkSizes := o.computeOptimalChunkSizes(offchainValidSignedOrders)
 	for _, chunkSize := range chunkSizes {
 		signedOrderChunks = append(signedOrderChunks, offchainValidSignedOrders[:chunkSize])
@@ -274,7 +274,7 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, signedOrders []*zero
 	wg := &sync.WaitGroup{}
 	for _, signedOrders := range signedOrderChunks {
 		wg.Add(1)
-		go func(signedOrders []*zeroex.SignedOrder) {
+		go func(signedOrders []*zeroex.SignedV3Order) {
 			defer wg.Done()
 
 			select {
@@ -300,9 +300,9 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, signedOrders []*zero
 // - `Signature` contains a properly encoded 0x signature
 // - Validate that order isn't expired
 // Returns the signedOrders that are off-chain valid along with an array of orderInfo for the rejected orders
-func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOrder) ([]*zeroex.SignedOrder, []*RejectedOrderInfo) {
+func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedV3Order) ([]*zeroex.SignedV3Order, []*RejectedOrderInfo) {
 	rejectedOrderInfos := []*RejectedOrderInfo{}
-	offchainValidSignedOrders := []*zeroex.SignedOrder{}
+	offchainValidSignedOrders := []*zeroex.SignedV3Order{}
 	for _, signedOrder := range signedOrders {
 		orderHash, err := signedOrder.ComputeOrderHash()
 		if err != nil {
@@ -312,29 +312,29 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 			// Shouldn't happen because we separately enforce a max expiration time.
 			// See core/validation.go.
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: signedOrder,
-				Kind:        MeshValidation,
-				Status:      ROMaxExpirationExceeded,
+				OrderHash:     orderHash,
+				SignedV3Order: signedOrder,
+				Kind:          MeshValidation,
+				Status:        ROMaxExpirationExceeded,
 			})
 			continue
 		}
 
 		if signedOrder.MakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: signedOrder,
-				Kind:        ZeroExValidation,
-				Status:      ROInvalidMakerAssetAmount,
+				OrderHash:     orderHash,
+				SignedV3Order: signedOrder,
+				Kind:          ZeroExValidation,
+				Status:        ROInvalidMakerAssetAmount,
 			})
 			continue
 		}
 		if signedOrder.TakerAssetAmount.Cmp(big.NewInt(0)) == 0 {
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: signedOrder,
-				Kind:        ZeroExValidation,
-				Status:      ROInvalidTakerAssetAmount,
+				OrderHash:     orderHash,
+				SignedV3Order: signedOrder,
+				Kind:          ZeroExValidation,
+				Status:        ROInvalidTakerAssetAmount,
 			})
 			continue
 		}
@@ -342,20 +342,20 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 		isMakerAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerAssetData)
 		if !isMakerAssetDataSupported {
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: signedOrder,
-				Kind:        ZeroExValidation,
-				Status:      ROInvalidMakerAssetData,
+				OrderHash:     orderHash,
+				SignedV3Order: signedOrder,
+				Kind:          ZeroExValidation,
+				Status:        ROInvalidMakerAssetData,
 			})
 			continue
 		}
 		isTakerAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerAssetData)
 		if !isTakerAssetDataSupported {
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: signedOrder,
-				Kind:        ZeroExValidation,
-				Status:      ROInvalidTakerAssetData,
+				OrderHash:     orderHash,
+				SignedV3Order: signedOrder,
+				Kind:          ZeroExValidation,
+				Status:        ROInvalidTakerAssetData,
 			})
 			continue
 		}
@@ -366,10 +366,10 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 			isMakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.MakerFeeAssetData)
 			if !isMakerFeeAssetDataSupported {
 				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
-					OrderHash:   orderHash,
-					SignedOrder: signedOrder,
-					Kind:        ZeroExValidation,
-					Status:      ROInvalidMakerFeeAssetData,
+					OrderHash:     orderHash,
+					SignedV3Order: signedOrder,
+					Kind:          ZeroExValidation,
+					Status:        ROInvalidMakerFeeAssetData,
 				})
 				continue
 			}
@@ -381,10 +381,10 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 			isTakerFeeAssetDataSupported := o.isSupportedAssetData(signedOrder.TakerFeeAssetData)
 			if !isTakerFeeAssetDataSupported {
 				rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
-					OrderHash:   orderHash,
-					SignedOrder: signedOrder,
-					Kind:        ZeroExValidation,
-					Status:      ROInvalidTakerFeeAssetData,
+					OrderHash:     orderHash,
+					SignedV3Order: signedOrder,
+					Kind:          ZeroExValidation,
+					Status:        ROInvalidTakerFeeAssetData,
 				})
 				continue
 			}
@@ -393,10 +393,10 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 		isSupportedSignature := isSupportedSignature(signedOrder.Signature)
 		if !isSupportedSignature {
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: signedOrder,
-				Kind:        ZeroExValidation,
-				Status:      ROInvalidSignature,
+				OrderHash:     orderHash,
+				SignedV3Order: signedOrder,
+				Kind:          ZeroExValidation,
+				Status:        ROInvalidSignature,
 			})
 			continue
 		}
@@ -413,8 +413,7 @@ func (o *OrderValidator) BatchOffchainValidation(signedOrders []*zeroex.SignedOr
 // will invalidate MultiAssetProxy orders that contain duplicate ERC721 asset data).
 func (o *OrderValidator) batchOnchainValidation(
 	ctx context.Context,
-	signedOrders []*zeroex.SignedOrder,
-	validationBlock *types.MiniHeader,
+	signedOrders []*zeroex.SignedV3Order, validationBlock *types.MiniHeader,
 	areNewOrders bool,
 	validationResults *ValidationResults,
 ) {
@@ -480,10 +479,10 @@ func (o *OrderValidator) batchOnchainValidation(
 						continue
 					}
 					validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
-						OrderHash:   orderHash,
-						SignedOrder: signedOrder,
-						Kind:        MeshError,
-						Status:      ROEthRPCRequestFailed,
+						OrderHash:     orderHash,
+						SignedV3Order: signedOrder,
+						Kind:          MeshError,
+						Status:        ROEthRPCRequestFailed,
 					})
 				}
 				return // Give up after 4 attempts
@@ -515,10 +514,10 @@ func (o *OrderValidator) batchOnchainValidation(
 					status = ROInvalidSignature
 				}
 				validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
-					OrderHash:   orderHash,
-					SignedOrder: signedOrder,
-					Kind:        ZeroExValidation,
-					Status:      status,
+					OrderHash:     orderHash,
+					SignedV3Order: signedOrder,
+					Kind:          ZeroExValidation,
+					Status:        status,
 				})
 				continue
 			case zeroex.OSFillable:
@@ -527,15 +526,15 @@ func (o *OrderValidator) batchOnchainValidation(
 				// partially fillable orders as invalid
 				if fillableTakerAssetAmount.Cmp(remainingTakerAssetAmount) != 0 {
 					validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
-						OrderHash:   orderHash,
-						SignedOrder: signedOrder,
-						Kind:        ZeroExValidation,
-						Status:      ROUnfunded,
+						OrderHash:     orderHash,
+						SignedV3Order: signedOrder,
+						Kind:          ZeroExValidation,
+						Status:        ROUnfunded,
 					})
 				} else {
 					validationResults.Accepted = append(validationResults.Accepted, &AcceptedOrderInfo{
 						OrderHash:                orderHash,
-						SignedOrder:              signedOrder,
+						SignedV3Order:            signedOrder,
 						FillableTakerAssetAmount: fillableTakerAssetAmount,
 						IsNew:                    areNewOrders,
 					})
@@ -647,7 +646,7 @@ func numWords(bytes []byte) int {
 	return (len(bytes) + 31) / 32
 }
 
-func computeABIEncodedSignedOrderStringLength(signedOrder *zeroex.SignedOrder) int {
+func computeABIEncodedSignedOrderStringLength(signedOrder *zeroex.SignedV3Order) int {
 	// The fixed size fields in a SignedOrder take up 1536 bytes. The variable length fields take up 64 characters per 256-bit word. This is because each byte in signedOrder is as two bytes in the JSON string.
 	return 1536 + 64*(numWords(signedOrder.MakerAssetData)+
 		numWords(signedOrder.TakerAssetData)+
@@ -659,7 +658,7 @@ func computeABIEncodedSignedOrderStringLength(signedOrder *zeroex.SignedOrder) i
 // is beneath the maxRequestContentLength. It does this by implementing a greedy algorithm which ABI
 // encodes signedOrders one at a time until the computed payload size is as close to the
 // maxRequestContentLength as possible.
-func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*zeroex.SignedOrder) []int {
+func (o *OrderValidator) computeOptimalChunkSizes(signedOrders []*zeroex.SignedV3Order) []int {
 	chunkSizes := []int{}
 
 	payloadLength := jsonRPCPayloadByteLength

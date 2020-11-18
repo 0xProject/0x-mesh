@@ -81,7 +81,7 @@ func TestMarshalUnmarshalOrderEvent(t *testing.T) {
 	orderEvent := OrderEvent{
 		Timestamp:                time.Now().UTC(),
 		OrderHash:                orderHash,
-		SignedOrder:              signedOrder,
+		SignedV3Order:            signedOrder,
 		EndState:                 ESOrderAdded,
 		FillableTakerAssetAmount: big.NewInt(2000),
 		ContractEvents: []*ContractEvent{

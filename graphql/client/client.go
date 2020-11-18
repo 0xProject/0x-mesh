@@ -178,7 +178,7 @@ type AddOrdersOpts struct {
 }
 
 // AddOrders adds orders to 0x Mesh and broadcasts them throughout the 0x Mesh network.
-func (c *Client) AddOrders(ctx context.Context, orders []*zeroex.SignedOrder, opts ...AddOrdersOpts) (*AddOrdersResults, error) {
+func (c *Client) AddOrders(ctx context.Context, orders []*zeroex.SignedV3Order, opts ...AddOrdersOpts) (*AddOrdersResults, error) {
 	req := graphql.NewRequest(addOrdersMutation)
 
 	// Set up args

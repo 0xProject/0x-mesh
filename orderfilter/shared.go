@@ -48,7 +48,7 @@ func GetDefaultTopic(chainID int, contractAddresses ethereum.ContractAddresses) 
 // MatchOrder returns true if the order passes the filter. It only returns an
 // error if there was a problem with validation. For details about
 // orders that do not pass the filter, use ValidateOrder.
-func (f *Filter) MatchOrder(order *zeroex.SignedOrder) (bool, error) {
+func (f *Filter) MatchOrder(order *zeroex.SignedV3Order) (bool, error) {
 	result, err := f.ValidateOrder(order)
 	if err != nil {
 		return false, err

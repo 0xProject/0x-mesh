@@ -71,22 +71,22 @@ type AddOrdersOpts struct {
 
 // OrderInfo represents an fillable order and how much it could be filled for.
 type OrderInfo struct {
-	OrderHash                common.Hash         `json:"orderHash"`
-	SignedOrder              *zeroex.SignedOrder `json:"signedOrder"`
-	FillableTakerAssetAmount *big.Int            `json:"fillableTakerAssetAmount"`
+	OrderHash                common.Hash           `json:"orderHash"`
+	SignedV3Order            *zeroex.SignedV3Order `json:"signedOrder"`
+	FillableTakerAssetAmount *big.Int              `json:"fillableTakerAssetAmount"`
 }
 
 type orderInfoJSON struct {
-	OrderHash                string              `json:"orderHash"`
-	SignedOrder              *zeroex.SignedOrder `json:"signedOrder"`
-	FillableTakerAssetAmount string              `json:"fillableTakerAssetAmount"`
+	OrderHash                string                `json:"orderHash"`
+	SignedV3Order            *zeroex.SignedV3Order `json:"signedOrder"`
+	FillableTakerAssetAmount string                `json:"fillableTakerAssetAmount"`
 }
 
 // MarshalJSON is a custom Marshaler for OrderInfo
 func (o OrderInfo) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
 		"orderHash":                o.OrderHash.Hex(),
-		"signedOrder":              o.SignedOrder,
+		"signedOrder":              o.SignedV3Order,
 		"fillableTakerAssetAmount": o.FillableTakerAssetAmount.String(),
 	})
 }
@@ -100,7 +100,7 @@ func (o *OrderInfo) UnmarshalJSON(data []byte) error {
 	}
 
 	o.OrderHash = common.HexToHash(orderInfoJSON.OrderHash)
-	o.SignedOrder = orderInfoJSON.SignedOrder
+	o.SignedV3Order = orderInfoJSON.SignedV3Order
 	var ok bool
 	o.FillableTakerAssetAmount, ok = math.ParseBig256(orderInfoJSON.FillableTakerAssetAmount)
 	if !ok {
@@ -168,8 +168,8 @@ type OrderWithMetadata struct {
 	KeepUnfunded bool `json:"keepUnfunded"`
 }
 
-func (order OrderWithMetadata) SignedOrder() *zeroex.SignedOrder {
-	return &zeroex.SignedOrder{
+func (order OrderWithMetadata) SignedV3Order() *zeroex.SignedV3Order {
+	return &zeroex.SignedV3Order{
 		V3Order: zeroex.V3Order{
 			ChainID:               order.ChainID,
 			ExchangeAddress:       order.ExchangeAddress,

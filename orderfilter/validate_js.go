@@ -56,7 +56,7 @@ func (f *Filter) MatchOrderMessageJSON(messageJSON []byte) (bool, error) {
 	return jsResult.Get("success").Bool(), nil
 }
 
-func (f *Filter) ValidateOrder(order *zeroex.SignedOrder) (*SchemaValidationResult, error) {
+func (f *Filter) ValidateOrder(order *zeroex.SignedV3Order) (*SchemaValidationResult, error) {
 	orderJSON, err := order.MarshalJSON()
 	if err != nil {
 		return nil, err

@@ -21,8 +21,8 @@ const (
 )
 
 var (
-	signedErc20Orders      []*zeroex.SignedOrder
-	signedMultiAssetOrders []*zeroex.SignedOrder
+	signedErc20Orders      []*zeroex.SignedV3Order
+	signedMultiAssetOrders []*zeroex.SignedV3Order
 	orderValidator         *OrderValidator
 )
 

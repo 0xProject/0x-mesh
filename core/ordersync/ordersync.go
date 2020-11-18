@@ -92,20 +92,20 @@ type rawRequest struct {
 // Response represents a high-level ordersync response. It abstracts away some
 // of the details of subprotocol negotiation and encoding/decoding.
 type Response struct {
-	ProviderID peer.ID               `json:"providerID"`
-	Orders     []*zeroex.SignedOrder `json:"orders"`
-	Complete   bool                  `json:"complete"`
-	Metadata   interface{}           `json:"metadata"`
+	ProviderID peer.ID                 `json:"providerID"`
+	Orders     []*zeroex.SignedV3Order `json:"orders"`
+	Complete   bool                    `json:"complete"`
+	Metadata   interface{}             `json:"metadata"`
 }
 
 // rawResponse contains all the details we need at the lowest level to encode/decode
 // the response, perform subprotocol negoatiation, and more.
 type rawResponse struct {
-	Type        string                `json:"type"`
-	Subprotocol string                `json:"subprotocol"`
-	Orders      []*zeroex.SignedOrder `json:"orders"`
-	Complete    bool                  `json:"complete"`
-	Metadata    json.RawMessage       `json:"metadata"`
+	Type        string                  `json:"type"`
+	Subprotocol string                  `json:"subprotocol"`
+	Orders      []*zeroex.SignedV3Order `json:"orders"`
+	Complete    bool                    `json:"complete"`
+	Metadata    json.RawMessage         `json:"metadata"`
 }
 
 // Service is the main entrypoint for running the ordersync protocol. It handles

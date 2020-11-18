@@ -97,7 +97,7 @@ func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncRequest(ctx context.Con
 	// It's possible that none of the orders in the current page match the filter.
 	// We don't want to respond with zero orders, so keep iterating until we find
 	// at least some orders that match the filter.
-	filteredOrders := []*zeroex.SignedOrder{}
+	filteredOrders := []*zeroex.SignedV3Order{}
 	var nextMinOrderHash common.Hash
 	for {
 		select {
@@ -118,15 +118,15 @@ func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncRequest(ctx context.Con
 		// Filter the orders for this page.
 		if metadata.OrderFilter != nil {
 			for _, orderInfo := range ordersResp.OrdersInfos {
-				if matches, err := metadata.OrderFilter.MatchOrder(orderInfo.SignedOrder); err != nil {
+				if matches, err := metadata.OrderFilter.MatchOrder(orderInfo.SignedV3Order); err != nil {
 					return nil, err
 				} else if matches {
-					filteredOrders = append(filteredOrders, orderInfo.SignedOrder)
+					filteredOrders = append(filteredOrders, orderInfo.SignedV3Order)
 				}
 			}
 		} else {
 			for _, orderInfo := range ordersResp.OrdersInfos {
-				filteredOrders = append(filteredOrders, orderInfo.SignedOrder)
+				filteredOrders = append(filteredOrders, orderInfo.SignedV3Order)
 			}
 		}
 		if len(filteredOrders) == 0 {
@@ -161,7 +161,7 @@ func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncResponse(ctx context.Co
 	if !ok {
 		return nil, 0, fmt.Errorf("FilteredPaginationSubProtocolV0 received response with wrong metadata type (got %T)", res.Metadata)
 	}
-	filteredOrders := []*zeroex.SignedOrder{}
+	filteredOrders := []*zeroex.SignedV3Order{}
 	for _, order := range res.Orders {
 		if matches, err := p.orderFilter.MatchOrder(order); err != nil {
 			return nil, 0, err
@@ -183,7 +183,7 @@ func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncResponse(ctx context.Co
 				"protocol":  "ordersync",
 			}).Info("received new valid order from peer")
 			log.WithFields(map[string]interface{}{
-				"order":     acceptedOrderInfo.SignedOrder,
+				"order":     acceptedOrderInfo.SignedV3Order,
 				"orderHash": acceptedOrderInfo.OrderHash.Hex(),
 				"from":      res.ProviderID.Pretty(),
 				"protocol":  "ordersync",
@@ -289,7 +289,7 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncRequest(ctx context.Con
 	// It's possible that none of the orders in the current page match the filter.
 	// We don't want to respond with zero orders, so keep iterating until we find
 	// at least some orders that match the filter.
-	filteredOrders := []*zeroex.SignedOrder{}
+	filteredOrders := []*zeroex.SignedV3Order{}
 	currentMinOrderHash := metadata.MinOrderHash
 	nextMinOrderHash := common.Hash{}
 	for {
@@ -311,15 +311,15 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncRequest(ctx context.Con
 		// Filter the orders for this page.
 		if metadata.OrderFilter != nil {
 			for _, orderInfo := range ordersResp.OrdersInfos {
-				if matches, err := metadata.OrderFilter.MatchOrder(orderInfo.SignedOrder); err != nil {
+				if matches, err := metadata.OrderFilter.MatchOrder(orderInfo.SignedV3Order); err != nil {
 					return nil, err
 				} else if matches {
-					filteredOrders = append(filteredOrders, orderInfo.SignedOrder)
+					filteredOrders = append(filteredOrders, orderInfo.SignedV3Order)
 				}
 			}
 		} else {
 			for _, orderInfo := range ordersResp.OrdersInfos {
-				filteredOrders = append(filteredOrders, orderInfo.SignedOrder)
+				filteredOrders = append(filteredOrders, orderInfo.SignedV3Order)
 			}
 		}
 		if len(filteredOrders) == 0 {
@@ -352,7 +352,7 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncResponse(ctx context.Co
 	if !ok {
 		return nil, 0, fmt.Errorf("FilteredPaginationSubProtocolV1 received response with wrong metadata type (got %T)", res.Metadata)
 	}
-	filteredOrders := []*zeroex.SignedOrder{}
+	filteredOrders := []*zeroex.SignedV3Order{}
 	for _, order := range res.Orders {
 		if matches, err := p.orderFilter.MatchOrder(order); err != nil {
 			return nil, 0, err
@@ -374,7 +374,7 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncResponse(ctx context.Co
 				"protocol":  "ordersync",
 			}).Info("received new valid order from peer")
 			log.WithFields(map[string]interface{}{
-				"order":     acceptedOrderInfo.SignedOrder,
+				"order":     acceptedOrderInfo.SignedV3Order,
 				"orderHash": acceptedOrderInfo.OrderHash.Hex(),
 				"from":      res.ProviderID.Pretty(),
 				"protocol":  "ordersync",

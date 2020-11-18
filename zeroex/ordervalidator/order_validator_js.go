@@ -22,7 +22,7 @@ func (v ValidationResults) JSValue() js.Value {
 func (a AcceptedOrderInfo) JSValue() js.Value {
 	return js.ValueOf(map[string]interface{}{
 		"orderHash":                a.OrderHash.Hex(),
-		"signedOrder":              a.SignedOrder.JSValue(),
+		"signedOrder":              a.SignedV3Order.JSValue(),
 		"fillableTakerAssetAmount": a.FillableTakerAssetAmount.String(),
 		"isNew":                    a.IsNew,
 	})
@@ -31,7 +31,7 @@ func (a AcceptedOrderInfo) JSValue() js.Value {
 func (r RejectedOrderInfo) JSValue() js.Value {
 	return js.ValueOf(map[string]interface{}{
 		"orderHash":   r.OrderHash.String(),
-		"signedOrder": r.SignedOrder.JSValue(),
+		"signedOrder": r.SignedV3Order.JSValue(),
 		"kind":        string(r.Kind),
 		"status":      r.Status.JSValue(),
 	})

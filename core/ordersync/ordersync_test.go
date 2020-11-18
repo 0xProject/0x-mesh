@@ -163,7 +163,7 @@ func (s *oneOrderSubprotocol) HandleOrderSyncRequest(ctx context.Context, req *R
 	}
 	return &Response{
 		ProviderID: s.myPeerID,
-		Orders:     []*zeroex.SignedOrder{signedOrder},
+		Orders:     []*zeroex.SignedV3Order{signedOrder},
 		Complete:   true,
 		Metadata:   req.Metadata,
 	}, nil

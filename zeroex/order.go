@@ -39,7 +39,7 @@ type V3Order struct {
 	hash *common.Hash
 }
 
-type SignedOrder struct {
+type SignedV3Order struct {
 	V3Order
 	Signature []byte `json:"signature"`
 }
@@ -128,7 +128,7 @@ type OrderEvent struct {
 	// OrderHash is the EIP712 hash of the 0x order
 	OrderHash common.Hash `json:"orderHash"`
 	// SignedOrder is the signed 0x order struct
-	SignedOrder *SignedOrder `json:"signedOrder"`
+	SignedV3Order *SignedV3Order `json:"signedOrder"`
 	// EndState is the end state of this order at the time this event was generated
 	EndState OrderEventEndState `json:"endState"`
 	// FillableTakerAssetAmount is the amount for which this order is still fillable
@@ -142,7 +142,7 @@ type OrderEvent struct {
 type orderEventJSON struct {
 	Timestamp                time.Time            `json:"timestamp"`
 	OrderHash                string               `json:"orderHash"`
-	SignedOrder              *SignedOrder         `json:"signedOrder"`
+	SignedV3Order            *SignedV3Order       `json:"signedOrder"`
 	EndState                 string               `json:"endState"`
 	FillableTakerAssetAmount string               `json:"fillableTakerAssetAmount"`
 	ContractEvents           []*contractEventJSON `json:"contractEvents"`
@@ -153,7 +153,7 @@ func (o OrderEvent) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
 		"timestamp":                o.Timestamp,
 		"orderHash":                o.OrderHash.Hex(),
-		"signedOrder":              o.SignedOrder,
+		"signedOrder":              o.SignedV3Order,
 		"endState":                 o.EndState,
 		"fillableTakerAssetAmount": o.FillableTakerAssetAmount.String(),
 		"contractEvents":           o.ContractEvents,
@@ -173,7 +173,7 @@ func (o *OrderEvent) UnmarshalJSON(data []byte) error {
 func (o *OrderEvent) fromOrderEventJSON(orderEventJSON orderEventJSON) error {
 	o.Timestamp = orderEventJSON.Timestamp
 	o.OrderHash = common.HexToHash(orderEventJSON.OrderHash)
-	o.SignedOrder = orderEventJSON.SignedOrder
+	o.SignedV3Order = orderEventJSON.SignedV3Order
 	o.EndState = OrderEventEndState(orderEventJSON.EndState)
 	var ok bool
 	o.FillableTakerAssetAmount, ok = math.ParseBig256(orderEventJSON.FillableTakerAssetAmount)
@@ -474,7 +474,7 @@ func (o *V3Order) ComputeOrderHash() (common.Hash, error) {
 }
 
 // SignOrder signs the 0x order with the supplied Signer
-func SignOrder(signer signer.Signer, order *V3Order) (*SignedOrder, error) {
+func SignOrder(signer signer.Signer, order *V3Order) (*SignedV3Order, error) {
 	if order == nil {
 		return nil, errors.New("cannot sign nil order")
 	}
@@ -494,7 +494,7 @@ func SignOrder(signer signer.Signer, order *V3Order) (*SignedOrder, error) {
 	copy(signature[1:33], ecSignature.R[:])
 	copy(signature[33:65], ecSignature.S[:])
 	signature[65] = byte(EthSignSignature)
-	signedOrder := &SignedOrder{
+	signedOrder := &SignedV3Order{
 		V3Order:   *order,
 		Signature: signature,
 	}
@@ -502,7 +502,7 @@ func SignOrder(signer signer.Signer, order *V3Order) (*SignedOrder, error) {
 }
 
 // SignTestOrder signs the 0x order with the local test signer
-func SignTestOrder(order *V3Order) (*SignedOrder, error) {
+func SignTestOrder(order *V3Order) (*SignedV3Order, error) {
 	testSigner := signer.NewTestSigner()
 	signedOrder, err := SignOrder(testSigner, order)
 	if err != nil {
@@ -513,7 +513,7 @@ func SignTestOrder(order *V3Order) (*SignedOrder, error) {
 
 // Trim converts the order to a LibOrderOrder, which is the format expected by
 // our smart contracts. It removes the ChainID and ExchangeAddress fields.
-func (s *SignedOrder) Trim() wrappers.LibOrderOrder {
+func (s *SignedV3Order) Trim() wrappers.LibOrderOrder {
 	return wrappers.LibOrderOrder{
 		MakerAddress:          s.MakerAddress,
 		TakerAddress:          s.TakerAddress,
@@ -554,7 +554,7 @@ type SignedOrderJSON struct {
 }
 
 // MarshalJSON implements a custom JSON marshaller for the SignedOrder type
-func (s SignedOrder) MarshalJSON() ([]byte, error) {
+func (s SignedV3Order) MarshalJSON() ([]byte, error) {
 	makerAssetData := "0x"
 	if len(s.MakerAssetData) != 0 {
 		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerAssetData))
@@ -602,7 +602,7 @@ func (s SignedOrder) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON implements a custom JSON unmarshaller for the SignedOrder type
-func (s *SignedOrder) UnmarshalJSON(data []byte) error {
+func (s *SignedV3Order) UnmarshalJSON(data []byte) error {
 	var signedOrderJSON SignedOrderJSON
 	err := json.Unmarshal(data, &signedOrderJSON)
 	if err != nil {

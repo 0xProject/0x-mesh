@@ -317,7 +317,7 @@ func runOrdersyncTestCase(testCase ordersyncTestCase) func(t *testing.T) {
 
 		// Only the orders that satisfy the new node's orderfilter should
 		// be received during ordersync.
-		filteredOrders := []*zeroex.SignedOrder{}
+		filteredOrders := []*zeroex.SignedV3Order{}
 		for _, order := range originalOrders {
 			matches, err := newNode.orderFilter.MatchOrder(order)
 			require.NoError(t, err)
@@ -356,7 +356,7 @@ func runOrdersyncTestCase(testCase ordersyncTestCase) func(t *testing.T) {
 			expectedOrder.ResetHash()
 			dbOrder, err := newNode.db.GetOrder(orderHash)
 			require.NoError(t, err)
-			actualOrder := dbOrder.SignedOrder()
+			actualOrder := dbOrder.SignedV3Order()
 			assert.Equal(t, expectedOrder, actualOrder, "correct order was not stored in new node database")
 		}
 

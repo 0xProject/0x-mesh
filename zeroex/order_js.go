@@ -19,14 +19,14 @@ func (o OrderEvent) JSValue() js.Value {
 	return js.ValueOf(map[string]interface{}{
 		"timestamp":                o.Timestamp.Format(time.RFC3339),
 		"orderHash":                o.OrderHash.Hex(),
-		"signedOrder":              o.SignedOrder.JSValue(),
+		"signedOrder":              o.SignedV3Order.JSValue(),
 		"endState":                 string(o.EndState),
 		"fillableTakerAssetAmount": o.FillableTakerAssetAmount.String(),
 		"contractEvents":           contractEventsJS,
 	})
 }
 
-func (s SignedOrder) JSValue() js.Value {
+func (s SignedV3Order) JSValue() js.Value {
 	makerAssetData := "0x"
 	if len(s.MakerAssetData) != 0 {
 		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerAssetData))

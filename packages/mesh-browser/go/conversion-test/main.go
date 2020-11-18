@@ -267,7 +267,7 @@ func setGlobals() {
 					OrdersInfos: []*types.OrderInfo{
 						&types.OrderInfo{
 							OrderHash: common.HexToHash("0x1"),
-							SignedOrder: &zeroex.SignedOrder{
+							SignedV3Order: &zeroex.SignedV3Order{
 								Order: zeroex.Order{
 									ChainID:               big.NewInt(1337),
 									MakerAddress:          common.HexToAddress("0x1"),
@@ -297,7 +297,7 @@ func setGlobals() {
 					OrdersInfos: []*types.OrderInfo{
 						&types.OrderInfo{
 							OrderHash: common.HexToHash("0x1"),
-							SignedOrder: &zeroex.SignedOrder{
+							SignedV3Order: &zeroex.SignedV3Order{
 								Order: zeroex.Order{
 									ChainID:               big.NewInt(1337),
 									MakerAddress:          common.HexToAddress("0x1"),
@@ -322,7 +322,7 @@ func setGlobals() {
 						},
 						&types.OrderInfo{
 							OrderHash: common.HexToHash("0x1"),
-							SignedOrder: &zeroex.SignedOrder{
+							SignedV3Order: &zeroex.SignedV3Order{
 								Order: zeroex.Order{
 									ChainID:               big.NewInt(1337),
 									MakerAddress:          common.HexToAddress("0x1"),
@@ -354,7 +354,7 @@ func setGlobals() {
 				zeroex.OrderEvent{
 					Timestamp: time.Date(2006, time.January, 1, 0, 0, 0, 0, time.UTC),
 					OrderHash: common.HexToHash("0x1"),
-					SignedOrder: &zeroex.SignedOrder{
+					SignedV3Order: &zeroex.SignedV3Order{
 						Order: zeroex.Order{
 							ChainID:               big.NewInt(1337),
 							MakerAddress:          common.HexToAddress("0x1"),
@@ -382,7 +382,7 @@ func setGlobals() {
 				zeroex.OrderEvent{
 					Timestamp: time.Date(2006, time.January, 1, 1, 1, 1, 1, time.UTC),
 					OrderHash: common.HexToHash("0x1"),
-					SignedOrder: &zeroex.SignedOrder{
+					SignedV3Order: &zeroex.SignedV3Order{
 						Order: zeroex.Order{
 							ChainID:               big.NewInt(1337),
 							MakerAddress:          common.HexToAddress("0x1"),
@@ -437,7 +437,7 @@ func setGlobals() {
 		}),
 		"signedOrders": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			return []interface{}{
-				zeroex.SignedOrder{
+				zeroex.SignedV3Order{
 					Order: zeroex.Order{
 						ChainID:               big.NewInt(1337),
 						MakerAddress:          common.HexToAddress("0x1"),
@@ -458,7 +458,7 @@ func setGlobals() {
 					},
 					Signature: common.FromHex("0x"),
 				},
-				zeroex.SignedOrder{
+				zeroex.SignedV3Order{
 					Order: zeroex.Order{
 						ChainID:               big.NewInt(1337),
 						MakerAddress:          common.HexToAddress("0x1"),
@@ -512,7 +512,7 @@ func setGlobals() {
 					Accepted: []*ordervalidator.AcceptedOrderInfo{
 						&ordervalidator.AcceptedOrderInfo{
 							OrderHash: common.HexToHash("0x1"),
-							SignedOrder: &zeroex.SignedOrder{
+							SignedV3Order: &zeroex.SignedV3Order{
 								Order: zeroex.Order{
 									ChainID:               big.NewInt(1337),
 									MakerAddress:          common.HexToAddress("0x1"),
@@ -542,7 +542,7 @@ func setGlobals() {
 					Rejected: []*ordervalidator.RejectedOrderInfo{
 						&ordervalidator.RejectedOrderInfo{
 							OrderHash: common.HexToHash("0x1"),
-							SignedOrder: &zeroex.SignedOrder{
+							SignedV3Order: &zeroex.SignedV3Order{
 								Order: zeroex.Order{
 									ChainID:               big.NewInt(1337),
 									MakerAddress:          common.HexToAddress("0x1"),
@@ -572,7 +572,7 @@ func setGlobals() {
 					Accepted: []*ordervalidator.AcceptedOrderInfo{
 						&ordervalidator.AcceptedOrderInfo{
 							OrderHash: common.HexToHash("0x1"),
-							SignedOrder: &zeroex.SignedOrder{
+							SignedV3Order: &zeroex.SignedV3Order{
 								Order: zeroex.Order{
 									ChainID:               big.NewInt(1337),
 									MakerAddress:          common.HexToAddress("0x1"),
@@ -598,7 +598,7 @@ func setGlobals() {
 						},
 						&ordervalidator.AcceptedOrderInfo{
 							OrderHash: common.HexToHash("0x1"),
-							SignedOrder: &zeroex.SignedOrder{
+							SignedV3Order: &zeroex.SignedV3Order{
 								Order: zeroex.Order{
 									ChainID:               big.NewInt(1337),
 									MakerAddress:          common.HexToAddress("0x1"),
@@ -626,7 +626,7 @@ func setGlobals() {
 					Rejected: []*ordervalidator.RejectedOrderInfo{
 						&ordervalidator.RejectedOrderInfo{
 							OrderHash: common.HexToHash("0x1"),
-							SignedOrder: &zeroex.SignedOrder{
+							SignedV3Order: &zeroex.SignedV3Order{
 								Order: zeroex.Order{
 									ChainID:               big.NewInt(1337),
 									MakerAddress:          common.HexToAddress("0x1"),

@@ -297,7 +297,7 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 		orderEvent := &zeroex.OrderEvent{
 			Timestamp:                validationBlock.Timestamp,
 			OrderHash:                order.Hash,
-			SignedOrder:              order.SignedOrder(),
+			SignedV3Order:            order.SignedV3Order(),
 			FillableTakerAssetAmount: big.NewInt(0),
 			EndState:                 zeroex.ESOrderExpired,
 		}
@@ -323,7 +323,7 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 		orderEvent := &zeroex.OrderEvent{
 			Timestamp:                validationBlock.Timestamp,
 			OrderHash:                order.Hash,
-			SignedOrder:              order.SignedOrder(),
+			SignedV3Order:            order.SignedV3Order(),
 			FillableTakerAssetAmount: order.FillableTakerAssetAmount,
 			EndState:                 zeroex.ESOrderUnexpired,
 		}
@@ -1019,7 +1019,7 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 		addedEvent := &zeroex.OrderEvent{
 			Timestamp:                now,
 			OrderHash:                orderInfo.OrderHash,
-			SignedOrder:              orderInfo.SignedOrder,
+			SignedV3Order:            orderInfo.SignedV3Order,
 			FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
 			EndState:                 zeroex.ESOrderAdded,
 		}
@@ -1051,7 +1051,7 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 		stoppedWatchingEvent := &zeroex.OrderEvent{
 			Timestamp:                now,
 			OrderHash:                order.Hash,
-			SignedOrder:              order.SignedOrder(),
+			SignedV3Order:            order.SignedV3Order(),
 			FillableTakerAssetAmount: order.FillableTakerAssetAmount,
 			EndState:                 zeroex.ESStoppedWatching,
 		}
@@ -1064,7 +1064,7 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 			// the assetData to the EventDecoder.
 			logger.WithFields(logger.Fields{
 				"error":       err.Error(),
-				"signedOrder": order.SignedOrder(),
+				"signedOrder": order.SignedV3Order(),
 			}).Error("Unexpected error when trying to remove an assetData from decoder")
 			return nil, err
 		}
@@ -1098,7 +1098,7 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 			stoppedWatchingEvent := &zeroex.OrderEvent{
 				Timestamp:                now,
 				OrderHash:                orderToAdd.OrderHash,
-				SignedOrder:              orderToAdd.SignedOrder,
+				SignedV3Order:            orderToAdd.SignedV3Order,
 				FillableTakerAssetAmount: orderToAdd.FillableTakerAssetAmount,
 				EndState:                 zeroex.ESStoppedWatching,
 			}
@@ -1121,37 +1121,37 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 }
 
 func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.AcceptedOrderInfo, pinned bool, now time.Time, validationBlock *types.MiniHeader, opts *types.AddOrdersOpts) (*types.OrderWithMetadata, error) {
-	parsedMakerAssetData, err := db.ParseContractAddressesAndTokenIdsFromAssetData(w.assetDataDecoder, orderInfo.SignedOrder.MakerAssetData, w.contractAddresses)
+	parsedMakerAssetData, err := db.ParseContractAddressesAndTokenIdsFromAssetData(w.assetDataDecoder, orderInfo.SignedV3Order.MakerAssetData, w.contractAddresses)
 	if err != nil {
 		return nil, err
 	}
-	parsedMakerFeeAssetData, err := db.ParseContractAddressesAndTokenIdsFromAssetData(w.assetDataDecoder, orderInfo.SignedOrder.MakerFeeAssetData, w.contractAddresses)
+	parsedMakerFeeAssetData, err := db.ParseContractAddressesAndTokenIdsFromAssetData(w.assetDataDecoder, orderInfo.SignedV3Order.MakerFeeAssetData, w.contractAddresses)
 	if err != nil {
 		return nil, err
 	}
 	return &types.OrderWithMetadata{
 		Hash:                     orderInfo.OrderHash,
-		ChainID:                  orderInfo.SignedOrder.ChainID,
-		ExchangeAddress:          orderInfo.SignedOrder.ExchangeAddress,
-		MakerAddress:             orderInfo.SignedOrder.MakerAddress,
-		MakerAssetData:           orderInfo.SignedOrder.MakerAssetData,
-		MakerFeeAssetData:        orderInfo.SignedOrder.MakerFeeAssetData,
-		MakerAssetAmount:         orderInfo.SignedOrder.MakerAssetAmount,
-		MakerFee:                 orderInfo.SignedOrder.MakerFee,
-		TakerAddress:             orderInfo.SignedOrder.TakerAddress,
-		TakerAssetData:           orderInfo.SignedOrder.TakerAssetData,
-		TakerFeeAssetData:        orderInfo.SignedOrder.TakerFeeAssetData,
-		TakerAssetAmount:         orderInfo.SignedOrder.TakerAssetAmount,
-		TakerFee:                 orderInfo.SignedOrder.TakerFee,
-		SenderAddress:            orderInfo.SignedOrder.SenderAddress,
-		FeeRecipientAddress:      orderInfo.SignedOrder.FeeRecipientAddress,
-		ExpirationTimeSeconds:    orderInfo.SignedOrder.ExpirationTimeSeconds,
-		Salt:                     orderInfo.SignedOrder.Salt,
-		Signature:                orderInfo.SignedOrder.Signature,
+		ChainID:                  orderInfo.SignedV3Order.ChainID,
+		ExchangeAddress:          orderInfo.SignedV3Order.ExchangeAddress,
+		MakerAddress:             orderInfo.SignedV3Order.MakerAddress,
+		MakerAssetData:           orderInfo.SignedV3Order.MakerAssetData,
+		MakerFeeAssetData:        orderInfo.SignedV3Order.MakerFeeAssetData,
+		MakerAssetAmount:         orderInfo.SignedV3Order.MakerAssetAmount,
+		MakerFee:                 orderInfo.SignedV3Order.MakerFee,
+		TakerAddress:             orderInfo.SignedV3Order.TakerAddress,
+		TakerAssetData:           orderInfo.SignedV3Order.TakerAssetData,
+		TakerFeeAssetData:        orderInfo.SignedV3Order.TakerFeeAssetData,
+		TakerAssetAmount:         orderInfo.SignedV3Order.TakerAssetAmount,
+		TakerFee:                 orderInfo.SignedV3Order.TakerFee,
+		SenderAddress:            orderInfo.SignedV3Order.SenderAddress,
+		FeeRecipientAddress:      orderInfo.SignedV3Order.FeeRecipientAddress,
+		ExpirationTimeSeconds:    orderInfo.SignedV3Order.ExpirationTimeSeconds,
+		Salt:                     orderInfo.SignedV3Order.Salt,
+		Signature:                orderInfo.SignedV3Order.Signature,
 		IsRemoved:                false,
 		IsUnfillable:             orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0,
 		IsPinned:                 pinned,
-		IsExpired:                big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderInfo.SignedOrder.ExpirationTimeSeconds) >= 0,
+		IsExpired:                big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderInfo.SignedV3Order.ExpirationTimeSeconds) >= 0,
 		LastUpdated:              now,
 		ParsedMakerAssetData:     parsedMakerAssetData,
 		ParsedMakerFeeAssetData:  parsedMakerFeeAssetData,
@@ -1407,7 +1407,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			orderEvent := &zeroex.OrderEvent{
 				Timestamp:                validationBlock.Timestamp,
 				OrderHash:                acceptedOrderInfo.OrderHash,
-				SignedOrder:              order.SignedOrder(),
+				SignedV3Order:            order.SignedV3Order(),
 				FillableTakerAssetAmount: newFillableAmount,
 				EndState:                 zeroex.ESOrderAdded,
 				ContractEvents:           orderHashToEvents[order.Hash],
@@ -1429,7 +1429,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 				orderEvent := &zeroex.OrderEvent{
 					Timestamp:                validationBlock.Timestamp,
 					OrderHash:                order.Hash,
-					SignedOrder:              order.SignedOrder(),
+					SignedV3Order:            order.SignedV3Order(),
 					FillableTakerAssetAmount: order.FillableTakerAssetAmount,
 					EndState:                 zeroex.ESOrderUnexpired,
 				}
@@ -1454,7 +1454,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 				orderEvent := &zeroex.OrderEvent{
 					Timestamp:                validationBlock.Timestamp,
 					OrderHash:                acceptedOrderInfo.OrderHash,
-					SignedOrder:              order.SignedOrder(),
+					SignedV3Order:            order.SignedV3Order(),
 					EndState:                 endState,
 					FillableTakerAssetAmount: newFillableAmount,
 					ContractEvents:           orderHashToEvents[order.Hash],
@@ -1507,7 +1507,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 				orderEvent := &zeroex.OrderEvent{
 					Timestamp:                validationBlock.Timestamp,
 					OrderHash:                rejectedOrderInfo.OrderHash,
-					SignedOrder:              rejectedOrderInfo.SignedOrder,
+					SignedV3Order:            rejectedOrderInfo.SignedV3Order,
 					FillableTakerAssetAmount: big.NewInt(0),
 					EndState:                 endState,
 					ContractEvents:           orderHashToEvents[order.Hash],
@@ -1531,7 +1531,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 	orderHashToPossiblyUnexpiredOrder map[common.Hash]struct{},
 	validationBlock *types.MiniHeader,
 ) ([]*zeroex.OrderEvent, error) {
-	signedOrders := []*zeroex.SignedOrder{}
+	signedOrders := []*zeroex.SignedV3Order{}
 	for _, order := range orderHashToDBOrder {
 		if order.IsRemoved && time.Since(order.LastUpdated) > permanentlyDeleteAfter {
 			if err := w.permanentlyDeleteOrder(order); err != nil {
@@ -1539,7 +1539,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 			}
 			continue
 		}
-		signedOrders = append(signedOrders, order.SignedOrder())
+		signedOrders = append(signedOrders, order.SignedV3Order())
 	}
 	if len(signedOrders) == 0 {
 		return nil, nil
@@ -1554,7 +1554,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 
 // ValidateAndStoreValidOrders applies general 0x validation and Mesh-specific validation to
 // the given orders and if they are valid, adds them to the OrderWatcher
-func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, chainID int, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
+func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedV3Order, chainID int, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	if len(orders) == 0 {
 		return &ordervalidator.ValidationResults{}, nil
 	}
@@ -1593,8 +1593,8 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 				(opts.KeepFullyFilled && rejectedOrderInfo.Status.Code == ordervalidator.ROFullyFilled.Code) ||
 				(opts.KeepUnfunded && rejectedOrderInfo.Status.Code == ordervalidator.ROUnfunded.Code) {
 				newOrderInfos = append(newOrderInfos, &ordervalidator.AcceptedOrderInfo{
-					OrderHash:   rejectedOrderInfo.OrderHash,
-					SignedOrder: rejectedOrderInfo.SignedOrder,
+					OrderHash:     rejectedOrderInfo.OrderHash,
+					SignedV3Order: rejectedOrderInfo.SignedV3Order,
 					// TODO(jalextowle): Verify that this is consistent with the OrderWatcher
 					FillableTakerAssetAmount: big.NewInt(0),
 					IsNew:                    true,
@@ -1632,7 +1632,7 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	return results, nil
 }
 
-func (w *Watcher) onchainOrderValidation(ctx context.Context, orders []*zeroex.SignedOrder) (*types.MiniHeader, *ordervalidator.ValidationResults, error) {
+func (w *Watcher) onchainOrderValidation(ctx context.Context, orders []*zeroex.SignedV3Order) (*types.MiniHeader, *ordervalidator.ValidationResults, error) {
 	// HACK(fabio): While we wait for EIP-1898 support in Parity, we have no choice but to do the `eth_call`
 	// at the latest known block _number_. As outlined in the `Rationale` section of EIP-1898, this approach cannot account
 	// for the block being re-org'd out before the `eth_call` and then back in before the `eth_getBlockByNumber`
@@ -1651,9 +1651,9 @@ func (w *Watcher) onchainOrderValidation(ctx context.Context, orders []*zeroex.S
 	return latestBlock, zeroexResults, nil
 }
 
-func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chainID int, pinned bool) (*ordervalidator.ValidationResults, []*zeroex.SignedOrder, error) {
+func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedV3Order, chainID int, pinned bool) (*ordervalidator.ValidationResults, []*zeroex.SignedV3Order, error) {
 	results := &ordervalidator.ValidationResults{}
-	validMeshOrders := []*zeroex.SignedOrder{}
+	validMeshOrders := []*zeroex.SignedV3Order{}
 
 	// Calculate max expiration time based on number of orders stored.
 	// This value is *exclusive*. Any incoming orders with an expiration time
@@ -1687,19 +1687,19 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 		if err != nil {
 			logger.WithField("error", err).Error("could not compute order hash")
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: order,
-				Kind:        ordervalidator.MeshError,
-				Status:      ordervalidator.ROInternalError,
+				OrderHash:     orderHash,
+				SignedV3Order: order,
+				Kind:          ordervalidator.MeshError,
+				Status:        ordervalidator.ROInternalError,
 			})
 			continue
 		}
 		if !pinned && order.ExpirationTimeSeconds.Cmp(maxExpirationTime) != -1 {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: order,
-				Kind:        ordervalidator.MeshValidation,
-				Status:      ordervalidator.ROMaxExpirationExceeded,
+				OrderHash:     orderHash,
+				SignedV3Order: order,
+				Kind:          ordervalidator.MeshValidation,
+				Status:        ordervalidator.ROMaxExpirationExceeded,
 			})
 			continue
 		}
@@ -1709,10 +1709,10 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 		// sender addresses over time.
 		if order.SenderAddress != constants.NullAddress {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: order,
-				Kind:        ordervalidator.MeshValidation,
-				Status:      ordervalidator.ROSenderAddressNotAllowed,
+				OrderHash:     orderHash,
+				SignedV3Order: order,
+				Kind:          ordervalidator.MeshValidation,
+				Status:        ordervalidator.ROSenderAddressNotAllowed,
 			})
 			continue
 		}
@@ -1726,19 +1726,19 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 		// a isTakerAddressWhitelisted function.
 		if order.TakerAddress != constants.NullAddress && order.TakerAddress != w.contractAddresses.ExchangeProxyFlashWallet {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: order,
-				Kind:        ordervalidator.MeshValidation,
-				Status:      ordervalidator.ROTakerAddressNotAllowed,
+				OrderHash:     orderHash,
+				SignedV3Order: order,
+				Kind:          ordervalidator.MeshValidation,
+				Status:        ordervalidator.ROTakerAddressNotAllowed,
 			})
 			continue
 		}
 		if order.ChainID.Cmp(big.NewInt(int64(chainID))) != 0 {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: order,
-				Kind:        ordervalidator.MeshValidation,
-				Status:      ordervalidator.ROIncorrectChain,
+				OrderHash:     orderHash,
+				SignedV3Order: order,
+				Kind:          ordervalidator.MeshValidation,
+				Status:        ordervalidator.ROIncorrectChain,
 			})
 			continue
 		}
@@ -1748,10 +1748,10 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 		expectedExchangeAddress := w.contractAddresses.Exchange
 		if order.ExchangeAddress != expectedExchangeAddress {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: order,
-				Kind:        ordervalidator.MeshValidation,
-				Status:      ordervalidator.ROIncorrectExchangeAddress,
+				OrderHash:     orderHash,
+				SignedV3Order: order,
+				Kind:          ordervalidator.MeshValidation,
+				Status:        ordervalidator.ROIncorrectExchangeAddress,
 			})
 			continue
 		}
@@ -1759,19 +1759,19 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 		if err := validateOrderSize(order); err != nil {
 			if err == constants.ErrMaxOrderSize {
 				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-					OrderHash:   orderHash,
-					SignedOrder: order,
-					Kind:        ordervalidator.MeshValidation,
-					Status:      ordervalidator.ROMaxOrderSizeExceeded,
+					OrderHash:     orderHash,
+					SignedV3Order: order,
+					Kind:          ordervalidator.MeshValidation,
+					Status:        ordervalidator.ROMaxOrderSizeExceeded,
 				})
 				continue
 			} else {
 				logger.WithField("error", err).Error("could not validate order size")
 				results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-					OrderHash:   orderHash,
-					SignedOrder: order,
-					Kind:        ordervalidator.MeshError,
-					Status:      ordervalidator.ROInternalError,
+					OrderHash:     orderHash,
+					SignedV3Order: order,
+					Kind:          ordervalidator.MeshError,
+					Status:        ordervalidator.ROInternalError,
 				})
 				continue
 			}
@@ -1781,7 +1781,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 		validMeshOrders = append(validMeshOrders, order)
 	}
 
-	newValidOrders := []*zeroex.SignedOrder{}
+	newValidOrders := []*zeroex.SignedV3Order{}
 	storedOrderStatuses, err := w.db.GetOrderStatuses(validOrderHashes)
 	if err != nil {
 		logger.WithField("error", err).Error("could not get stored order statuses")
@@ -1799,16 +1799,16 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 		} else if orderStatus.IsMarkedRemoved || orderStatus.IsMarkedUnfillable {
 			// If stored but marked as removed or unfillable, reject the order.
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
-				OrderHash:   orderHash,
-				SignedOrder: order,
-				Kind:        ordervalidator.MeshValidation,
-				Status:      ordervalidator.ROOrderAlreadyStoredAndUnfillable,
+				OrderHash:     orderHash,
+				SignedV3Order: order,
+				Kind:          ordervalidator.MeshValidation,
+				Status:        ordervalidator.ROOrderAlreadyStoredAndUnfillable,
 			})
 		} else {
 			// If stored but not marked as removed or unfillable, accept the order without re-validation
 			results.Accepted = append(results.Accepted, &ordervalidator.AcceptedOrderInfo{
 				OrderHash:                orderHash,
-				SignedOrder:              order,
+				SignedV3Order:            order,
 				FillableTakerAssetAmount: orderStatus.FillableTakerAssetAmount,
 				IsNew:                    false,
 			})
@@ -1818,7 +1818,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 	return results, newValidOrders, nil
 }
 
-func validateOrderSize(order *zeroex.SignedOrder) error {
+func validateOrderSize(order *zeroex.SignedV3Order) error {
 	encoded, err := json.Marshal(order)
 	if err != nil {
 		return err
@@ -1941,7 +1941,7 @@ func (w *Watcher) permanentlyDeleteOrder(order *types.OrderWithMetadata) error {
 		// the assetData to the EventDecoder.
 		logger.WithFields(logger.Fields{
 			"error":       err.Error(),
-			"signedOrder": order.SignedOrder,
+			"signedOrder": order.SignedV3Order,
 		}).Error("Unexpected error when trying to remove an assetData from decoder")
 		return err
 	}

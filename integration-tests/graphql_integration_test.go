@@ -37,7 +37,7 @@ func TestAddOrdersSuccess(t *testing.T) {
 	time.Sleep(blockProcessingWaitTime)
 
 	// Send the "AddOrders" request to the GraphQL server.
-	validationResponse, err := client.AddOrders(ctx, []*zeroex.SignedOrder{signedTestOrder})
+	validationResponse, err := client.AddOrders(ctx, []*zeroex.SignedV3Order{signedTestOrder})
 	require.NoError(t, err)
 
 	// Ensure that the validation results contain only the order that was
@@ -89,7 +89,7 @@ func TestGetOrder(t *testing.T) {
 	signedTestOrder := scenario.NewSignedTestOrder(t, orderOptions)
 	time.Sleep(blockProcessingWaitTime)
 
-	validationResponse, err := client.AddOrders(ctx, []*zeroex.SignedOrder{signedTestOrder})
+	validationResponse, err := client.AddOrders(ctx, []*zeroex.SignedV3Order{signedTestOrder})
 	require.NoError(t, err)
 	assert.Len(t, validationResponse.Accepted, 1)
 	assert.Len(t, validationResponse.Rejected, 0)

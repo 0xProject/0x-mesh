@@ -848,7 +848,7 @@ func (app *App) GetOrders(perPage int, minOrderHash common.Hash) (*types.GetOrde
 	for _, order := range orders {
 		ordersInfos = append(ordersInfos, &types.OrderInfo{
 			OrderHash:                order.Hash,
-			SignedOrder:              order.SignedOrder(),
+			SignedV3Order:            order.SignedV3Order(),
 			FillableTakerAssetAmount: order.FillableTakerAssetAmount,
 		})
 	}
@@ -866,7 +866,7 @@ func (app *App) GetOrders(perPage int, minOrderHash common.Hash) (*types.GetOrde
 // is true, the orders will be marked as pinned, which means they will only be
 // removed if they become unfillable and will not be removed due to having a high
 // expiration time or any incentive mechanisms.
-func (app *App) AddOrders(ctx context.Context, signedOrders []*zeroex.SignedOrder, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
+func (app *App) AddOrders(ctx context.Context, signedOrders []*zeroex.SignedV3Order, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	signedOrdersRaw := []*json.RawMessage{}
 	buf := &bytes.Buffer{}
 	if err := json.NewEncoder(buf).Encode(signedOrders); err != nil {
@@ -887,19 +887,19 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 		Rejected: []*ordervalidator.RejectedOrderInfo{},
 	}
 	orderHashesSeen := map[common.Hash]struct{}{}
-	schemaValidOrders := []*zeroex.SignedOrder{}
+	schemaValidOrders := []*zeroex.SignedV3Order{}
 	for _, signedOrderRaw := range signedOrdersRaw {
 		signedOrderBytes := []byte(*signedOrderRaw)
 		result, err := app.orderFilter.ValidateOrderJSON(signedOrderBytes)
 		if err != nil {
-			signedOrder := &zeroex.SignedOrder{}
+			signedOrder := &zeroex.SignedV3Order{}
 			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
 				signedOrder = nil
 			}
 			log.WithField("signedOrderRaw", string(signedOrderBytes)).Info("Unexpected error while attempting to validate signedOrderJSON against schema")
 			allValidationResults.Rejected = append(allValidationResults.Rejected, &ordervalidator.RejectedOrderInfo{
-				SignedOrder: signedOrder,
-				Kind:        ordervalidator.MeshValidation,
+				SignedV3Order: signedOrder,
+				Kind:          ordervalidator.MeshValidation,
 				Status: ordervalidator.RejectedOrderStatus{
 					Code:    ordervalidator.ROInvalidSchemaCode,
 					Message: "order did not pass JSON-schema validation: Malformed JSON or empty payload",
@@ -913,19 +913,19 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 				Code:    ordervalidator.ROInvalidSchemaCode,
 				Message: fmt.Sprintf("order did not pass JSON-schema validation: %s", result.Errors()),
 			}
-			signedOrder := &zeroex.SignedOrder{}
+			signedOrder := &zeroex.SignedV3Order{}
 			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
 				signedOrder = nil
 			}
 			allValidationResults.Rejected = append(allValidationResults.Rejected, &ordervalidator.RejectedOrderInfo{
-				SignedOrder: signedOrder,
-				Kind:        ordervalidator.MeshValidation,
-				Status:      status,
+				SignedV3Order: signedOrder,
+				Kind:          ordervalidator.MeshValidation,
+				Status:        status,
 			})
 			continue
 		}
 
-		signedOrder := &zeroex.SignedOrder{}
+		signedOrder := &zeroex.SignedV3Order{}
 		if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
 			// This error should never happen since the signedOrder already passed the JSON schema validation above
 			log.WithField("signedOrderRaw", string(signedOrderBytes)).Error("Failed to unmarshal SignedOrder")
@@ -964,7 +964,7 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 		}).Debug("added new valid order via GraphQL or browser callback")
 
 		// Share the order with our peers.
-		if err := app.shareOrder(acceptedOrderInfo.SignedOrder); err != nil {
+		if err := app.shareOrder(acceptedOrderInfo.SignedV3Order); err != nil {
 			return nil, err
 		}
 	}
@@ -973,7 +973,7 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 }
 
 // shareOrder immediately shares the given order on the GossipSub network.
-func (app *App) shareOrder(order *zeroex.SignedOrder) error {
+func (app *App) shareOrder(order *zeroex.SignedV3Order) error {
 	<-app.started
 
 	encoded, err := encoding.OrderToRawMessage(app.orderFilter.Topic(), order)

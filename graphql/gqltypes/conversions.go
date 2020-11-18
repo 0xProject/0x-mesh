@@ -59,8 +59,8 @@ func LatestBlockFromCommonType(latestBlock types.LatestBlock) *LatestBlock {
 	}
 }
 
-func NewOrderToSignedOrder(newOrder *NewOrder) *zeroex.SignedOrder {
-	return &zeroex.SignedOrder{
+func NewOrderToSignedOrder(newOrder *NewOrder) *zeroex.SignedV3Order {
+	return &zeroex.SignedV3Order{
 		V3Order: zeroex.V3Order{
 			ChainID:               math.MustParseBig256(newOrder.ChainID),
 			ExchangeAddress:       common.HexToAddress(newOrder.ExchangeAddress),
@@ -83,15 +83,15 @@ func NewOrderToSignedOrder(newOrder *NewOrder) *zeroex.SignedOrder {
 	}
 }
 
-func NewOrdersToSignedOrders(newOrders []*NewOrder) []*zeroex.SignedOrder {
-	result := make([]*zeroex.SignedOrder, len(newOrders))
+func NewOrdersToSignedOrders(newOrders []*NewOrder) []*zeroex.SignedV3Order {
+	result := make([]*zeroex.SignedV3Order, len(newOrders))
 	for i, newOrder := range newOrders {
 		result[i] = NewOrderToSignedOrder(newOrder)
 	}
 	return result
 }
 
-func NewOrderFromSignedOrder(signedOrder *zeroex.SignedOrder) *NewOrder {
+func NewOrderFromSignedOrder(signedOrder *zeroex.SignedV3Order) *NewOrder {
 	return &NewOrder{
 		ChainID:               signedOrder.ChainID.String(),
 		ExchangeAddress:       strings.ToLower(signedOrder.ExchangeAddress.Hex()),
@@ -113,7 +113,7 @@ func NewOrderFromSignedOrder(signedOrder *zeroex.SignedOrder) *NewOrder {
 	}
 }
 
-func NewOrdersFromSignedOrders(signedOrders []*zeroex.SignedOrder) []*NewOrder {
+func NewOrdersFromSignedOrders(signedOrders []*zeroex.SignedV3Order) []*NewOrder {
 	result := make([]*NewOrder, len(signedOrders))
 	for i, order := range signedOrders {
 		result[i] = NewOrderFromSignedOrder(order)
@@ -168,23 +168,23 @@ func AcceptedOrderResultFromOrderInfo(info *ordervalidator.AcceptedOrderInfo) *A
 	return &AcceptedOrderResult{
 		Order: &OrderWithMetadata{
 			Hash:                     info.OrderHash.String(),
-			ChainID:                  info.SignedOrder.ChainID.String(),
-			ExchangeAddress:          strings.ToLower(info.SignedOrder.ExchangeAddress.Hex()),
-			MakerAddress:             strings.ToLower(info.SignedOrder.MakerAddress.Hex()),
-			MakerAssetData:           types.BytesToHex(info.SignedOrder.MakerAssetData),
-			MakerFeeAssetData:        types.BytesToHex(info.SignedOrder.MakerFeeAssetData),
-			MakerAssetAmount:         info.SignedOrder.MakerAssetAmount.String(),
-			MakerFee:                 info.SignedOrder.MakerFee.String(),
-			TakerAddress:             strings.ToLower(info.SignedOrder.TakerAddress.Hex()),
-			TakerAssetData:           types.BytesToHex(info.SignedOrder.TakerAssetData),
-			TakerFeeAssetData:        types.BytesToHex(info.SignedOrder.TakerFeeAssetData),
-			TakerAssetAmount:         info.SignedOrder.TakerAssetAmount.String(),
-			TakerFee:                 info.SignedOrder.TakerFee.String(),
-			SenderAddress:            strings.ToLower(info.SignedOrder.SenderAddress.Hex()),
-			FeeRecipientAddress:      strings.ToLower(info.SignedOrder.FeeRecipientAddress.Hex()),
-			ExpirationTimeSeconds:    info.SignedOrder.ExpirationTimeSeconds.String(),
-			Salt:                     info.SignedOrder.Salt.String(),
-			Signature:                types.BytesToHex(info.SignedOrder.Signature),
+			ChainID:                  info.SignedV3Order.ChainID.String(),
+			ExchangeAddress:          strings.ToLower(info.SignedV3Order.ExchangeAddress.Hex()),
+			MakerAddress:             strings.ToLower(info.SignedV3Order.MakerAddress.Hex()),
+			MakerAssetData:           types.BytesToHex(info.SignedV3Order.MakerAssetData),
+			MakerFeeAssetData:        types.BytesToHex(info.SignedV3Order.MakerFeeAssetData),
+			MakerAssetAmount:         info.SignedV3Order.MakerAssetAmount.String(),
+			MakerFee:                 info.SignedV3Order.MakerFee.String(),
+			TakerAddress:             strings.ToLower(info.SignedV3Order.TakerAddress.Hex()),
+			TakerAssetData:           types.BytesToHex(info.SignedV3Order.TakerAssetData),
+			TakerFeeAssetData:        types.BytesToHex(info.SignedV3Order.TakerFeeAssetData),
+			TakerAssetAmount:         info.SignedV3Order.TakerAssetAmount.String(),
+			TakerFee:                 info.SignedV3Order.TakerFee.String(),
+			SenderAddress:            strings.ToLower(info.SignedV3Order.SenderAddress.Hex()),
+			FeeRecipientAddress:      strings.ToLower(info.SignedV3Order.FeeRecipientAddress.Hex()),
+			ExpirationTimeSeconds:    info.SignedV3Order.ExpirationTimeSeconds.String(),
+			Salt:                     info.SignedV3Order.Salt.String(),
+			Signature:                types.BytesToHex(info.SignedV3Order.Signature),
 			FillableTakerAssetAmount: info.FillableTakerAssetAmount.String(),
 		},
 		IsNew: info.IsNew,
@@ -211,23 +211,23 @@ func RejectedOrderResultFromOrderInfo(info *ordervalidator.RejectedOrderInfo) (*
 	return &RejectedOrderResult{
 		Hash: hash,
 		Order: &Order{
-			ChainID:               info.SignedOrder.ChainID.String(),
-			ExchangeAddress:       strings.ToLower(info.SignedOrder.ExchangeAddress.Hex()),
-			MakerAddress:          strings.ToLower(info.SignedOrder.MakerAddress.Hex()),
-			MakerAssetData:        types.BytesToHex(info.SignedOrder.MakerAssetData),
-			MakerFeeAssetData:     types.BytesToHex(info.SignedOrder.MakerFeeAssetData),
-			MakerAssetAmount:      info.SignedOrder.MakerAssetAmount.String(),
-			MakerFee:              info.SignedOrder.MakerFee.String(),
-			TakerAddress:          strings.ToLower(info.SignedOrder.TakerAddress.Hex()),
-			TakerAssetData:        types.BytesToHex(info.SignedOrder.TakerAssetData),
-			TakerFeeAssetData:     types.BytesToHex(info.SignedOrder.TakerFeeAssetData),
-			TakerAssetAmount:      info.SignedOrder.TakerAssetAmount.String(),
-			TakerFee:              info.SignedOrder.TakerFee.String(),
-			SenderAddress:         strings.ToLower(info.SignedOrder.SenderAddress.Hex()),
-			FeeRecipientAddress:   strings.ToLower(info.SignedOrder.FeeRecipientAddress.Hex()),
-			ExpirationTimeSeconds: info.SignedOrder.ExpirationTimeSeconds.String(),
-			Salt:                  info.SignedOrder.Salt.String(),
-			Signature:             types.BytesToHex(info.SignedOrder.Signature),
+			ChainID:               info.SignedV3Order.ChainID.String(),
+			ExchangeAddress:       strings.ToLower(info.SignedV3Order.ExchangeAddress.Hex()),
+			MakerAddress:          strings.ToLower(info.SignedV3Order.MakerAddress.Hex()),
+			MakerAssetData:        types.BytesToHex(info.SignedV3Order.MakerAssetData),
+			MakerFeeAssetData:     types.BytesToHex(info.SignedV3Order.MakerFeeAssetData),
+			MakerAssetAmount:      info.SignedV3Order.MakerAssetAmount.String(),
+			MakerFee:              info.SignedV3Order.MakerFee.String(),
+			TakerAddress:          strings.ToLower(info.SignedV3Order.TakerAddress.Hex()),
+			TakerAssetData:        types.BytesToHex(info.SignedV3Order.TakerAssetData),
+			TakerFeeAssetData:     types.BytesToHex(info.SignedV3Order.TakerFeeAssetData),
+			TakerAssetAmount:      info.SignedV3Order.TakerAssetAmount.String(),
+			TakerFee:              info.SignedV3Order.TakerFee.String(),
+			SenderAddress:         strings.ToLower(info.SignedV3Order.SenderAddress.Hex()),
+			FeeRecipientAddress:   strings.ToLower(info.SignedV3Order.FeeRecipientAddress.Hex()),
+			ExpirationTimeSeconds: info.SignedV3Order.ExpirationTimeSeconds.String(),
+			Salt:                  info.SignedV3Order.Salt.String(),
+			Signature:             types.BytesToHex(info.SignedV3Order.Signature),
 		},
 		Code:    code,
 		Message: info.Status.Message,
@@ -250,23 +250,23 @@ func OrderEventFromZeroExType(event *zeroex.OrderEvent) *OrderEvent {
 	return &OrderEvent{
 		Order: &OrderWithMetadata{
 			Hash:                     event.OrderHash.String(),
-			ChainID:                  event.SignedOrder.ChainID.String(),
-			ExchangeAddress:          strings.ToLower(event.SignedOrder.ExchangeAddress.Hex()),
-			MakerAddress:             strings.ToLower(event.SignedOrder.MakerAddress.Hex()),
-			MakerAssetData:           types.BytesToHex(event.SignedOrder.MakerAssetData),
-			MakerFeeAssetData:        types.BytesToHex(event.SignedOrder.MakerFeeAssetData),
-			MakerAssetAmount:         event.SignedOrder.MakerAssetAmount.String(),
-			MakerFee:                 event.SignedOrder.MakerFee.String(),
-			TakerAddress:             strings.ToLower(event.SignedOrder.TakerAddress.Hex()),
-			TakerAssetData:           types.BytesToHex(event.SignedOrder.TakerAssetData),
-			TakerFeeAssetData:        types.BytesToHex(event.SignedOrder.TakerFeeAssetData),
-			TakerAssetAmount:         event.SignedOrder.TakerAssetAmount.String(),
-			TakerFee:                 event.SignedOrder.TakerFee.String(),
-			SenderAddress:            strings.ToLower(event.SignedOrder.SenderAddress.Hex()),
-			FeeRecipientAddress:      strings.ToLower(event.SignedOrder.FeeRecipientAddress.Hex()),
-			ExpirationTimeSeconds:    event.SignedOrder.ExpirationTimeSeconds.String(),
-			Salt:                     event.SignedOrder.Salt.String(),
-			Signature:                types.BytesToHex(event.SignedOrder.Signature),
+			ChainID:                  event.SignedV3Order.ChainID.String(),
+			ExchangeAddress:          strings.ToLower(event.SignedV3Order.ExchangeAddress.Hex()),
+			MakerAddress:             strings.ToLower(event.SignedV3Order.MakerAddress.Hex()),
+			MakerAssetData:           types.BytesToHex(event.SignedV3Order.MakerAssetData),
+			MakerFeeAssetData:        types.BytesToHex(event.SignedV3Order.MakerFeeAssetData),
+			MakerAssetAmount:         event.SignedV3Order.MakerAssetAmount.String(),
+			MakerFee:                 event.SignedV3Order.MakerFee.String(),
+			TakerAddress:             strings.ToLower(event.SignedV3Order.TakerAddress.Hex()),
+			TakerAssetData:           types.BytesToHex(event.SignedV3Order.TakerAssetData),
+			TakerFeeAssetData:        types.BytesToHex(event.SignedV3Order.TakerFeeAssetData),
+			TakerAssetAmount:         event.SignedV3Order.TakerAssetAmount.String(),
+			TakerFee:                 event.SignedV3Order.TakerFee.String(),
+			SenderAddress:            strings.ToLower(event.SignedV3Order.SenderAddress.Hex()),
+			FeeRecipientAddress:      strings.ToLower(event.SignedV3Order.FeeRecipientAddress.Hex()),
+			ExpirationTimeSeconds:    event.SignedV3Order.ExpirationTimeSeconds.String(),
+			Salt:                     event.SignedV3Order.Salt.String(),
+			Signature:                types.BytesToHex(event.SignedV3Order.Signature),
 			FillableTakerAssetAmount: event.FillableTakerAssetAmount.String(),
 		},
 		EndState:       OrderEndState(event.EndState),

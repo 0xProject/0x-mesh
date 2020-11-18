@@ -128,7 +128,7 @@ func TestOrderWatcherTakerWhitelist(t *testing.T) {
 	require.NoError(t, err)
 
 	testCases := []*struct {
-		order                     *zeroex.SignedOrder
+		order                     *zeroex.SignedV3Order
 		isTakerAddressWhitelisted bool
 	}{
 		{
@@ -157,7 +157,7 @@ func TestOrderWatcherTakerWhitelist(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, testCase := range testCases {
-		results, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{testCase.order}, constants.TestChainID, false, &types.AddOrdersOpts{})
+		results, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedV3Order{testCase.order}, constants.TestChainID, false, &types.AddOrdersOpts{})
 		require.NoError(t, err)
 		if testCase.isTakerAddressWhitelisted {
 			orderHash, err := testCase.order.ComputeOrderHash()
@@ -183,12 +183,12 @@ func TestOrderWatcherDoesntStoreInvalidOrdersWithConfigurations(t *testing.T) {
 
 	for _, testCase := range []*struct {
 		description          string
-		signedOrderGenerator func() *zeroex.SignedOrder
+		signedOrderGenerator func() *zeroex.SignedV3Order
 		addOrdersOpts        *types.AddOrdersOpts
 	}{
 		{
 			description: "doesn't store cancelled orders when KeepCancelled is disabled",
-			signedOrderGenerator: func() *zeroex.SignedOrder {
+			signedOrderGenerator: func() *zeroex.SignedV3Order {
 				signedOrder := scenario.NewSignedTestOrder(t,
 					orderopts.SetupMakerState(true),
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
@@ -213,7 +213,7 @@ func TestOrderWatcherDoesntStoreInvalidOrdersWithConfigurations(t *testing.T) {
 		},
 		{
 			description: "doesn't store expired orders when KeepExpired is disabled",
-			signedOrderGenerator: func() *zeroex.SignedOrder {
+			signedOrderGenerator: func() *zeroex.SignedV3Order {
 				return scenario.NewSignedTestOrder(t,
 					orderopts.SetupMakerState(true),
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
@@ -229,7 +229,7 @@ func TestOrderWatcherDoesntStoreInvalidOrdersWithConfigurations(t *testing.T) {
 		},
 		{
 			description: "doesn't store fully filled orders when KeepFullyFilled is disabled",
-			signedOrderGenerator: func() *zeroex.SignedOrder {
+			signedOrderGenerator: func() *zeroex.SignedV3Order {
 				takerAddress := constants.GanacheAccount3
 				signedOrder := scenario.NewSignedTestOrder(t,
 					orderopts.SetupMakerState(true),
@@ -257,7 +257,7 @@ func TestOrderWatcherDoesntStoreInvalidOrdersWithConfigurations(t *testing.T) {
 		},
 		{
 			description: "doesn't store unfunded orders when KeepUnfunded is disabled",
-			signedOrderGenerator: func() *zeroex.SignedOrder {
+			signedOrderGenerator: func() *zeroex.SignedV3Order {
 				return scenario.NewSignedTestOrder(t,
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
 					orderopts.MakerFee(big.NewInt(1)),
@@ -285,7 +285,7 @@ func TestOrderWatcherDoesntStoreInvalidOrdersWithConfigurations(t *testing.T) {
 		err = blockWatcher.SyncToLatestBlock()
 		require.NoError(t, err)
 
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, testCase.addOrdersOpts)
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedV3Order{signedOrder}, constants.TestChainID, false, testCase.addOrdersOpts)
 		require.NoError(t, err)
 
 		assert.Len(t, validationResults.Accepted, 0, testCase.description)
@@ -308,14 +308,14 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 	for _, testCase := range []*struct {
 		description            string
 		expectedFillableAmount *big.Int
-		signedOrderGenerator   func() *zeroex.SignedOrder
+		signedOrderGenerator   func() *zeroex.SignedV3Order
 		addOrdersOpts          *types.AddOrdersOpts
 		isExpired              bool
 	}{
 		{
 			description:            "stores valid orders",
 			expectedFillableAmount: big.NewInt(42),
-			signedOrderGenerator: func() *zeroex.SignedOrder {
+			signedOrderGenerator: func() *zeroex.SignedV3Order {
 				return scenario.NewSignedTestOrder(t,
 					orderopts.SetupMakerState(true),
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
@@ -326,7 +326,7 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 		{
 			description:            "stores cancelled orders when KeepCancelled is enabled",
 			expectedFillableAmount: big.NewInt(0),
-			signedOrderGenerator: func() *zeroex.SignedOrder {
+			signedOrderGenerator: func() *zeroex.SignedV3Order {
 				signedOrder := scenario.NewSignedTestOrder(t,
 					orderopts.SetupMakerState(true),
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
@@ -347,7 +347,7 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 		{
 			description:            "stores expired orders when KeepExpired is enabled",
 			expectedFillableAmount: big.NewInt(0),
-			signedOrderGenerator: func() *zeroex.SignedOrder {
+			signedOrderGenerator: func() *zeroex.SignedV3Order {
 				return scenario.NewSignedTestOrder(t,
 					orderopts.SetupMakerState(true),
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
@@ -360,7 +360,7 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 		{
 			description:            "stores fully filled orders when KeepFullyFilled is enabled",
 			expectedFillableAmount: big.NewInt(0),
-			signedOrderGenerator: func() *zeroex.SignedOrder {
+			signedOrderGenerator: func() *zeroex.SignedV3Order {
 				takerAddress := constants.GanacheAccount3
 				signedOrder := scenario.NewSignedTestOrder(t,
 					orderopts.SetupMakerState(true),
@@ -384,7 +384,7 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 		{
 			description:            "stores unfunded orders when KeepUnfunded is enabled",
 			expectedFillableAmount: big.NewInt(0),
-			signedOrderGenerator: func() *zeroex.SignedOrder {
+			signedOrderGenerator: func() *zeroex.SignedV3Order {
 				return scenario.NewSignedTestOrder(t,
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
 					orderopts.MakerFee(big.NewInt(1)),
@@ -407,7 +407,7 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 		err = blockWatcher.SyncToLatestBlock()
 		require.NoError(t, err)
 
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, testCase.addOrdersOpts)
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedV3Order{signedOrder}, constants.TestChainID, false, testCase.addOrdersOpts)
 		require.NoError(t, err)
 
 		isUnfillable := testCase.expectedFillableAmount.Cmp(big.NewInt(0)) == 0
@@ -1753,7 +1753,7 @@ func TestOrderWatcherOrderExpiredWhenAddedThenUnexpired(t *testing.T) {
 	// Add the order to Mesh
 	err = blockwatcher.SyncToLatestBlock()
 	require.NoError(t, err)
-	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{KeepExpired: true})
+	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedV3Order{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{KeepExpired: true})
 	require.NoError(t, err)
 
 	assert.Len(t, validationResults.Accepted, 0)
@@ -1890,11 +1890,11 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 		switch orderEvent.EndState {
 		case zeroex.ESOrderAdded:
 			numAdded += 1
-			orderExpirationTime := orderEvent.SignedOrder.ExpirationTimeSeconds
+			orderExpirationTime := orderEvent.SignedV3Order.ExpirationTimeSeconds
 			assert.True(t, orderExpirationTime.Cmp(storedMaxExpirationTime) == -1, "ADDED order has an expiration time of %s which is *greater than* the maximum of %s", orderExpirationTime, storedMaxExpirationTime)
 		case zeroex.ESStoppedWatching:
 			numStoppedWatching += 1
-			orderExpirationTime := orderEvent.SignedOrder.ExpirationTimeSeconds
+			orderExpirationTime := orderEvent.SignedV3Order.ExpirationTimeSeconds
 			assert.True(t, orderExpirationTime.Cmp(storedMaxExpirationTime) != -1, "STOPPED_WATCHING order has an expiration time of %s which is *less than* the maximum of %s", orderExpirationTime, storedMaxExpirationTime)
 		default:
 			t.Errorf("unexpected order event type: %s", orderEvent.EndState)
@@ -2268,7 +2268,7 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 		Accepted: []*ordervalidator.AcceptedOrderInfo{
 			{
 				OrderHash:                orderHash,
-				SignedOrder:              signedOrder,
+				SignedV3Order:            signedOrder,
 				FillableTakerAssetAmount: big.NewInt(1).Div(signedOrder.TakerAssetAmount, big.NewInt(2)),
 				IsNew:                    false,
 			},
@@ -2401,7 +2401,7 @@ func TestRevalidateOrdersForMissingEvents(t *testing.T) {
 		return err
 	})
 	g.Go(func() error {
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{})
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedV3Order{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{})
 		if err != nil {
 			return err
 		}
@@ -2489,7 +2489,7 @@ func TestMissingOrderEvents(t *testing.T) {
 		return err
 	})
 	g.Go(func() error {
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{})
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedV3Order{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{})
 		if err != nil {
 			return err
 		}
@@ -2606,7 +2606,7 @@ func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
 		return err
 	})
 	g.Go(func() error {
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{})
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedV3Order{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{})
 		if err != nil {
 			return err
 		}
@@ -2650,7 +2650,7 @@ func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
 	assert.Equal(t, orderHash, orderEvents[0].OrderHash)
 }
 
-func setupOrderWatcherScenario(ctx context.Context, t *testing.T, database *db.DB, signedOrder *zeroex.SignedOrder, opts *types.AddOrdersOpts) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
+func setupOrderWatcherScenario(ctx context.Context, t *testing.T, database *db.DB, signedOrder *zeroex.SignedV3Order, opts *types.AddOrdersOpts) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
 	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
 
 	// Start watching an order
@@ -2663,11 +2663,11 @@ func setupOrderWatcherScenario(ctx context.Context, t *testing.T, database *db.D
 	return blockWatcher, orderEventsChan
 }
 
-func watchOrder(ctx context.Context, t *testing.T, orderWatcher *Watcher, blockWatcher *blockwatch.Watcher, signedOrder *zeroex.SignedOrder, pinned bool, opts *types.AddOrdersOpts) {
+func watchOrder(ctx context.Context, t *testing.T, orderWatcher *Watcher, blockWatcher *blockwatch.Watcher, signedOrder *zeroex.SignedV3Order, pinned bool, opts *types.AddOrdersOpts) {
 	err := blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
 
-	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, pinned, opts)
+	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedV3Order{signedOrder}, constants.TestChainID, pinned, opts)
 	require.NoError(t, err)
 	if len(validationResults.Rejected) != 0 {
 		spew.Dump(validationResults.Rejected)
