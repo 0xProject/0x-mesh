@@ -421,10 +421,10 @@ func TestComputeABIEncodedSignedOrderStringByteLength(t *testing.T) {
 	testOrder := scenario.NewSignedTestOrder(t)
 
 	testMultiAssetOrder := scenario.NewSignedTestOrder(t)
-	testMultiAssetOrder.Order.MakerAssetData = common.Hex2Bytes("123412304102340120350120340123041023401234102341234234523452345234")
-	testMultiAssetOrder.Order.MakerAssetData = common.Hex2Bytes("132519348523094582039457283452")
-	testMultiAssetOrder.Order.MakerAssetData = multiAssetAssetData
-	testMultiAssetOrder.Order.MakerAssetData = common.Hex2Bytes("324857203942034562893723452345246529837")
+	testMultiAssetOrder.V3Order.MakerAssetData = common.Hex2Bytes("123412304102340120350120340123041023401234102341234234523452345234")
+	testMultiAssetOrder.V3Order.MakerAssetData = common.Hex2Bytes("132519348523094582039457283452")
+	testMultiAssetOrder.V3Order.MakerAssetData = multiAssetAssetData
+	testMultiAssetOrder.V3Order.MakerAssetData = common.Hex2Bytes("324857203942034562893723452345246529837")
 
 	testCases := []*zeroex.SignedOrder{testOrder, testMultiAssetOrder}
 

@@ -61,7 +61,7 @@ func LatestBlockFromCommonType(latestBlock types.LatestBlock) *LatestBlock {
 
 func NewOrderToSignedOrder(newOrder *NewOrder) *zeroex.SignedOrder {
 	return &zeroex.SignedOrder{
-		Order: zeroex.Order{
+		V3Order: zeroex.V3Order{
 			ChainID:               math.MustParseBig256(newOrder.ChainID),
 			ExchangeAddress:       common.HexToAddress(newOrder.ExchangeAddress),
 			MakerAddress:          common.HexToAddress(newOrder.MakerAddress),

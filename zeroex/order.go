@@ -17,8 +17,7 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-// Order represents an unsigned 0x order
-type Order struct {
+type V3Order struct {
 	ChainID               *big.Int       `json:"chainId"`
 	ExchangeAddress       common.Address `json:"exchangeAddress"`
 	MakerAddress          common.Address `json:"makerAddress"`
@@ -40,9 +39,8 @@ type Order struct {
 	hash *common.Hash
 }
 
-// SignedOrder represents a signed 0x order
 type SignedOrder struct {
-	Order
+	V3Order
 	Signature []byte `json:"signature"`
 }
 
@@ -418,12 +416,12 @@ var eip712OrderTypes = gethsigner.Types{
 }
 
 // ResetHash resets the cached order hash. Usually only required for testing.
-func (o *Order) ResetHash() {
+func (o *V3Order) ResetHash() {
 	o.hash = nil
 }
 
 // ComputeOrderHash computes a 0x order hash
-func (o *Order) ComputeOrderHash() (common.Hash, error) {
+func (o *V3Order) ComputeOrderHash() (common.Hash, error) {
 	if o.hash != nil {
 		return *o.hash, nil
 	}
@@ -476,7 +474,7 @@ func (o *Order) ComputeOrderHash() (common.Hash, error) {
 }
 
 // SignOrder signs the 0x order with the supplied Signer
-func SignOrder(signer signer.Signer, order *Order) (*SignedOrder, error) {
+func SignOrder(signer signer.Signer, order *V3Order) (*SignedOrder, error) {
 	if order == nil {
 		return nil, errors.New("cannot sign nil order")
 	}
@@ -497,14 +495,14 @@ func SignOrder(signer signer.Signer, order *Order) (*SignedOrder, error) {
 	copy(signature[33:65], ecSignature.S[:])
 	signature[65] = byte(EthSignSignature)
 	signedOrder := &SignedOrder{
-		Order:     *order,
+		V3Order:   *order,
 		Signature: signature,
 	}
 	return signedOrder, nil
 }
 
 // SignTestOrder signs the 0x order with the local test signer
-func SignTestOrder(order *Order) (*SignedOrder, error) {
+func SignTestOrder(order *V3Order) (*SignedOrder, error) {
 	testSigner := signer.NewTestSigner()
 	signedOrder, err := SignOrder(testSigner, order)
 	if err != nil {

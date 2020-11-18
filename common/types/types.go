@@ -170,7 +170,7 @@ type OrderWithMetadata struct {
 
 func (order OrderWithMetadata) SignedOrder() *zeroex.SignedOrder {
 	return &zeroex.SignedOrder{
-		Order: zeroex.Order{
+		V3Order: zeroex.V3Order{
 			ChainID:               order.ChainID,
 			ExchangeAddress:       order.ExchangeAddress,
 			MakerAddress:          order.MakerAddress,

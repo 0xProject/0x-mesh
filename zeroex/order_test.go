@@ -18,7 +18,7 @@ import (
 
 var contractAddresses = ethereum.GanacheAddresses
 
-var testOrder = &Order{
+var testOrder = &V3Order{
 	ChainID:               big.NewInt(constants.TestChainID),
 	MakerAddress:          constants.GanacheAccount0,
 	TakerAddress:          constants.NullAddress,
@@ -37,7 +37,7 @@ var testOrder = &Order{
 	ExchangeAddress:       contractAddresses.Exchange,
 }
 
-var testHashOrder = &Order{
+var testHashOrder = &V3Order{
 	ChainID:               big.NewInt(constants.TestChainID),
 	ExchangeAddress:       common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
 	MakerAddress:          constants.NullAddress,
