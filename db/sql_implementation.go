@@ -45,7 +45,7 @@ type DB struct {
 func defaultOptions() *Options {
 	return &Options{
 		DriverName:     "sqlite3",
-		DataSourceName: "0x_mesh/db/db.sqlite",
+		DataSourceName: "0x_mesh/db/db.sqlite?_journal_mode=wal",
 		MaxOrders:      100000,
 		MaxMiniHeaders: 20,
 	}
@@ -55,7 +55,7 @@ func defaultOptions() *Options {
 func TestOptions() *Options {
 	return &Options{
 		DriverName:     "sqlite3",
-		DataSourceName: filepath.Join("/tmp", "mesh_testing", uuid.New().String(), "db.sqlite"),
+		DataSourceName: filepath.Join("/tmp", "mesh_testing", uuid.New().String(), "db.sqlite?_journal_mode=wal"),
 		MaxOrders:      100,
 		MaxMiniHeaders: 20,
 	}
