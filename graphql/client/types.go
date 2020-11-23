@@ -101,23 +101,7 @@ type OrderSort = gqltypes.OrderSort
 
 // A signed 0x order along with some additional metadata about the order which is not part of the 0x protocol specification.
 type OrderWithMetadata struct {
-	ChainID               *big.Int       `json:"chainId"`
-	ExchangeAddress       common.Address `json:"exchangeAddress"`
-	MakerAddress          common.Address `json:"makerAddress"`
-	MakerAssetData        []byte         `json:"makerAssetData"`
-	MakerAssetAmount      *big.Int       `json:"makerAssetAmount"`
-	MakerFeeAssetData     []byte         `json:"makerFeeAssetData"`
-	MakerFee              *big.Int       `json:"makerFee"`
-	TakerAddress          common.Address `json:"takerAddress"`
-	TakerAssetData        []byte         `json:"takerAssetData"`
-	TakerAssetAmount      *big.Int       `json:"takerAssetAmount"`
-	TakerFeeAssetData     []byte         `json:"takerFeeAssetData"`
-	TakerFee              *big.Int       `json:"takerFee"`
-	SenderAddress         common.Address `json:"senderAddress"`
-	FeeRecipientAddress   common.Address `json:"feeRecipientAddress"`
-	ExpirationTimeSeconds *big.Int       `json:"expirationTimeSeconds"`
-	Salt                  *big.Int       `json:"salt"`
-	Signature             []byte         `json:"signature"`
+	Order
 	// The hash, which can be used to uniquely identify an order.
 	Hash common.Hash `json:"hash"`
 	// The remaining amount of the maker asset which has not yet been filled.
