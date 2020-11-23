@@ -28,6 +28,11 @@ type V3Order struct {
 	hash *common.Hash
 }
 
+// ResetHash resets the cached order hash. Usually only required for testing.
+func (o *V3Order) resetHash() {
+	o.hash = nil
+}
+
 type SignedV3Order struct {
 	V3Order
 	Signature []byte `json:"signature"`

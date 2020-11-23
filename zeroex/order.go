@@ -388,11 +388,6 @@ var eip712OrderTypes = gethsigner.Types{
 	},
 }
 
-// ResetHash resets the cached order hash. Usually only required for testing.
-func (o *V3Order) ResetHash() {
-	o.hash = nil
-}
-
 // ComputeOrderHash computes a 0x order hash
 func (o *V3Order) ComputeOrderHash() (common.Hash, error) {
 	if o.hash != nil {
@@ -505,8 +500,8 @@ func (s *SignedV3Order) Trim() wrappers.LibOrderOrder {
 	}
 }
 
-// SignedOrderJSON is an unmodified JSON representation of a SignedOrder
-type SignedOrderJSON struct {
+// signedOrderJSON is an unmodified JSON representation of a SignedOrder
+type signedOrderJSON struct {
 	ChainID               int64  `json:"chainId"`
 	ExchangeAddress       string `json:"exchangeAddress"`
 	MakerAddress          string `json:"makerAddress"`
@@ -552,7 +547,7 @@ func (s SignedV3Order) MarshalJSON() ([]byte, error) {
 		signature = fmt.Sprintf("0x%s", common.Bytes2Hex(s.Signature))
 	}
 
-	signedOrderBytes, err := json.Marshal(SignedOrderJSON{
+	signedOrderBytes, err := json.Marshal(signedOrderJSON{
 		ChainID:               s.ChainID.Int64(),
 		ExchangeAddress:       strings.ToLower(s.ExchangeAddress.Hex()),
 		MakerAddress:          strings.ToLower(s.MakerAddress.Hex()),
@@ -576,7 +571,7 @@ func (s SignedV3Order) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements a custom JSON unmarshaller for the SignedOrder type
 func (s *SignedV3Order) UnmarshalJSON(data []byte) error {
-	var signedOrderJSON SignedOrderJSON
+	var signedOrderJSON signedOrderJSON
 	err := json.Unmarshal(data, &signedOrderJSON)
 	if err != nil {
 		return err
