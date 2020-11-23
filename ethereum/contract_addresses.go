@@ -7,7 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// ContractAddresses maps a contract's name to it's Ethereum address
+// ContractAddresses maps a contract's name to its Ethereum address
 type ContractAddresses struct {
 	ERC20Proxy   common.Address `json:"erc20Proxy"`
 	ERC721Proxy  common.Address `json:"erc721Proxy"`
