@@ -23,6 +23,10 @@ const erc20ApprovalLog string = "{\"address\":\"0x02b3c88b805f1c6982e38ea1d40a1d
 const wethWithdrawalLog string = "{\"address\":\"0x02b3c88b805f1c6982e38ea1d40a1d83f159c3d4\",\"topics\":[\"0x7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65\",\"0x000000000000000000000000b3fa5ba98fdb56e493c4c362920289a42948294e\"],\"data\":\"0x00000000000000000000000000000000000000000000000004e8b5d353f6e400\",\"blockNumber\":\"0x726c3c\",\"transactionHash\":\"0xce1bfaad43cfb1a24cc3c85aa86c4bf867ff545cb13b3d947a2290a6890e27ac\",\"transactionIndex\":\"0x29\",\"blockHash\":\"0xd087cf26990c7d216925f07a0e3745aa4a193842e65e2215275231b069e23dfc\",\"logIndex\":\"0x38\",\"removed\":false}"
 const wethDepositLog string = "{\"address\":\"0x02b3c88b805f1c6982e38ea1d40a1d83f159c3d4\",\"topics\":[\"0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c\",\"0x00000000000000000000000081228ea33d680b0f51271abab1105886ecd01c2c\"],\"data\":\"0x00000000000000000000000000000000000000000000000002c68af0bb140000\",\"blockNumber\":\"0x726c20\",\"transactionHash\":\"0xd321c2d2aabe50187740b31bb4078c76c01075281816b3039af0a43f91ea9467\",\"transactionIndex\":\"0x2e\",\"blockHash\":\"0x151d07e1b6099fc4ef1f2281eec9edba0ce8df9c4e2e5bab1c6b5fcd1c09dd97\",\"logIndex\":\"0x23\",\"removed\":false}"
 
+const erc20ApprovalLogTest string = `
+{"address":"0x45080a6531d671ddff20db42f93792a489685e32","topics":["0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925"],"data":"0x000000000000000000000000c7e6068615bf084ba10e42c2d3e5d84d98b397ea0000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff","blockNumber":"0xacc4c2","transactionHash":"0x9c4a49ae0f7f7bbaf1c99872e31ff1eb1a30825142bb07405d9ccfc7e58e9efd","transactionIndex":"0x71","blockHash":"0x84da91d61dc0bc70b3d9049fb6b95d19a70e720a4d46add33517642fe193fb12","logIndex":"0x130","removed":false}
+`
+
 var erc721TokenAddress common.Address = common.HexToAddress("0x5d00d312e171be5342067c09bae883f9bcb2003b")
 
 const erc721TransferLog string = "{\"address\":\"0x5d00d312e171be5342067c09bae883f9bcb2003b\",\"topics\":[\"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef\",\"0x000000000000000000000000d8c67d024db85b271b6f6eeac5234e29c4d6bbb5\",\"0x000000000000000000000000f13685a175b95faa79db765631483ac79fb3d8e8\",\"0x000000000000000000000000000000000000000000000000000000000000c5b1\"],\"data\":\"0x\",\"blockNumber\":\"0x6f503c\",\"transactionHash\":\"0x9f2b5ef09d2cebd36ee2accd8a95eb3def06c59d984f177c134b34fa5444b102\",\"transactionIndex\":\"0x20\",\"blockHash\":\"0x8c65e77bde1be54e4ca53c1eaf0936ae136a67afe58a4a0e482560f5f98a5cab\",\"logIndex\":\"0x2d\",\"removed\":false}"
@@ -80,6 +84,33 @@ func TestDecodeERC20Approval(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 	decoder.AddKnownERC20(erc20TokenAddress)
+	var actualEvent ERC20ApprovalEvent
+	err = decoder.Decode(approvalLog, &actualEvent)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	expectedEvent := ERC20ApprovalEvent{
+		Owner:   common.HexToAddress("0xcf67fdd3c580f148d20a26844b2169d52e2326db"),
+		Spender: common.HexToAddress("0x448a5065aebb8e423f0896e6c5d525c040f59af3"),
+		Value:   big.NewInt(1000000000000000000),
+	}
+
+	assert.Equal(t, expectedEvent, actualEvent, "Approval event decode")
+
+}
+
+func TestDecodeERC20ApprovalWeird(t *testing.T) {
+	var approvalLog types.Log
+	err := unmarshalLogStr(erc20ApprovalLogTest, &approvalLog)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	decoder, err := New()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	decoder.AddKnownERC20(common.HexToAddress("0x45080a6531d671ddff20db42f93792a489685e32"))
 	var actualEvent ERC20ApprovalEvent
 	err = decoder.Decode(approvalLog, &actualEvent)
 	if err != nil {

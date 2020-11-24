@@ -437,7 +437,12 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 			eventFilter[order.Hash] = struct{}{}
 		}
 		for _, log := range header.Logs {
+			// TODO(oskar) - EITHER this fails.
 			if err := w.findOrdersByEventWithFilter(log, eventFilter, orderHashToDBOrder, orderHashToEvents); err != nil {
+				fmt.Println("error in header logs!")
+				fmt.Println(log)
+				fmt.Println(orderHashToDBOrder)
+				fmt.Println(orderHashToEvents)
 				return err
 			}
 		}
@@ -445,7 +450,12 @@ func (w *Watcher) handleBlockEvents(ctx context.Context, events []*blockwatch.Ev
 
 	for _, event := range events {
 		for _, log := range event.BlockHeader.Logs {
+			// TODO(oskar) - Or this.
 			if err := w.findOrdersByEventWithFilter(log, nil, orderHashToDBOrder, orderHashToEvents); err != nil {
+				fmt.Println("error in blockheader logs!")
+				fmt.Println(log)
+				fmt.Println(orderHashToDBOrder)
+				fmt.Println(orderHashToEvents)
 				return err
 			}
 		}
@@ -636,6 +646,8 @@ func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log, filter db
 		var approvalEvent decoder.ERC20ApprovalEvent
 		err = w.eventDecoder.Decode(log, &approvalEvent)
 		if err != nil {
+			marshalled, _ := log.MarshalJSON()
+			fmt.Println(string(marshalled))
 			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
 				return nil, nil, nil
 			}
@@ -1959,8 +1971,11 @@ func (w *Watcher) checkDecodeErr(err error, eventType string) bool {
 		}).Warn("unsupported event found")
 		return true
 	}
+	fmt.Println(err)
+	fmt.Println(eventType)
 	logger.WithFields(logger.Fields{
-		"error": err.Error(),
+		"error":     err.Error(),
+		"eventType": eventType,
 	}).Error("unexpected event decoder error encountered")
 	return false
 }
