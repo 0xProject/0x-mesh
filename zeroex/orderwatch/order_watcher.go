@@ -636,7 +636,6 @@ func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log, filter db
 		var approvalEvent decoder.ERC20ApprovalEvent
 		err = w.eventDecoder.Decode(log, &approvalEvent)
 		if err != nil {
-			marshalled, _ := log.MarshalJSON()
 			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
 				return nil, nil, nil
 			}
