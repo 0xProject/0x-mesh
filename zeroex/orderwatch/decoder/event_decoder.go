@@ -609,6 +609,21 @@ func (e UntrackedTokenError) Error() string {
 	return fmt.Sprintf("event for an untracked token: contract address: %s, topic: %s", e.TokenAddress.Hex(), e.Topic.Hex())
 }
 
+// AbiParserError is thrown when the decoder fails to parse topics from a
+// retrieved log.
+// NOTE(oskar): this error occurs during abi.ParseTopics and can be a result of
+// certain tokens not conforming to the ERC20 event standard, for example not
+// using indexed log parameters.
+type AbiTopicParserError struct {
+	Topics          []common.Hash
+	ContractAddress common.Address
+	parserError     error
+}
+
+func (e AbiTopicParserError) Error() string {
+	return fmt.Sprintf("abi parser error: %s for contract address: %s, topics: %v", e.parserError.Error(), e.ContractAddress, e.Topics)
+}
+
 // Decoder decodes events relevant to the fillability of 0x orders. Since ERC20 & ERC721 events
 // have the same signatures, but different meanings, all ERC20 & ERC721 contract addresses must
 // be added to the decoder ahead of time.
@@ -912,7 +927,6 @@ func (d *Decoder) decodeExchange(log types.Log, decodedLog interface{}) error {
 func unpackLog(decodedEvent interface{}, event string, log types.Log, _abi abi.ABI) error {
 	if len(log.Data) > 0 {
 		if err := _abi.Unpack(decodedEvent, event, log.Data); err != nil {
-			fmt.Println("error unpacking")
 			if strings.Contains(err.Error(), "Unpack(no-values unmarshalled") {
 				return UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
 			}
@@ -925,5 +939,10 @@ func unpackLog(decodedEvent interface{}, event string, log types.Log, _abi abi.A
 			indexed = append(indexed, arg)
 		}
 	}
-	return abi.ParseTopics(decodedEvent, indexed, log.Topics[1:])
+	err := abi.ParseTopics(decodedEvent, indexed, log.Topics[1:])
+	if err != nil {
+		return AbiTopicParserError{Topics: log.Topics, ContractAddress: log.Address, parserError: err}
+	}
+
+	return nil
 }
