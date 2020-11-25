@@ -22,6 +22,7 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	sqlds "github.com/ipfs/go-ds-sql"
 	"github.com/jmoiron/sqlx"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -77,8 +78,6 @@ func New(ctx context.Context, opts *Options) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	sqldb.SetMaxOpenConns(1)
 
 	// Automatically close the database connection when the context is canceled.
 	go func() {

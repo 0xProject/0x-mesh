@@ -10,7 +10,7 @@ import (
 )
 
 func newDB(ctx context.Context, config Config) (*db.DB, error) {
-	databasePath := filepath.Join(config.DataDir, "sqlite-db", "db.sqlite?_mutex=full&_journal=WAL")
+	databasePath := filepath.Join(config.DataDir, "sqlite-db", "db.sqlite?_journal=WAL&_busy_timeout=1000")
 	return db.New(ctx, &db.Options{
 		DriverName:     "sqlite3",
 		DataSourceName: databasePath,
