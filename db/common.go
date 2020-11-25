@@ -50,10 +50,13 @@ type Database interface {
 }
 
 type Options struct {
-	DriverName     string `json:"driverName"`
-	DataSourceName string `json:"dataSourceName"`
-	MaxOrders      int    `json:"maxOrders"`
-	MaxMiniHeaders int    `json:"maxMiniHeaders"`
+	DriverName              string `json:"driverName"`
+	DataSourceName          string `json:"dataSourceName"`
+	DataSourcePeerStoreName string `json:"dataSourcePeerStoreName"`
+	DataSourceDHTName       string `json:"dataSourceDHTName"`
+	DataDir                 string `json:"dataDir"`
+	MaxOrders               int    `json:"maxOrders"`
+	MaxMiniHeaders          int    `json:"maxMiniHeaders"`
 }
 
 func parseOptions(opts *Options) *Options {
