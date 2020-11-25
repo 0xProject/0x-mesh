@@ -20,7 +20,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ido50/sqlz"
 	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-ds-sql"
+	sqlds "github.com/ipfs/go-ds-sql"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -45,7 +45,7 @@ type DB struct {
 func defaultOptions() *Options {
 	return &Options{
 		DriverName:     "sqlite3",
-		DataSourceName: "0x_mesh/db/db.sqlite?_journal_mode=wal",
+		DataSourceName: "0x_mesh/db/db.sqlite",
 		MaxOrders:      100000,
 		MaxMiniHeaders: 20,
 	}
@@ -55,7 +55,7 @@ func defaultOptions() *Options {
 func TestOptions() *Options {
 	return &Options{
 		DriverName:     "sqlite3",
-		DataSourceName: filepath.Join("/tmp", "mesh_testing", uuid.New().String(), "db.sqlite?_journal_mode=wal"),
+		DataSourceName: filepath.Join("/tmp", "mesh_testing", uuid.New().String(), "db.sqlite"),
 		MaxOrders:      100,
 		MaxMiniHeaders: 20,
 	}
@@ -77,6 +77,8 @@ func New(ctx context.Context, opts *Options) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	sqldb.SetMaxOpenConns(1)
 
 	// Automatically close the database connection when the context is canceled.
 	go func() {
