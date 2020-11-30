@@ -100,7 +100,7 @@ func TestDecodeERC20Approval(t *testing.T) {
 
 }
 
-func TestDecodeERC20ApprovalWeird(t *testing.T) {
+func TestDecodeERC20ApprovalForNonConformingImplementation(t *testing.T) {
 	var approvalLog types.Log
 	err := unmarshalLogStr(erc20ApprovalLogTest, &approvalLog)
 	if err != nil {
@@ -113,18 +113,13 @@ func TestDecodeERC20ApprovalWeird(t *testing.T) {
 	decoder.AddKnownERC20(common.HexToAddress("0x45080a6531d671ddff20db42f93792a489685e32"))
 	var actualEvent ERC20ApprovalEvent
 	err = decoder.Decode(approvalLog, &actualEvent)
-	if err != nil {
-		t.Fatal(err.Error())
+	if err == nil {
+		t.Fatal("we expect this ERC20 approval to fail because of bad Approval event implementation")
 	}
 
-	expectedEvent := ERC20ApprovalEvent{
-		Owner:   common.HexToAddress("0xcf67fdd3c580f148d20a26844b2169d52e2326db"),
-		Spender: common.HexToAddress("0x448a5065aebb8e423f0896e6c5d525c040f59af3"),
-		Value:   big.NewInt(1000000000000000000),
+	if _, ok := err.(AbiTopicParserError); !ok {
+		t.Fatal("expected the error to be of type AbiTopicParserError")
 	}
-
-	assert.Equal(t, expectedEvent, actualEvent, "Approval event decode")
-
 }
 
 func TestDecodeERC721Transfer(t *testing.T) {
