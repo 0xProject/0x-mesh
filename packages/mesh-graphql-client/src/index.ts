@@ -86,7 +86,13 @@ const statsQuery = gql`
 const addOrdersMutation = gql`
     mutation AddOrders(
         $orders: [NewOrder!]!
-        $opts: AddOrdersOpts = { pinned: true, keepCancelled: false, keepExpired: false, keepFullyFilled: false, keepUnfunded: false }
+        $opts: AddOrdersOpts = {
+            pinned: true
+            keepCancelled: false
+            keepExpired: false
+            keepFullyFilled: false
+            keepUnfunded: false
+        }
     ) {
         addOrders(orders: $orders, opts: $opts) {
             accepted {
@@ -331,10 +337,7 @@ export class MeshGraphQLClient {
         return fromStringifiedStats(stats);
     }
 
-    public async addOrdersAsync(
-        orders: SignedOrder[],
-        opts?: AddOrdersOpts,
-    ): Promise<AddOrdersResults> {
+    public async addOrdersAsync(orders: SignedOrder[], opts?: AddOrdersOpts): Promise<AddOrdersResults> {
         const resp: FetchResult<AddOrdersResponse> = await this._client.mutate({
             mutation: addOrdersMutation,
             variables: {
