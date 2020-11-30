@@ -107,7 +107,7 @@ lint: lint-go lint-ts lint-prettier
 
 .PHONY: lint-go
 lint-go:
-	golangci-lint run --timeout 2m 
+	golangci-lint run --timeout 2m
 
 
 .PHONY: lint-ts
@@ -173,5 +173,5 @@ docker-mesh-fluent-bit:
 
 .PHONY: docker-mesh-bridge
 docker-mesh-bridge: generate
-	@echo 'WARN: mesh-bridge is currently disabled since it has not been updated to use the new GraphQL API' 
+	@echo 'WARN: mesh-bridge is currently disabled since it has not been updated to use the new GraphQL API'
 	# docker build . -t 0xorg/mesh-bridge -f ./dockerfiles/mesh-bridge/Dockerfile
