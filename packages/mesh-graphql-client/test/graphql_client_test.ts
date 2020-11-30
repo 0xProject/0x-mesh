@@ -117,7 +117,10 @@ blockchainTests.resets('GraphQLClient', (env) => {
                     expirationTimeSeconds: new BigNumber(0),
                 });
                 const hash = orderHashUtils.getOrderHashHex(order);
-                const validationResults = await deployment.client.addOrdersAsync([order], { pinned: false, keepExpired: true });
+                const validationResults = await deployment.client.addOrdersAsync([order], {
+                    pinned: false,
+                    keepExpired: true,
+                });
                 expect(validationResults).to.be.deep.eq({
                     accepted: [],
                     rejected: [
