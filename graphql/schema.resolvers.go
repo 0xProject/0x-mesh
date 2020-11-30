@@ -15,14 +15,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (r *mutationResolver) AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, pinned *bool, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error) {
-	isPinned := false
-	if pinned != nil {
-		isPinned = (*pinned)
-	}
+func (r *mutationResolver) AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error) {
 	signedOrders := gqltypes.NewOrdersToSignedOrders(orders)
 	commonTypeOpts := gqltypes.AddOrderOptsToCommonType(opts)
-	results, err := r.app.AddOrders(ctx, signedOrders, isPinned, commonTypeOpts)
+	results, err := r.app.AddOrders(ctx, signedOrders, commonTypeOpts)
 	if err != nil {
 		return nil, err
 	}
