@@ -153,7 +153,7 @@ func (cw *MeshWrapper) AddOrders(rawOrders js.Value, pinned bool) (js.Value, err
 	}
 	// NOTE(jalextowle): We don't allow browser nodes to keep outdated orders
 	// currently.
-	results, err := cw.app.AddOrdersRaw(cw.ctx, rawMessages, pinned, &types.AddOrdersOpts{})
+	results, err := cw.app.AddOrdersRaw(cw.ctx, rawMessages, &types.AddOrdersOpts{Pinned: pinned})
 	if err != nil {
 		return js.Undefined(), err
 	}
@@ -190,7 +190,7 @@ func (cw *MeshWrapper) GQLAddOrders(rawOrders js.Value, pinned bool) (js.Value, 
 	}
 	// NOTE(jalextowle): We don't allow browser nodes to keep outdated orders
 	// currently.
-	results, err := cw.resolver.Mutation().AddOrders(cw.ctx, newOrders, &pinned, &gqltypes.AddOrdersOpts{})
+	results, err := cw.resolver.Mutation().AddOrders(cw.ctx, newOrders, &gqltypes.AddOrdersOpts{Pinned: &pinned})
 	if err != nil {
 		return js.Undefined(), err
 	}
