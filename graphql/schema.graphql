@@ -293,8 +293,8 @@ type Mutation {
     """
     addOrders(
         orders: [NewOrder!]!,
-        pinned: Boolean = true,
         opts: AddOrdersOpts = {
+            pinned: false,
             keepCancelled: false,
             keepExpired: false,
             keepFullyFilled: false,
@@ -304,6 +304,12 @@ type Mutation {
 }
 
 input AddOrdersOpts {
+    """
+    Pinned orders will not be affected by any DDoS prevention or incentive
+    mechanisms and will stay in storage until they are no longer fillable
+    (assuming the following flags are all false). Defaults to true.
+    """
+    pinned: Boolean = true
     """
     Indicates that the orders being added should be kept by the database after
     cancellation.

@@ -72,7 +72,7 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddOrders func(childComplexity int, orders []*gqltypes.NewOrder, pinned *bool, opts *gqltypes.AddOrdersOpts) int
+		AddOrders func(childComplexity int, orders []*gqltypes.NewOrder, opts *gqltypes.AddOrdersOpts) int
 	}
 
 	Order struct {
@@ -160,7 +160,7 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, pinned *bool, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error)
+	AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error)
 }
 type QueryResolver interface {
 	Order(ctx context.Context, hash string) (*gqltypes.OrderWithMetadata, error)
@@ -294,7 +294,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.AddOrders(childComplexity, args["orders"].([]*gqltypes.NewOrder), args["pinned"].(*bool), args["opts"].(*gqltypes.AddOrdersOpts)), true
+		return e.complexity.Mutation.AddOrders(childComplexity, args["orders"].([]*gqltypes.NewOrder), args["opts"].(*gqltypes.AddOrdersOpts)), true
 
 	case "Order.chainId":
 		if e.complexity.Order.ChainID == nil {
@@ -1116,8 +1116,8 @@ type Mutation {
     """
     addOrders(
         orders: [NewOrder!]!,
-        pinned: Boolean = true,
         opts: AddOrdersOpts = {
+            pinned: false,
             keepCancelled: false,
             keepExpired: false,
             keepFullyFilled: false,
@@ -1127,6 +1127,12 @@ type Mutation {
 }
 
 input AddOrdersOpts {
+    """
+    Pinned orders will not be affected by any DDoS prevention or incentive
+    mechanisms and will stay in storage until they are no longer fillable
+    (assuming the following flags are all false). Defaults to true.
+    """
+    pinned: Boolean = true
     """
     Indicates that the orders being added should be kept by the database after
     cancellation.
@@ -1284,22 +1290,14 @@ func (ec *executionContext) field_Mutation_addOrders_args(ctx context.Context, r
 		}
 	}
 	args["orders"] = arg0
-	var arg1 *bool
-	if tmp, ok := rawArgs["pinned"]; ok {
-		arg1, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["pinned"] = arg1
-	var arg2 *gqltypes.AddOrdersOpts
+	var arg1 *gqltypes.AddOrdersOpts
 	if tmp, ok := rawArgs["opts"]; ok {
-		arg2, err = ec.unmarshalOAddOrdersOpts2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddOrdersOpts(ctx, tmp)
+		arg1, err = ec.unmarshalOAddOrdersOpts2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddOrdersOpts(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["opts"] = arg2
+	args["opts"] = arg1
 	return args, nil
 }
 
@@ -1897,7 +1895,7 @@ func (ec *executionContext) _Mutation_addOrders(ctx context.Context, field graph
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AddOrders(rctx, args["orders"].([]*gqltypes.NewOrder), args["pinned"].(*bool), args["opts"].(*gqltypes.AddOrdersOpts))
+		return ec.resolvers.Mutation().AddOrders(rctx, args["orders"].([]*gqltypes.NewOrder), args["opts"].(*gqltypes.AddOrdersOpts))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5165,8 +5163,18 @@ func (ec *executionContext) unmarshalInputAddOrdersOpts(ctx context.Context, obj
 	var it gqltypes.AddOrdersOpts
 	var asMap = obj.(map[string]interface{})
 
+	if _, present := asMap["pinned"]; !present {
+		asMap["pinned"] = true
+	}
+
 	for k, v := range asMap {
 		switch k {
+		case "pinned":
+			var err error
+			it.Pinned, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "keepCancelled":
 			var err error
 			it.KeepCancelled, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
