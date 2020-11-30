@@ -146,14 +146,17 @@ func (cw *MeshWrapper) Start() error {
 // AddOrders converts raw JavaScript orders into the appropriate type, calls
 // core.App.AddOrders, converts the result into basic JavaScript types (string,
 // int, etc.) and returns it.
-func (cw *MeshWrapper) AddOrders(rawOrders js.Value, pinned bool) (js.Value, error) {
+func (cw *MeshWrapper) AddOrders(rawOrders js.Value, rawOptions js.Value) (js.Value, error) {
 	var rawMessages []*json.RawMessage
 	if err := jsutil.InefficientlyConvertFromJS(rawOrders, &rawMessages); err != nil {
 		return js.Undefined(), err
 	}
-	// NOTE(jalextowle): We don't allow browser nodes to keep outdated orders
-	// currently.
-	results, err := cw.app.AddOrdersRaw(cw.ctx, rawMessages, &types.AddOrdersOpts{Pinned: pinned})
+	var options *types.AddOrdersOpts
+	if err := jsutil.InefficientlyConvertFromJS(rawOptions, &options); err != nil {
+		return js.Undefined(), err
+	}
+
+	results, err := cw.app.AddOrdersRaw(cw.ctx, rawMessages, options)
 	if err != nil {
 		return js.Undefined(), err
 	}
@@ -183,17 +186,16 @@ func (cw *MeshWrapper) GetOrders(perPage int, minOrderHash string) (js.Value, er
 	return js.ValueOf(ordersResponse), nil
 }
 
-func (cw *MeshWrapper) GQLAddOrders(rawOrders js.Value, pinned bool) (js.Value, error) {
+func (cw *MeshWrapper) GQLAddOrders(rawOrders js.Value, rawOptions js.Value) (js.Value, error) {
 	var newOrders []*gqltypes.NewOrder
 	if err := jsutil.InefficientlyConvertFromJS(rawOrders, &newOrders); err != nil {
 		return js.Undefined(), err
 	}
-	// NOTE(jalextowle): We don't allow browser nodes to keep outdated orders
-	// currently.
-	results, err := cw.resolver.Mutation().AddOrders(cw.ctx, newOrders, &gqltypes.AddOrdersOpts{Pinned: &pinned})
-	if err != nil {
-		return js.Undefined(), err
+	var options *gqltypes.AddOrdersOpts
+	if err := jsutil.InefficientlyConvertFromJS(rawOptions, &options); err != nil {
+				return js.Undefined(), err
 	}
+ 	results, err := cw.resolver.Mutation().AddOrders(cw.ctx, newOrders, options)
 	encodedResults, err := json.Marshal(results)
 	if err != nil {
 		return js.Undefined(), err
@@ -293,13 +295,13 @@ func (cw *MeshWrapper) JSValue() js.Value {
 		// addOrdersAsync(orders: SignedOrder[], pinned: boolean): Promise<ValidationResults>
 		"addOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			return jsutil.WrapInPromise(func() (interface{}, error) {
-				return cw.AddOrders(args[0], args[1].Bool())
+				return cw.AddOrders(args[0], args[1])
 			})
 		}),
 		// gqlAddOrdersAsync(newOrders: SignedOrder[], pinned: boolean): Promise<AddOrderResults>
 		"gqlAddOrdersAsync": js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			return jsutil.WrapInPromise(func() (interface{}, error) {
-				return cw.GQLAddOrders(args[0], args[1].Bool())
+				return cw.GQLAddOrders(args[0], args[1])
 			})
 		}),
 		// gqlGetOrderAsync(orderHash: string): Promise<OrderWithMetadata>
