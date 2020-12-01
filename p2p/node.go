@@ -100,8 +100,8 @@ type Node struct {
 	routingDiscovery discovery.Discovery //nolint:staticcheck
 	pubsub           *pubsub.PubSub
 	subV3            *pubsub.Subscription
-	subV4            *pubsub.Subscription
-	banner           *banner.Banner
+	// subV4            *pubsub.Subscription
+	banner *banner.Banner
 }
 
 // Config contains configuration options for a Node.
@@ -762,16 +762,16 @@ func (n *Node) receiveV3(ctx context.Context) (*Message, error) {
 	return receive(ctx, n.subV3)
 }
 
-func (n *Node) receiveV4(ctx context.Context) (*Message, error) {
-	if n.subV3 == nil {
-		var err error
-		n.subV4, err = n.pubsub.Subscribe(n.config.SubscribeTopicV4) //nolint:staticcheck
-		if err != nil {
-			return nil, err
-		}
-	}
-	return receive(ctx, n.subV4)
-}
+// func (n *Node) receiveV4(ctx context.Context) (*Message, error) {
+// 	if n.subV3 == nil {
+// 		var err error
+// 		n.subV4, err = n.pubsub.Subscribe(n.config.SubscribeTopicV4) //nolint:staticcheck
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 	}
+// 	return receive(ctx, n.subV4)
+// }
 
 // receive returns the next pending message. It blocks if no messages are
 // available. If the given context is canceled, it returns nil, ctx.Err().
