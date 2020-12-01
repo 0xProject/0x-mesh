@@ -77,6 +77,7 @@ func TestConfigChainIDAndRPCMatchDetection(t *testing.T) {
 		EthereumRPCMaxRequestsPerSecond:  99999999999999,
 		MaxOrdersInStorage:               100000,
 		CustomOrderFilterV3:              "{}",
+		CustomOrderFilterV4:              "{}",
 	}
 	app, err := New(ctx, config)
 	require.NoError(t, err)
@@ -114,6 +115,7 @@ func newTestAppWithPrivateConfig(t *testing.T, ctx context.Context, customOrderF
 		EthereumRPCMaxRequestsPerSecond:  99999999999999,
 		MaxOrdersInStorage:               100000,
 		CustomOrderFilterV3:              customOrderFilter,
+		CustomOrderFilterV4:              customOrderFilter,
 	}
 	app, err := newWithPrivateConfig(ctx, config, pConfig)
 	require.NoError(t, err)
