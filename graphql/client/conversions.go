@@ -70,7 +70,7 @@ func rejectedOrderResultsFromGQLType(results []*gqltypes.RejectedOrderResult) []
 	return result
 }
 
-func orderWithMetadataFromGQLType(order *gqltypes.OrderWithMetadata) *OrderWithMetadata {
+func orderWithMetadataFromGQLType(order *gqltypes.OrderWithMetadataV3) *OrderWithMetadata {
 	return &OrderWithMetadata{
 		Hash:                     common.HexToHash(order.Hash),
 		ChainID:                  math.MustParseBig256(order.ChainID),
@@ -94,7 +94,7 @@ func orderWithMetadataFromGQLType(order *gqltypes.OrderWithMetadata) *OrderWithM
 	}
 }
 
-func ordersWithMetadataFromGQLType(orders []*gqltypes.OrderWithMetadata) []*OrderWithMetadata {
+func ordersWithMetadataFromGQLType(orders []*gqltypes.OrderWithMetadataV3) []*OrderWithMetadata {
 	result := make([]*OrderWithMetadata, len(orders))
 	for i, r := range orders {
 		result[i] = orderWithMetadataFromGQLType(r)

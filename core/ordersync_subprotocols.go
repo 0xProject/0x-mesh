@@ -97,7 +97,7 @@ func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncRequest(ctx context.Con
 	// It's possible that none of the orders in the current page match the filter.
 	// We don't want to respond with zero orders, so keep iterating until we find
 	// at least some orders that match the filter.
-	filteredOrders := []*zeroex.SignedOrder{}
+	filteredOrders := []*zeroex.SignedOrderV3{}
 	var nextMinOrderHash common.Hash
 	for {
 		select {
@@ -161,7 +161,7 @@ func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncResponse(ctx context.Co
 	if !ok {
 		return nil, 0, fmt.Errorf("FilteredPaginationSubProtocolV0 received response with wrong metadata type (got %T)", res.Metadata)
 	}
-	filteredOrders := []*zeroex.SignedOrder{}
+	filteredOrders := []*zeroex.SignedOrderV3{}
 	for _, order := range res.Orders {
 		if matches, err := p.orderFilter.MatchOrder(order); err != nil {
 			return nil, 0, err
@@ -171,7 +171,7 @@ func (p *FilteredPaginationSubProtocolV0) HandleOrderSyncResponse(ctx context.Co
 			p.app.handlePeerScoreEvent(res.ProviderID, psReceivedOrderDoesNotMatchFilter)
 		}
 	}
-	validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, filteredOrders, p.app.chainID, false, &types.AddOrdersOpts{})
+	validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, filteredOrders, &types.AddOrdersOpts{})
 	if err != nil {
 		return nil, len(filteredOrders), err
 	}
@@ -289,7 +289,7 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncRequest(ctx context.Con
 	// It's possible that none of the orders in the current page match the filter.
 	// We don't want to respond with zero orders, so keep iterating until we find
 	// at least some orders that match the filter.
-	filteredOrders := []*zeroex.SignedOrder{}
+	filteredOrders := []*zeroex.SignedOrderV3{}
 	currentMinOrderHash := metadata.MinOrderHash
 	nextMinOrderHash := common.Hash{}
 	for {
@@ -352,7 +352,7 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncResponse(ctx context.Co
 	if !ok {
 		return nil, 0, fmt.Errorf("FilteredPaginationSubProtocolV1 received response with wrong metadata type (got %T)", res.Metadata)
 	}
-	filteredOrders := []*zeroex.SignedOrder{}
+	filteredOrders := []*zeroex.SignedOrderV3{}
 	for _, order := range res.Orders {
 		if matches, err := p.orderFilter.MatchOrder(order); err != nil {
 			return nil, 0, err
@@ -362,7 +362,7 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncResponse(ctx context.Co
 			p.app.handlePeerScoreEvent(res.ProviderID, psReceivedOrderDoesNotMatchFilter)
 		}
 	}
-	validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, filteredOrders, p.app.chainID, false, &types.AddOrdersOpts{})
+	validationResults, err := p.app.orderWatcher.ValidateAndStoreValidOrders(ctx, filteredOrders, &types.AddOrdersOpts{})
 	if err != nil {
 		return nil, len(filteredOrders), err
 	}

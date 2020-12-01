@@ -128,15 +128,15 @@ func TestOrderWatcherTakerWhitelist(t *testing.T) {
 	require.NoError(t, err)
 
 	testCases := []*struct {
-		order                     *zeroex.SignedOrder
+		order                     *zeroex.SignedOrderV3
 		isTakerAddressWhitelisted bool
 	}{
 		{
-			scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true)),
+			scenario.NewSignedTestOrderV3(t, orderopts.SetupMakerState(true)),
 			true,
 		},
 		{
-			scenario.NewSignedTestOrder(
+			scenario.NewSignedTestOrderV3(
 				t,
 				orderopts.SetupMakerState(true),
 				orderopts.TakerAddress(ganacheAddresses.ExchangeProxyFlashWallet),
@@ -144,7 +144,7 @@ func TestOrderWatcherTakerWhitelist(t *testing.T) {
 			true,
 		},
 		{
-			scenario.NewSignedTestOrder(
+			scenario.NewSignedTestOrderV3(
 				t,
 				orderopts.SetupMakerState(true),
 				orderopts.TakerAddress(common.HexToAddress("0x1")),
@@ -157,7 +157,7 @@ func TestOrderWatcherTakerWhitelist(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, testCase := range testCases {
-		results, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{testCase.order}, constants.TestChainID, false, &types.AddOrdersOpts{})
+		results, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrderV3{testCase.order}, &types.AddOrdersOpts{})
 		require.NoError(t, err)
 		if testCase.isTakerAddressWhitelisted {
 			orderHash, err := testCase.order.ComputeOrderHash()
@@ -183,13 +183,13 @@ func TestOrderWatcherDoesntStoreInvalidOrdersWithConfigurations(t *testing.T) {
 
 	for _, testCase := range []*struct {
 		description          string
-		signedOrderGenerator func() *zeroex.SignedOrder
+		signedOrderGenerator func() *zeroex.SignedOrderV3
 		addOrdersOpts        *types.AddOrdersOpts
 	}{
 		{
 			description: "doesn't store cancelled orders when KeepCancelled is disabled",
-			signedOrderGenerator: func() *zeroex.SignedOrder {
-				signedOrder := scenario.NewSignedTestOrder(t,
+			signedOrderGenerator: func() *zeroex.SignedOrderV3 {
+				signedOrder := scenario.NewSignedTestOrderV3(t,
 					orderopts.SetupMakerState(true),
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
 				)
@@ -213,8 +213,8 @@ func TestOrderWatcherDoesntStoreInvalidOrdersWithConfigurations(t *testing.T) {
 		},
 		{
 			description: "doesn't store expired orders when KeepExpired is disabled",
-			signedOrderGenerator: func() *zeroex.SignedOrder {
-				return scenario.NewSignedTestOrder(t,
+			signedOrderGenerator: func() *zeroex.SignedOrderV3 {
+				return scenario.NewSignedTestOrderV3(t,
 					orderopts.SetupMakerState(true),
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
 					orderopts.ExpirationTimeSeconds(big.NewInt(0)),
@@ -229,9 +229,9 @@ func TestOrderWatcherDoesntStoreInvalidOrdersWithConfigurations(t *testing.T) {
 		},
 		{
 			description: "doesn't store fully filled orders when KeepFullyFilled is disabled",
-			signedOrderGenerator: func() *zeroex.SignedOrder {
+			signedOrderGenerator: func() *zeroex.SignedOrderV3 {
 				takerAddress := constants.GanacheAccount3
-				signedOrder := scenario.NewSignedTestOrder(t,
+				signedOrder := scenario.NewSignedTestOrderV3(t,
 					orderopts.SetupMakerState(true),
 					orderopts.SetupTakerAddress(takerAddress),
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
@@ -257,8 +257,8 @@ func TestOrderWatcherDoesntStoreInvalidOrdersWithConfigurations(t *testing.T) {
 		},
 		{
 			description: "doesn't store unfunded orders when KeepUnfunded is disabled",
-			signedOrderGenerator: func() *zeroex.SignedOrder {
-				return scenario.NewSignedTestOrder(t,
+			signedOrderGenerator: func() *zeroex.SignedOrderV3 {
+				return scenario.NewSignedTestOrderV3(t,
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
 					orderopts.MakerFee(big.NewInt(1)),
 					orderopts.MakerFeeAssetData(scenario.WETHAssetData),
@@ -285,7 +285,7 @@ func TestOrderWatcherDoesntStoreInvalidOrdersWithConfigurations(t *testing.T) {
 		err = blockWatcher.SyncToLatestBlock()
 		require.NoError(t, err)
 
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, testCase.addOrdersOpts)
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrderV3{signedOrder}, testCase.addOrdersOpts)
 		require.NoError(t, err)
 
 		assert.Len(t, validationResults.Accepted, 0, testCase.description)
@@ -308,15 +308,15 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 	for _, testCase := range []*struct {
 		description            string
 		expectedFillableAmount *big.Int
-		signedOrderGenerator   func() *zeroex.SignedOrder
+		signedOrderGenerator   func() *zeroex.SignedOrderV3
 		addOrdersOpts          *types.AddOrdersOpts
 		isExpired              bool
 	}{
 		{
 			description:            "stores valid orders",
 			expectedFillableAmount: big.NewInt(42),
-			signedOrderGenerator: func() *zeroex.SignedOrder {
-				return scenario.NewSignedTestOrder(t,
+			signedOrderGenerator: func() *zeroex.SignedOrderV3 {
+				return scenario.NewSignedTestOrderV3(t,
 					orderopts.SetupMakerState(true),
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
 				)
@@ -326,8 +326,8 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 		{
 			description:            "stores cancelled orders when KeepCancelled is enabled",
 			expectedFillableAmount: big.NewInt(0),
-			signedOrderGenerator: func() *zeroex.SignedOrder {
-				signedOrder := scenario.NewSignedTestOrder(t,
+			signedOrderGenerator: func() *zeroex.SignedOrderV3 {
+				signedOrder := scenario.NewSignedTestOrderV3(t,
 					orderopts.SetupMakerState(true),
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
 				)
@@ -347,8 +347,8 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 		{
 			description:            "stores expired orders when KeepExpired is enabled",
 			expectedFillableAmount: big.NewInt(0),
-			signedOrderGenerator: func() *zeroex.SignedOrder {
-				return scenario.NewSignedTestOrder(t,
+			signedOrderGenerator: func() *zeroex.SignedOrderV3 {
+				return scenario.NewSignedTestOrderV3(t,
 					orderopts.SetupMakerState(true),
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
 					orderopts.ExpirationTimeSeconds(big.NewInt(0)),
@@ -360,9 +360,9 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 		{
 			description:            "stores fully filled orders when KeepFullyFilled is enabled",
 			expectedFillableAmount: big.NewInt(0),
-			signedOrderGenerator: func() *zeroex.SignedOrder {
+			signedOrderGenerator: func() *zeroex.SignedOrderV3 {
 				takerAddress := constants.GanacheAccount3
-				signedOrder := scenario.NewSignedTestOrder(t,
+				signedOrder := scenario.NewSignedTestOrderV3(t,
 					orderopts.SetupMakerState(true),
 					orderopts.SetupTakerAddress(takerAddress),
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
@@ -384,8 +384,8 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 		{
 			description:            "stores unfunded orders when KeepUnfunded is enabled",
 			expectedFillableAmount: big.NewInt(0),
-			signedOrderGenerator: func() *zeroex.SignedOrder {
-				return scenario.NewSignedTestOrder(t,
+			signedOrderGenerator: func() *zeroex.SignedOrderV3 {
+				return scenario.NewSignedTestOrderV3(t,
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
 					orderopts.MakerFee(big.NewInt(1)),
 					orderopts.MakerFeeAssetData(scenario.WETHAssetData),
@@ -407,7 +407,7 @@ func TestOrderWatcherStoresValidOrdersWithConfigurations(t *testing.T) {
 		err = blockWatcher.SyncToLatestBlock()
 		require.NoError(t, err)
 
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, testCase.addOrdersOpts)
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrderV3{signedOrder}, testCase.addOrdersOpts)
 		require.NoError(t, err)
 
 		isUnfillable := testCase.expectedFillableAmount.Cmp(big.NewInt(0)) == 0
@@ -473,7 +473,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Balance(t *testing.T) {
 		database, err := db.New(ctx, db.TestOptions())
 		require.NoError(t, err, testCase.description)
 
-		signedOrder := scenario.NewSignedTestOrder(t,
+		signedOrder := scenario.NewSignedTestOrderV3(t,
 			orderopts.SetupMakerState(true),
 			orderopts.MakerAssetData(scenario.ZRXAssetData),
 		)
@@ -548,7 +548,7 @@ func TestOrderWatcherUnfundedInsufficientERC20BalanceForMakerFee(t *testing.T) {
 
 		makerAssetData := scenario.GetDummyERC721AssetData(big.NewInt(1))
 		wethFeeAmount := new(big.Int).Mul(big.NewInt(5), eighteenDecimalsInBaseUnits)
-		signedOrder := scenario.NewSignedTestOrder(t,
+		signedOrder := scenario.NewSignedTestOrderV3(t,
 			orderopts.SetupMakerState(true),
 			orderopts.MakerAssetData(makerAssetData),
 			orderopts.MakerAssetAmount(big.NewInt(1)),
@@ -626,7 +626,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Balance(t *testing.T) {
 
 		tokenID := big.NewInt(1)
 		makerAssetData := scenario.GetDummyERC721AssetData(tokenID)
-		signedOrder := scenario.NewSignedTestOrder(t,
+		signedOrder := scenario.NewSignedTestOrderV3(t,
 			orderopts.SetupMakerState(true),
 			orderopts.MakerAssetAmount(big.NewInt(1)),
 			orderopts.MakerAssetData(makerAssetData),
@@ -702,7 +702,7 @@ func TestOrderWatcherUnfundedInsufficientERC721Allowance(t *testing.T) {
 
 		tokenID := big.NewInt(1)
 		makerAssetData := scenario.GetDummyERC721AssetData(tokenID)
-		signedOrder := scenario.NewSignedTestOrder(t,
+		signedOrder := scenario.NewSignedTestOrderV3(t,
 			orderopts.SetupMakerState(true),
 			orderopts.MakerAssetAmount(big.NewInt(1)),
 			orderopts.MakerAssetData(makerAssetData),
@@ -778,7 +778,7 @@ func TestOrderWatcherUnfundedInsufficientERC1155Allowance(t *testing.T) {
 		require.NoError(t, err, testCase.description)
 
 		makerAssetData := scenario.GetDummyERC1155AssetData(t, []*big.Int{big.NewInt(1)}, []*big.Int{big.NewInt(100)})
-		signedOrder := scenario.NewSignedTestOrder(t,
+		signedOrder := scenario.NewSignedTestOrderV3(t,
 			orderopts.SetupMakerState(true),
 			orderopts.MakerAssetAmount(big.NewInt(1)),
 			orderopts.MakerAssetData(makerAssetData),
@@ -855,7 +855,7 @@ func TestOrderWatcherUnfundedInsufficientERC1155Balance(t *testing.T) {
 		tokenID := big.NewInt(1)
 		tokenAmount := big.NewInt(100)
 		makerAssetData := scenario.GetDummyERC1155AssetData(t, []*big.Int{tokenID}, []*big.Int{tokenAmount})
-		signedOrder := scenario.NewSignedTestOrder(t,
+		signedOrder := scenario.NewSignedTestOrderV3(t,
 			orderopts.SetupMakerState(true),
 			orderopts.MakerAssetAmount(big.NewInt(1)),
 			orderopts.MakerAssetData(makerAssetData),
@@ -929,7 +929,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 		database, err := db.New(ctx, db.TestOptions())
 		require.NoError(t, err, testCase.description)
 
-		signedOrder := scenario.NewSignedTestOrder(t,
+		signedOrder := scenario.NewSignedTestOrderV3(t,
 			orderopts.SetupMakerState(true),
 			orderopts.MakerAssetData(scenario.ZRXAssetData),
 		)
@@ -1002,7 +1002,7 @@ func TestOrderWatcherUnfundedThenFundedAgain(t *testing.T) {
 		database, err := db.New(ctx, db.TestOptions())
 		require.NoError(t, err, testCase.description)
 
-		signedOrder := scenario.NewSignedTestOrder(t,
+		signedOrder := scenario.NewSignedTestOrderV3(t,
 			orderopts.SetupMakerState(true),
 			orderopts.MakerAssetData(scenario.ZRXAssetData),
 			orderopts.TakerAssetData(scenario.WETHAssetData),
@@ -1118,7 +1118,7 @@ func TestOrderWatcherNoChange(t *testing.T) {
 		database, err := db.New(ctx, db.TestOptions())
 		require.NoError(t, err)
 
-		signedOrder := scenario.NewSignedTestOrder(t,
+		signedOrder := scenario.NewSignedTestOrderV3(t,
 			orderopts.SetupMakerState(true),
 			orderopts.MakerAssetData(scenario.ZRXAssetData),
 			orderopts.TakerAssetData(scenario.WETHAssetData),
@@ -1209,7 +1209,7 @@ func TestOrderWatcherWETHWithdrawAndDeposit(t *testing.T) {
 		database, err := db.New(ctx, db.TestOptions())
 		require.NoError(t, err, testCase.description)
 
-		signedOrder := scenario.NewSignedTestOrder(t,
+		signedOrder := scenario.NewSignedTestOrderV3(t,
 			orderopts.SetupMakerState(true),
 			orderopts.MakerAssetData(scenario.WETHAssetData),
 			orderopts.TakerAssetData(scenario.ZRXAssetData),
@@ -1321,7 +1321,7 @@ func TestOrderWatcherCanceled(t *testing.T) {
 		database, err := db.New(ctx, db.TestOptions())
 		require.NoError(t, err, testCase.description)
 
-		signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+		signedOrder := scenario.NewSignedTestOrderV3(t, orderopts.SetupMakerState(true))
 		expectedOrderHash, err := signedOrder.ComputeOrderHash()
 		require.NoError(t, err, testCase.description)
 		blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder, testCase.addOrdersOpts)
@@ -1392,7 +1392,7 @@ func TestOrderWatcherCancelUpTo(t *testing.T) {
 		database, err := db.New(ctx, db.TestOptions())
 		require.NoError(t, err, testCase.description)
 
-		signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+		signedOrder := scenario.NewSignedTestOrderV3(t, orderopts.SetupMakerState(true))
 		expectedOrderHash, err := signedOrder.ComputeOrderHash()
 		require.NoError(t, err, testCase.description)
 		blockWatcher, orderEventsChan := setupOrderWatcherScenario(ctx, t, database, signedOrder, testCase.addOrdersOpts)
@@ -1464,7 +1464,7 @@ func TestOrderWatcherERC20Filled(t *testing.T) {
 		require.NoError(t, err, testCase.description)
 
 		takerAddress := constants.GanacheAccount3
-		signedOrder := scenario.NewSignedTestOrder(t,
+		signedOrder := scenario.NewSignedTestOrderV3(t,
 			orderopts.SetupMakerState(true),
 			orderopts.SetupTakerAddress(takerAddress),
 		)
@@ -1537,7 +1537,7 @@ func TestOrderWatcherERC20PartiallyFilled(t *testing.T) {
 		require.NoError(t, err, testCase.description)
 
 		takerAddress := constants.GanacheAccount3
-		signedOrder := scenario.NewSignedTestOrder(t,
+		signedOrder := scenario.NewSignedTestOrderV3(t,
 			orderopts.SetupMakerState(true),
 			orderopts.SetupTakerAddress(takerAddress),
 		)
@@ -1618,14 +1618,14 @@ func TestOrderWatcherOrderExpiredThenUnexpired(t *testing.T) {
 		// Create and add an order (which will later become expired) to OrderWatcher
 		expirationTime := time.Now().Add(24 * time.Hour)
 		expirationTimeSeconds := big.NewInt(expirationTime.Unix())
-		signedOrder := scenario.NewSignedTestOrder(t,
+		signedOrder := scenario.NewSignedTestOrderV3(t,
 			orderopts.SetupMakerState(true),
 			orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 		)
 		expectedOrderHash, err := signedOrder.ComputeOrderHash()
 		require.NoError(t, err, testCase.description)
 		blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
-		watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrder, false, testCase.addOrdersOpts)
+		watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrder, testCase.addOrdersOpts)
 
 		orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
 		orderWatcher.Subscribe(orderEventsChan)
@@ -1740,7 +1740,7 @@ func TestOrderWatcherOrderExpiredWhenAddedThenUnexpired(t *testing.T) {
 	// Create an order which will be expired when added to the OrderWatcher
 	expirationTime := time.Now().Add(-24 * time.Hour)
 	expirationTimeSeconds := big.NewInt(expirationTime.Unix())
-	signedOrder := scenario.NewSignedTestOrder(t,
+	signedOrder := scenario.NewSignedTestOrderV3(t,
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
@@ -1753,7 +1753,7 @@ func TestOrderWatcherOrderExpiredWhenAddedThenUnexpired(t *testing.T) {
 	// Add the order to Mesh
 	err = blockwatcher.SyncToLatestBlock()
 	require.NoError(t, err)
-	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{KeepExpired: true})
+	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrderV3{signedOrder}, &types.AddOrdersOpts{KeepExpired: true})
 	require.NoError(t, err)
 
 	assert.Len(t, validationResults.Accepted, 0)
@@ -1856,9 +1856,9 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 			orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 		}
 	}
-	signedOrders := scenario.NewSignedTestOrdersBatch(t, maxOrders, optionsForIndex)
+	signedOrders := scenario.NewSignedTestOrdersV3Batch(t, maxOrders, optionsForIndex)
 	for _, signedOrder := range signedOrders {
-		watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrder, false, &types.AddOrdersOpts{})
+		watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrder, &types.AddOrdersOpts{})
 	}
 
 	// We don't care about the order events above for the purposes of this test,
@@ -1870,11 +1870,11 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	// events to fire.
 	expirationTime := time.Now().Add(10*time.Minute + 1*time.Second)
 	expirationTimeSeconds := big.NewInt(expirationTime.Unix())
-	signedOrder := scenario.NewSignedTestOrder(t,
+	signedOrder := scenario.NewSignedTestOrderV3(t,
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
-	watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrder, false, &types.AddOrdersOpts{})
+	watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrder, &types.AddOrdersOpts{})
 	expectedOrderEvents := 2
 	orderEvents := waitForOrderEvents(t, orderEventsChan, expectedOrderEvents, 4*time.Second)
 	require.Len(t, orderEvents, expectedOrderEvents, "wrong number of order events were fired")
@@ -1890,11 +1890,11 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 		switch orderEvent.EndState {
 		case zeroex.ESOrderAdded:
 			numAdded += 1
-			orderExpirationTime := orderEvent.SignedOrder.ExpirationTimeSeconds
+			orderExpirationTime := orderEvent.SignedOrder.(*zeroex.SignedOrderV3).ExpirationTimeSeconds
 			assert.True(t, orderExpirationTime.Cmp(storedMaxExpirationTime) == -1, "ADDED order has an expiration time of %s which is *greater than* the maximum of %s", orderExpirationTime, storedMaxExpirationTime)
 		case zeroex.ESStoppedWatching:
 			numStoppedWatching += 1
-			orderExpirationTime := orderEvent.SignedOrder.ExpirationTimeSeconds
+			orderExpirationTime := orderEvent.SignedOrder.(*zeroex.SignedOrderV3).ExpirationTimeSeconds
 			assert.True(t, orderExpirationTime.Cmp(storedMaxExpirationTime) != -1, "STOPPED_WATCHING order has an expiration time of %s which is *less than* the maximum of %s", orderExpirationTime, storedMaxExpirationTime)
 		default:
 			t.Errorf("unexpected order event type: %s", orderEvent.EndState)
@@ -1915,13 +1915,13 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 
 	// Confirm that a pinned order will be accepted even if its expiration
 	// is greater than the current max.
-	pinnedOrder := scenario.NewSignedTestOrder(t,
+	pinnedOrder := scenario.NewSignedTestOrderV3(t,
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(big.NewInt(0).Add(storedMaxExpirationTime, big.NewInt(10))),
 	)
 	pinnedOrderHash, err := pinnedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	watchOrder(ctx, t, orderWatcher, blockWatcher, pinnedOrder, true, &types.AddOrdersOpts{})
+	watchOrder(ctx, t, orderWatcher, blockWatcher, pinnedOrder, &types.AddOrdersOpts{Pinned: true})
 
 	expectedOrderEvents = 2
 	orderEvents = waitForOrderEvents(t, orderEventsChan, expectedOrderEvents, 4*time.Second)
@@ -1968,12 +1968,12 @@ func TestOrderWatcherBatchEmitsAddedEvents(t *testing.T) {
 	// Create numOrders test orders in a batch.
 	numOrders := 2
 	orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
-	signedOrders := scenario.NewSignedTestOrdersBatch(t, numOrders, orderOptions)
+	signedOrders := scenario.NewSignedTestOrdersV3Batch(t, numOrders, orderOptions)
 
 	err = blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
 
-	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, signedOrders, constants.TestChainID, false, &types.AddOrdersOpts{})
+	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, signedOrders, &types.AddOrdersOpts{})
 	require.Len(t, validationResults.Rejected, 0)
 	require.NoError(t, err)
 
@@ -2004,17 +2004,17 @@ func TestOrderWatcherCleanup(t *testing.T) {
 
 	// Create and add two orders to OrderWatcher
 	orderOptions := scenario.OptionsForAll(orderopts.SetupMakerState(true))
-	signedOrders := scenario.NewSignedTestOrdersBatch(t, 2, orderOptions)
+	signedOrders := scenario.NewSignedTestOrdersV3Batch(t, 2, orderOptions)
 	signedOrderOne := signedOrders[0]
-	watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrderOne, false, &types.AddOrdersOpts{})
+	watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrderOne, &types.AddOrdersOpts{})
 	signedOrderTwo := signedOrders[1]
-	watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrderTwo, false, &types.AddOrdersOpts{})
+	watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrderTwo, &types.AddOrdersOpts{})
 	signedOrderOneHash, err := signedOrderTwo.ComputeOrderHash()
 	require.NoError(t, err)
 
 	// Set lastUpdate for signedOrderOne to more than defaultLastUpdatedBuffer so that signedOrderOne
 	// does not get re-validated by the cleanup job
-	err = database.UpdateOrder(signedOrderOneHash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
+	err = database.UpdateOrder(signedOrderOneHash, func(orderToUpdate *types.OrderWithMetadataV3) (*types.OrderWithMetadataV3, error) {
 		orderToUpdate.LastUpdated = time.Now().Add(-defaultLastUpdatedBuffer - 1*time.Minute)
 		return orderToUpdate, nil
 	})
@@ -2072,20 +2072,20 @@ func TestOrderWatcherHandleOrderExpirationsExpired(t *testing.T) {
 			orderopts.SetupMakerState(true),
 			orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 		)
-		signedOrders := scenario.NewSignedTestOrdersBatch(t, 2, orderOptions)
+		signedOrders := scenario.NewSignedTestOrdersV3Batch(t, 2, orderOptions)
 		signedOrderOne := signedOrders[0]
 		signedOrderTwo := signedOrders[1]
 		blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
-		watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrderOne, false, testCase.addOrdersOpts)
-		watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrderTwo, false, testCase.addOrdersOpts)
+		watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrderOne, testCase.addOrdersOpts)
+		watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrderTwo, testCase.addOrdersOpts)
 
 		signedOrderOneHash, err := signedOrderOne.ComputeOrderHash()
 		require.NoError(t, err, testCase.description)
 		orderOne, err := database.GetOrder(signedOrderOneHash)
 		require.NoError(t, err, testCase.description)
-		// Since we flag SignedOrderOne for revalidation, we expect `handleOrderExpirations` not to return an
+		// Since we flag SignedOrderV3One for revalidation, we expect `handleOrderExpirations` not to return an
 		// expiry event for it.
-		ordersToRevalidate := map[common.Hash]*types.OrderWithMetadata{
+		ordersToRevalidate := map[common.Hash]*types.OrderWithMetadataV3{
 			signedOrderOneHash: orderOne,
 		}
 
@@ -2138,12 +2138,12 @@ func TestOrderWatcherHandleOrderExpirationsUnexpired(t *testing.T) {
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
-	signedOrders := scenario.NewSignedTestOrdersBatch(t, 2, orderOptions)
+	signedOrders := scenario.NewSignedTestOrdersV3Batch(t, 2, orderOptions)
 	signedOrderOne := signedOrders[0]
 	signedOrderTwo := signedOrders[1]
 	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
-	watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrderOne, false, &types.AddOrdersOpts{})
-	watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrderTwo, false, &types.AddOrdersOpts{})
+	watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrderOne, &types.AddOrdersOpts{})
+	watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrderTwo, &types.AddOrdersOpts{})
 
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
 	orderWatcher.Subscribe(orderEventsChan)
@@ -2177,9 +2177,9 @@ func TestOrderWatcherHandleOrderExpirationsUnexpired(t *testing.T) {
 	require.NoError(t, err)
 	orderOne, err := database.GetOrder(signedOrderOneHash)
 	require.NoError(t, err)
-	// Since we flag SignedOrderOne for revalidation, we expect `handleOrderExpirations` not to return an
+	// Since we flag SignedOrderV3One for revalidation, we expect `handleOrderExpirations` not to return an
 	// unexpiry event for it.
-	ordersToRevalidate := map[common.Hash]*types.OrderWithMetadata{
+	ordersToRevalidate := map[common.Hash]*types.OrderWithMetadataV3{
 		signedOrderOneHash: orderOne,
 	}
 
@@ -2226,12 +2226,12 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 	// Create and add an order (which will later become expired) to OrderWatcher
 	expirationTime := time.Now().Add(24 * time.Hour)
 	expirationTimeSeconds := big.NewInt(expirationTime.Unix())
-	signedOrder := scenario.NewSignedTestOrder(t,
+	signedOrder := scenario.NewSignedTestOrderV3(t,
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(expirationTimeSeconds),
 	)
 	blockwatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
-	watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrder, false, &types.AddOrdersOpts{})
+	watchOrder(ctx, t, orderWatcher, blockwatcher, signedOrder, &types.AddOrdersOpts{})
 
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 2*orderWatcher.maxOrders)
 	orderWatcher.Subscribe(orderEventsChan)
@@ -2275,7 +2275,7 @@ func TestConvertValidationResultsIntoOrderEventsUnexpired(t *testing.T) {
 		},
 		Rejected: []*ordervalidator.RejectedOrderInfo{},
 	}
-	orderHashToDBOrder := map[common.Hash]*types.OrderWithMetadata{
+	orderHashToDBOrder := map[common.Hash]*types.OrderWithMetadataV3{
 		orderHash: orderOne,
 	}
 	exchangeFillEvent := "ExchangeFillEvent"
@@ -2375,7 +2375,7 @@ func TestRevalidateOrdersForMissingEvents(t *testing.T) {
 	orderWatcher.Subscribe(orderEventsChan)
 
 	// Create a new order
-	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	signedOrder := scenario.NewSignedTestOrderV3(t, orderopts.SetupMakerState(true))
 	err = blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
 	orderHash, err := signedOrder.ComputeOrderHash()
@@ -2401,7 +2401,7 @@ func TestRevalidateOrdersForMissingEvents(t *testing.T) {
 		return err
 	})
 	g.Go(func() error {
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{})
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrderV3{signedOrder}, &types.AddOrdersOpts{})
 		if err != nil {
 			return err
 		}
@@ -2463,7 +2463,7 @@ func TestMissingOrderEvents(t *testing.T) {
 	orderWatcher.Subscribe(orderEventsChan)
 
 	// Create a new order
-	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	signedOrder := scenario.NewSignedTestOrderV3(t, orderopts.SetupMakerState(true))
 	err = blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
 	orderHash, err := signedOrder.ComputeOrderHash()
@@ -2489,7 +2489,7 @@ func TestMissingOrderEvents(t *testing.T) {
 		return err
 	})
 	g.Go(func() error {
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{})
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrderV3{signedOrder}, &types.AddOrdersOpts{})
 		if err != nil {
 			return err
 		}
@@ -2569,7 +2569,7 @@ func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
 	orderWatcher.Subscribe(orderEventsChan)
 
 	// Create a new order
-	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	signedOrder := scenario.NewSignedTestOrderV3(t, orderopts.SetupMakerState(true))
 	err = blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
 	orderHash, err := signedOrder.ComputeOrderHash()
@@ -2586,7 +2586,7 @@ func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
 	// Cancel a new order to remove old miniheaders from the database.
-	dummyOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
+	dummyOrder := scenario.NewSignedTestOrderV3(t, orderopts.SetupMakerState(true))
 	opts = &bind.TransactOpts{
 		From:   dummyOrder.MakerAddress,
 		Signer: scenario.GetTestSignerFn(dummyOrder.MakerAddress),
@@ -2606,7 +2606,7 @@ func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
 		return err
 	})
 	g.Go(func() error {
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{})
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrderV3{signedOrder}, &types.AddOrdersOpts{})
 		if err != nil {
 			return err
 		}
@@ -2650,11 +2650,11 @@ func TestMissingOrderEventsWithMissingBlocks(t *testing.T) {
 	assert.Equal(t, orderHash, orderEvents[0].OrderHash)
 }
 
-func setupOrderWatcherScenario(ctx context.Context, t *testing.T, database *db.DB, signedOrder *zeroex.SignedOrder, opts *types.AddOrdersOpts) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
+func setupOrderWatcherScenario(ctx context.Context, t *testing.T, database *db.DB, signedOrder *zeroex.SignedOrderV3, opts *types.AddOrdersOpts) (*blockwatch.Watcher, chan []*zeroex.OrderEvent) {
 	blockWatcher, orderWatcher := setupOrderWatcher(ctx, t, ethRPCClient, database)
 
 	// Start watching an order
-	watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrder, false, opts)
+	watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrder, opts)
 
 	// Subscribe to OrderWatcher
 	orderEventsChan := make(chan []*zeroex.OrderEvent, 10)
@@ -2663,11 +2663,11 @@ func setupOrderWatcherScenario(ctx context.Context, t *testing.T, database *db.D
 	return blockWatcher, orderEventsChan
 }
 
-func watchOrder(ctx context.Context, t *testing.T, orderWatcher *Watcher, blockWatcher *blockwatch.Watcher, signedOrder *zeroex.SignedOrder, pinned bool, opts *types.AddOrdersOpts) {
+func watchOrder(ctx context.Context, t *testing.T, orderWatcher *Watcher, blockWatcher *blockwatch.Watcher, signedOrder *zeroex.SignedOrderV3, opts *types.AddOrdersOpts) {
 	err := blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
 
-	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, pinned, opts)
+	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrderV3{signedOrder}, opts)
 	require.NoError(t, err)
 	if len(validationResults.Rejected) != 0 {
 		spew.Dump(validationResults.Rejected)
@@ -2797,7 +2797,7 @@ type orderState struct {
 	lastValidatedBlock *types.MiniHeader
 }
 
-func checkOrderState(t *testing.T, expectedState orderState, order *types.OrderWithMetadata) {
+func checkOrderState(t *testing.T, expectedState orderState, order *types.OrderWithMetadataV3) {
 	assert.Equal(t, expectedState.hash, order.Hash, "Hash")
 	assert.Equal(t, expectedState.isRemoved, order.IsRemoved, "IsRemoved")
 	assert.Equal(t, expectedState.isUnfillable, order.IsUnfillable, "IsUnfillable")

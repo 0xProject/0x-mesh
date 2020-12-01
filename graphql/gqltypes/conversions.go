@@ -1,6 +1,7 @@
 package gqltypes
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -16,6 +17,9 @@ import (
 
 func AddOrderOptsToCommonType(opts *AddOrdersOpts) *types.AddOrdersOpts {
 	commonTypeOpts := &types.AddOrdersOpts{}
+	if opts.Pinned != nil {
+		commonTypeOpts.Pinned = *opts.Pinned
+	}
 	if opts.KeepCancelled != nil {
 		commonTypeOpts.KeepCancelled = *opts.KeepCancelled
 	}
@@ -59,9 +63,9 @@ func LatestBlockFromCommonType(latestBlock types.LatestBlock) *LatestBlock {
 	}
 }
 
-func NewOrderToSignedOrder(newOrder *NewOrder) *zeroex.SignedOrder {
-	return &zeroex.SignedOrder{
-		Order: zeroex.Order{
+func NewOrderToSignedOrder(newOrder *NewOrderV3) *zeroex.SignedOrderV3 {
+	return &zeroex.SignedOrderV3{
+		OrderV3: zeroex.OrderV3{
 			ChainID:               math.MustParseBig256(newOrder.ChainID),
 			ExchangeAddress:       common.HexToAddress(newOrder.ExchangeAddress),
 			MakerAddress:          common.HexToAddress(newOrder.MakerAddress),
@@ -83,16 +87,16 @@ func NewOrderToSignedOrder(newOrder *NewOrder) *zeroex.SignedOrder {
 	}
 }
 
-func NewOrdersToSignedOrders(newOrders []*NewOrder) []*zeroex.SignedOrder {
-	result := make([]*zeroex.SignedOrder, len(newOrders))
+func NewOrdersToSignedOrders(newOrders []*NewOrderV3) []*zeroex.SignedOrderV3 {
+	result := make([]*zeroex.SignedOrderV3, len(newOrders))
 	for i, newOrder := range newOrders {
 		result[i] = NewOrderToSignedOrder(newOrder)
 	}
 	return result
 }
 
-func NewOrderFromSignedOrder(signedOrder *zeroex.SignedOrder) *NewOrder {
-	return &NewOrder{
+func NewOrderFromSignedOrder(signedOrder *zeroex.SignedOrderV3) *NewOrderV3 {
+	return &NewOrderV3{
 		ChainID:               signedOrder.ChainID.String(),
 		ExchangeAddress:       strings.ToLower(signedOrder.ExchangeAddress.Hex()),
 		MakerAddress:          strings.ToLower(signedOrder.MakerAddress.Hex()),
@@ -113,16 +117,16 @@ func NewOrderFromSignedOrder(signedOrder *zeroex.SignedOrder) *NewOrder {
 	}
 }
 
-func NewOrdersFromSignedOrders(signedOrders []*zeroex.SignedOrder) []*NewOrder {
-	result := make([]*NewOrder, len(signedOrders))
+func NewOrdersFromSignedOrders(signedOrders []*zeroex.SignedOrderV3) []*NewOrderV3 {
+	result := make([]*NewOrderV3, len(signedOrders))
 	for i, order := range signedOrders {
 		result[i] = NewOrderFromSignedOrder(order)
 	}
 	return result
 }
 
-func OrderWithMetadataFromCommonType(order *types.OrderWithMetadata) *OrderWithMetadata {
-	return &OrderWithMetadata{
+func OrderWithMetadataFromCommonType(order *types.OrderWithMetadataV3) *OrderWithMetadataV3 {
+	return &OrderWithMetadataV3{
 		Hash:                     order.Hash.Hex(),
 		ChainID:                  order.ChainID.String(),
 		ExchangeAddress:          strings.ToLower(order.ExchangeAddress.Hex()),
@@ -145,8 +149,8 @@ func OrderWithMetadataFromCommonType(order *types.OrderWithMetadata) *OrderWithM
 	}
 }
 
-func OrdersWithMetadataFromCommonType(orders []*types.OrderWithMetadata) []*OrderWithMetadata {
-	result := make([]*OrderWithMetadata, len(orders))
+func OrdersWithMetadataFromCommonType(orders []*types.OrderWithMetadataV3) []*OrderWithMetadataV3 {
+	result := make([]*OrderWithMetadataV3, len(orders))
 	for i, order := range orders {
 		result[i] = OrderWithMetadataFromCommonType(order)
 	}
@@ -166,7 +170,7 @@ func AddOrdersResultsFromValidationResults(validationResults *ordervalidator.Val
 
 func AcceptedOrderResultFromOrderInfo(info *ordervalidator.AcceptedOrderInfo) *AcceptedOrderResult {
 	return &AcceptedOrderResult{
-		Order: &OrderWithMetadata{
+		Order: &OrderWithMetadataV3{
 			Hash:                     info.OrderHash.String(),
 			ChainID:                  info.SignedOrder.ChainID.String(),
 			ExchangeAddress:          strings.ToLower(info.SignedOrder.ExchangeAddress.Hex()),
@@ -210,7 +214,7 @@ func RejectedOrderResultFromOrderInfo(info *ordervalidator.RejectedOrderInfo) (*
 	}
 	return &RejectedOrderResult{
 		Hash: hash,
-		Order: &Order{
+		Order: &OrderV3{
 			ChainID:               info.SignedOrder.ChainID.String(),
 			ExchangeAddress:       strings.ToLower(info.SignedOrder.ExchangeAddress.Hex()),
 			MakerAddress:          strings.ToLower(info.SignedOrder.MakerAddress.Hex()),
@@ -246,41 +250,50 @@ func RejectedOrderResultsFromOrderInfos(infos []*ordervalidator.RejectedOrderInf
 	return result, nil
 }
 
-func OrderEventFromZeroExType(event *zeroex.OrderEvent) *OrderEvent {
-	return &OrderEvent{
-		Order: &OrderWithMetadata{
-			Hash:                     event.OrderHash.String(),
-			ChainID:                  event.SignedOrder.ChainID.String(),
-			ExchangeAddress:          strings.ToLower(event.SignedOrder.ExchangeAddress.Hex()),
-			MakerAddress:             strings.ToLower(event.SignedOrder.MakerAddress.Hex()),
-			MakerAssetData:           types.BytesToHex(event.SignedOrder.MakerAssetData),
-			MakerFeeAssetData:        types.BytesToHex(event.SignedOrder.MakerFeeAssetData),
-			MakerAssetAmount:         event.SignedOrder.MakerAssetAmount.String(),
-			MakerFee:                 event.SignedOrder.MakerFee.String(),
-			TakerAddress:             strings.ToLower(event.SignedOrder.TakerAddress.Hex()),
-			TakerAssetData:           types.BytesToHex(event.SignedOrder.TakerAssetData),
-			TakerFeeAssetData:        types.BytesToHex(event.SignedOrder.TakerFeeAssetData),
-			TakerAssetAmount:         event.SignedOrder.TakerAssetAmount.String(),
-			TakerFee:                 event.SignedOrder.TakerFee.String(),
-			SenderAddress:            strings.ToLower(event.SignedOrder.SenderAddress.Hex()),
-			FeeRecipientAddress:      strings.ToLower(event.SignedOrder.FeeRecipientAddress.Hex()),
-			ExpirationTimeSeconds:    event.SignedOrder.ExpirationTimeSeconds.String(),
-			Salt:                     event.SignedOrder.Salt.String(),
-			Signature:                types.BytesToHex(event.SignedOrder.Signature),
-			FillableTakerAssetAmount: event.FillableTakerAssetAmount.String(),
-		},
-		EndState:       OrderEndState(event.EndState),
-		Timestamp:      event.Timestamp.Format(time.RFC3339),
-		ContractEvents: ContractEventsFromZeroExType(event.ContractEvents),
+func OrderEventFromZeroExType(event *zeroex.OrderEvent) (*OrderEvent, error) {
+	switch o := event.SignedOrder.(type) {
+	case *zeroex.SignedOrderV3:
+		return &OrderEvent{
+			Order: &OrderWithMetadataV3{
+				Hash:                     event.OrderHash.String(),
+				ChainID:                  o.ChainID.String(),
+				ExchangeAddress:          strings.ToLower(o.ExchangeAddress.Hex()),
+				MakerAddress:             strings.ToLower(o.MakerAddress.Hex()),
+				MakerAssetData:           types.BytesToHex(o.MakerAssetData),
+				MakerFeeAssetData:        types.BytesToHex(o.MakerFeeAssetData),
+				MakerAssetAmount:         o.MakerAssetAmount.String(),
+				MakerFee:                 o.MakerFee.String(),
+				TakerAddress:             strings.ToLower(o.TakerAddress.Hex()),
+				TakerAssetData:           types.BytesToHex(o.TakerAssetData),
+				TakerFeeAssetData:        types.BytesToHex(o.TakerFeeAssetData),
+				TakerAssetAmount:         o.TakerAssetAmount.String(),
+				TakerFee:                 o.TakerFee.String(),
+				SenderAddress:            strings.ToLower(o.SenderAddress.Hex()),
+				FeeRecipientAddress:      strings.ToLower(o.FeeRecipientAddress.Hex()),
+				ExpirationTimeSeconds:    o.ExpirationTimeSeconds.String(),
+				Salt:                     o.Salt.String(),
+				Signature:                types.BytesToHex(o.Signature),
+				FillableTakerAssetAmount: event.FillableTakerAssetAmount.String(),
+			},
+			EndState:       OrderEndState(event.EndState),
+			Timestamp:      event.Timestamp.Format(time.RFC3339),
+			ContractEvents: ContractEventsFromZeroExType(event.ContractEvents),
+		}, nil
+	default:
+		return nil, errors.New("Unrecognized type in OrderEventFromZeroExType")
 	}
 }
 
-func OrderEventsFromZeroExType(orderEvents []*zeroex.OrderEvent) []*OrderEvent {
+func OrderEventsFromZeroExType(orderEvents []*zeroex.OrderEvent) ([]*OrderEvent, error) {
 	result := make([]*OrderEvent, len(orderEvents))
 	for i, event := range orderEvents {
-		result[i] = OrderEventFromZeroExType(event)
+		var err error
+		result[i], err = OrderEventFromZeroExType(event)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return result
+	return result, nil
 }
 
 func ContractEventFromZeroExType(event *zeroex.ContractEvent) *ContractEvent {

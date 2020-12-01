@@ -21,8 +21,8 @@ const (
 )
 
 var (
-	signedErc20Orders      []*zeroex.SignedOrder
-	signedMultiAssetOrders []*zeroex.SignedOrder
+	signedErc20Orders      []*zeroex.SignedOrderV3
+	signedMultiAssetOrders []*zeroex.SignedOrderV3
 	orderValidator         *OrderValidator
 )
 
@@ -41,7 +41,7 @@ func init() {
 	}
 
 	erc20Data := common.Hex2Bytes("f47261b000000000000000000000000038ae374ecf4db50b0ff37125b591a04997106a32")
-	erc20Order := zeroex.Order{
+	erc20Order := zeroex.OrderV3{
 		ChainID:               big.NewInt(constants.TestChainID),
 		MakerAddress:          constants.GanacheAccount1,
 		TakerAddress:          constants.NullAddress,

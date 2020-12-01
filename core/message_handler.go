@@ -18,7 +18,7 @@ var _ p2p.MessageHandler = &App{}
 
 func (app *App) HandleMessages(ctx context.Context, messages []*p2p.Message) error {
 	// First we validate the messages and decode them into orders.
-	orders := []*zeroex.SignedOrder{}
+	orders := []*zeroex.SignedOrderV3{}
 	orderHashToMessage := map[common.Hash]*p2p.Message{}
 
 	for _, msg := range messages {
@@ -57,7 +57,7 @@ func (app *App) HandleMessages(ctx context.Context, messages []*p2p.Message) err
 	}
 
 	// Next, we validate the orders.
-	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(ctx, orders, app.chainID, false, &types.AddOrdersOpts{})
+	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(ctx, orders, &types.AddOrdersOpts{})
 	if err != nil {
 		return err
 	}

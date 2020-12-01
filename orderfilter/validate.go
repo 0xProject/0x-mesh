@@ -19,6 +19,6 @@ func (f *Filter) MatchOrderMessageJSON(messageJSON []byte) (bool, error) {
 	return result.Valid(), nil
 }
 
-func (f *Filter) ValidateOrder(order *zeroex.SignedOrder) (*jsonschema.Result, error) {
+func (f *Filter) ValidateOrder(order *zeroex.SignedOrderV3) (*jsonschema.Result, error) {
 	return f.orderSchema.Validate(jsonschema.NewGoLoader(order))
 }

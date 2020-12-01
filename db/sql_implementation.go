@@ -111,22 +111,25 @@ func (db *DB) PeerStore() ds.Batching {
 const schema = `
 CREATE TABLE IF NOT EXISTS orders (
 	hash                     TEXT UNIQUE NOT NULL,
+	version                  INTEGER NOT NULL,
 	chainID                  TEXT NOT NULL,
 	exchangeAddress          TEXT NOT NULL,
 	makerAddress             TEXT NOT NULL,
 	makerAssetData           TEXT NOT NULL,
-	makerFeeAssetData        TEXT NOT NULL,
+	makerFeeAssetData        TEXT,
 	makerAssetAmount         TEXT NOT NULL,
 	makerFee                 TEXT NOT NULL,
 	takerAddress             TEXT NOT NULL,
 	takerAssetData           TEXT NOT NULL,
-	takerFeeAssetData        TEXT NOT NULL,
+	takerFeeAssetData        TEXT,
 	takerAssetAmount         TEXT NOT NULL,
 	takerFee                 TEXT NOT NULL,
 	senderAddress            TEXT NOT NULL,
 	feeRecipientAddress      TEXT NOT NULL,
 	expirationTimeSeconds    TEXT NOT NULL,
 	salt                     TEXT NOT NULL,
+	origin                   TEXT,
+	pool                     TEXT,
 	signature                TEXT NOT NULL,
 	lastUpdated              DATETIME NOT NULL,
 	fillableTakerAssetAmount TEXT NOT NULL,
@@ -169,10 +172,13 @@ CREATE TABLE IF NOT EXISTS dhtstore (
 );
 `
 
+// FIXME(jalextowle): We may need different insert queries for different order types.
+//
 // Note(albrow): If needed, we can optimize this by using prepared
 // statements for inserts instead of just a string.
 const insertOrderQuery = `INSERT INTO orders (
 	hash,
+	version,
 	chainID,
 	exchangeAddress,
 	makerAddress,
@@ -206,6 +212,7 @@ const insertOrderQuery = `INSERT INTO orders (
 	keepUnfunded
 ) VALUES (
 	:hash,
+	:version,
 	:chainID,
 	:exchangeAddress,
 	:makerAddress,
@@ -317,13 +324,13 @@ func (db *DB) ReadWriteTransactionalContext(ctx context.Context, opts *sql.TxOpt
 	return db.sqldb.TransactionalContext(ctx, opts, f)
 }
 
-func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []common.Hash, added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error) {
+func (db *DB) AddOrders(orders []*types.OrderWithMetadataV3) (alreadyStored []common.Hash, added []*types.OrderWithMetadataV3, removed []*types.OrderWithMetadataV3, err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
 
 	sqlOrders := sqltypes.OrdersFromCommonType(orders)
-	addedMap := map[common.Hash]*types.OrderWithMetadata{}
+	addedMap := map[common.Hash]*types.OrderWithMetadataV3{}
 	sqlRemoved := []*sqltypes.Order{}
 
 	err = db.ReadWriteTransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
@@ -383,7 +390,7 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []comm
 	return alreadyStored, added, sqltypes.OrdersToCommonType(sqlRemoved), nil
 }
 
-func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err error) {
+func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadataV3, err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
@@ -434,7 +441,7 @@ func (db *DB) GetOrderStatuses(hashes []common.Hash) (statuses []*StoredOrderSta
 	return orderStatuses, nil
 }
 
-func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadata, err error) {
+func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadataV3, err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
@@ -555,7 +562,7 @@ func (db *DB) DeleteOrder(hash common.Hash) error {
 	return nil
 }
 
-func (db *DB) DeleteOrders(query *OrderQuery) (deleted []*types.OrderWithMetadata, err error) {
+func (db *DB) DeleteOrders(query *OrderQuery) (deleted []*types.OrderWithMetadataV3, err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
@@ -588,7 +595,7 @@ func (db *DB) DeleteOrders(query *OrderQuery) (deleted []*types.OrderWithMetadat
 	return sqltypes.OrdersToCommonType(ordersToDelete), nil
 }
 
-func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) (err error) {
+func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadataV3) (updatedOrder *types.OrderWithMetadataV3, err error)) (err error) {
 	defer func() {
 		err = convertErr(err)
 	}()

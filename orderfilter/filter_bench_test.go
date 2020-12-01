@@ -12,7 +12,7 @@ import (
 )
 
 func BenchmarkValidateOrder(b *testing.B) {
-	order := &zeroex.Order{
+	order := &zeroex.OrderV3{
 		ChainID:               big.NewInt(constants.TestChainID),
 		MakerAddress:          common.HexToAddress("0x5409ed021d9299bf6814279a6a1411a7e866a631"),
 		MakerAssetData:        common.FromHex("0xf47261b0000000000000000000000000871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),

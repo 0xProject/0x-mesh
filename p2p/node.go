@@ -108,6 +108,8 @@ type Config struct {
 	// SubscribeTopic is the topic to subscribe to for new messages. Only messages
 	// that are published on this topic will be received and processed.
 	SubscribeTopic string
+	// FIXME(jalextowle): Should we have new topics for v4 orders?
+	//
 	// PublishTopics are the topics to publish messages to. Messages may be
 	// published to more than one topic (e.g. a topic for all orders and a topic
 	// for orders with a specific asset).

@@ -4,6 +4,7 @@ import { createDatabase } from './database';
 import { createSchemaValidator } from './schema_validator';
 import {
     AcceptedOrderInfo,
+    AddOrdersOpts,
     BigNumber,
     Config,
     ContractAddresses,
@@ -266,7 +267,16 @@ export class Mesh {
      * @returns Validation results for the given orders, indicating which orders
      * were accepted and which were rejected.
      */
-    public async addOrdersAsync(orders: SignedOrder[], pinned: boolean = true): Promise<ValidationResults> {
+    public async addOrdersAsync(
+        orders: SignedOrder[],
+        opts: AddOrdersOpts = {
+            pinned: false,
+            keepCancelled: false,
+            keepExpired: false,
+            keepFullyFilled: false,
+            keepUnfunded: false,
+        },
+    ): Promise<ValidationResults> {
         await waitForLoadAsync();
         if (this.wrapper === undefined) {
             // If this is called after startAsync, this.wrapper is always
@@ -275,7 +285,7 @@ export class Mesh {
             return Promise.reject(new Error('Mesh is still loading. Try again soon.'));
         }
         const meshOrders = orders.map(signedOrderToWrapperSignedOrder);
-        const meshResults = await this.wrapper.addOrdersAsync(meshOrders, pinned);
+        const meshResults = await this.wrapper.addOrdersAsync(meshOrders, opts);
         return wrapperValidationResultsToValidationResults(meshResults);
     }
 }

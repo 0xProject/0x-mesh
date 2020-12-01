@@ -39,8 +39,8 @@ func init() {
 	ethClient = ethclient.NewClient(rpcClient)
 }
 
-func defaultTestOrder() *zeroex.Order {
-	return &zeroex.Order{
+func defaultTestOrderV3() *zeroex.OrderV3 {
+	return &zeroex.OrderV3{
 		ChainID:               big.NewInt(constants.TestChainID),
 		MakerAddress:          constants.GanacheAccount1,
 		TakerAddress:          constants.NullAddress,
@@ -62,52 +62,52 @@ func defaultTestOrder() *zeroex.Order {
 
 func defaultConfig() *orderopts.Config {
 	return &orderopts.Config{
-		Order:             defaultTestOrder(),
+		Order:             defaultTestOrderV3(),
 		SetupMakerState:   false,
 		SetupTakerAddress: constants.NullAddress,
 	}
 }
 
-func NewTestOrder(t *testing.T, opts ...orderopts.Option) *zeroex.Order {
+func NewTestOrderV3(t *testing.T, opts ...orderopts.Option) *zeroex.OrderV3 {
 	cfg := defaultConfig()
 	require.NoError(t, cfg.Apply(opts...))
-	return newTestOrder(cfg)
+	return newTestOrderV3(cfg)
 }
 
-func newTestOrder(cfg *orderopts.Config) *zeroex.Order {
+func newTestOrderV3(cfg *orderopts.Config) *zeroex.OrderV3 {
 	return cfg.Order
 }
 
-func NewSignedTestOrder(t *testing.T, opts ...orderopts.Option) *zeroex.SignedOrder {
+func NewSignedTestOrderV3(t *testing.T, opts ...orderopts.Option) *zeroex.SignedOrderV3 {
 	cfg := defaultConfig()
 	require.NoError(t, cfg.Apply(opts...))
 
-	order := newTestOrder(cfg)
-	signedOrder, err := zeroex.SignTestOrder(order)
+	order := newTestOrderV3(cfg)
+	signedOrderV3, err := zeroex.SignTestOrder(order)
 	require.NoError(t, err, "could not sign order")
 
 	if cfg.SetupMakerState {
-		setupMakerState(t, signedOrder)
+		setupMakerState(t, signedOrderV3)
 	}
 	if cfg.SetupTakerAddress != constants.NullAddress {
-		setupTakerState(t, signedOrder, cfg.SetupTakerAddress)
+		setupTakerState(t, signedOrderV3, cfg.SetupTakerAddress)
 	}
 
-	return signedOrder
+	return signedOrderV3
 }
 
-// NewSignedTestOrdersBatch efficiently creates numOrders orders with independent options.
+// NewSignedTestOrderV3sBatch efficiently creates numOrderV3s orders with independent options.
 // If the options require setting up maker or taker state, that state will be set up efficiently
 // with one transaction per address.
 //
 // optionsForIndex is a function which returns the options for creating the order at a specific
-// index (between 0 and numOrders). For example, you can create ERC721 orders which each have a unique
+// index (between 0 and numOrderV3s). For example, you can create ERC721 orders which each have a unique
 // token ID. optionsForIndex can be nil to always use the default options. It can return nil to
 // use the default options for an order at a specific index.
-func NewSignedTestOrdersBatch(t *testing.T, numOrders int, optionsForIndex func(index int) []orderopts.Option) []*zeroex.SignedOrder {
+func NewSignedTestOrdersV3Batch(t *testing.T, numOrders int, optionsForIndex func(index int) []orderopts.Option) []*zeroex.SignedOrderV3 {
 	allRequiredBalances := map[common.Address]*tokenBalances{}
 
-	allOrders := make([]*zeroex.SignedOrder, numOrders)
+	allOrderV3s := make([]*zeroex.SignedOrderV3, numOrders)
 	for i := 0; i < numOrders; i++ {
 		// Apply the options (if any) for the order we will create at this index.
 		cfg := defaultConfig()
@@ -119,28 +119,28 @@ func NewSignedTestOrdersBatch(t *testing.T, numOrders int, optionsForIndex func(
 		}
 
 		// Create the order based on the cfg.
-		order := newTestOrder(cfg)
-		signedOrder, err := zeroex.SignTestOrder(order)
+		order := newTestOrderV3(cfg)
+		signedOrderV3, err := zeroex.SignTestOrder(order)
 		require.NoError(t, err, "could not sign order")
-		allOrders[i] = signedOrder
+		allOrderV3s[i] = signedOrderV3
 
 		// Add maker and taker balances as needed to the set of required balances.
 		if cfg.SetupMakerState {
-			makerBalancesForThisOrder := requiredMakerBalances(t, signedOrder)
-			makerBalances, found := allRequiredBalances[signedOrder.MakerAddress]
+			makerBalancesForThisOrderV3 := requiredMakerBalances(t, signedOrderV3)
+			makerBalances, found := allRequiredBalances[signedOrderV3.MakerAddress]
 			if !found {
-				allRequiredBalances[order.MakerAddress] = makerBalancesForThisOrder
+				allRequiredBalances[order.MakerAddress] = makerBalancesForThisOrderV3
 			} else {
-				makerBalances.add(makerBalancesForThisOrder)
+				makerBalances.add(makerBalancesForThisOrderV3)
 			}
 		}
 		if cfg.SetupTakerAddress != constants.NullAddress {
-			takerBalancesForThisOrder := requiredTakerBalances(t, signedOrder)
+			takerBalancesForThisOrderV3 := requiredTakerBalances(t, signedOrderV3)
 			takerBalances, found := allRequiredBalances[cfg.SetupTakerAddress]
 			if !found {
-				allRequiredBalances[cfg.SetupTakerAddress] = takerBalancesForThisOrder
+				allRequiredBalances[cfg.SetupTakerAddress] = takerBalancesForThisOrderV3
 			} else {
-				takerBalances.add(takerBalancesForThisOrder)
+				takerBalances.add(takerBalancesForThisOrderV3)
 			}
 		}
 	}
@@ -150,10 +150,10 @@ func NewSignedTestOrdersBatch(t *testing.T, numOrders int, optionsForIndex func(
 		setupBalanceAndAllowance(t, traderAddress, requiredBalances)
 	}
 
-	return allOrders
+	return allOrderV3s
 }
 
-// OptionsForAll is a convenience function which can be used in combination with NewSignedTestOrdersBatch
+// OptionsForAll is a convenience function which can be used in combination with NewSignedTestOrderV3sBatch
 // when you want all orders to be created with the same options. It returns a function which can be used
 // as optionsForIndex which always returns the given options, regardless of the index.
 func OptionsForAll(opts ...orderopts.Option) func(_ int) []orderopts.Option {
@@ -212,14 +212,14 @@ func isZero(x *big.Int) bool {
 
 // setupMakerState sets up all the on-chain state in order to make the order fillable. This includes
 // setting allowances and transferring the required balances.
-func setupMakerState(t *testing.T, order *zeroex.SignedOrder) {
+func setupMakerState(t *testing.T, order *zeroex.SignedOrderV3) {
 	requiredMakerBalances := requiredMakerBalances(t, order)
 	setupBalanceAndAllowance(t, order.MakerAddress, requiredMakerBalances)
 }
 
 // setupTakerState sets up all the on-chain state needed by taker in order to fill the order.
 // This includes setting allowances and transferring the required balances.
-func setupTakerState(t *testing.T, order *zeroex.SignedOrder, taker common.Address) {
+func setupTakerState(t *testing.T, order *zeroex.SignedOrderV3, taker common.Address) {
 	requiredTakerBalances := requiredTakerBalances(t, order)
 	setupBalanceAndAllowance(t, taker, requiredTakerBalances)
 }
@@ -241,7 +241,7 @@ func setupBalanceAndAllowance(t *testing.T, traderAddress common.Address, requir
 	}
 }
 
-func requiredMakerBalances(t *testing.T, order *zeroex.SignedOrder) *tokenBalances {
+func requiredMakerBalances(t *testing.T, order *zeroex.SignedOrderV3) *tokenBalances {
 	balances := newTokenBalances()
 	balances.add(requiredBalancesForAssetData(t, order.MakerAssetData, order.MakerAssetAmount))
 	if len(order.MakerFeeAssetData) != 0 && !isZero(order.MakerFee) {
@@ -250,7 +250,7 @@ func requiredMakerBalances(t *testing.T, order *zeroex.SignedOrder) *tokenBalanc
 	return balances
 }
 
-func requiredTakerBalances(t *testing.T, order *zeroex.SignedOrder) *tokenBalances {
+func requiredTakerBalances(t *testing.T, order *zeroex.SignedOrderV3) *tokenBalances {
 	balances := newTokenBalances()
 	balances.add(requiredBalancesForAssetData(t, order.TakerAssetData, order.TakerAssetAmount))
 	if len(order.TakerFeeAssetData) != 0 && !isZero(order.TakerFee) {

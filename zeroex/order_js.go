@@ -16,17 +16,22 @@ func (o OrderEvent) JSValue() js.Value {
 	for i, contractEvent := range o.ContractEvents {
 		contractEventsJS[i] = contractEvent.JSValue()
 	}
-	return js.ValueOf(map[string]interface{}{
-		"timestamp":                o.Timestamp.Format(time.RFC3339),
-		"orderHash":                o.OrderHash.Hex(),
-		"signedOrder":              o.SignedOrder.JSValue(),
-		"endState":                 string(o.EndState),
-		"fillableTakerAssetAmount": o.FillableTakerAssetAmount.String(),
-		"contractEvents":           contractEventsJS,
-	})
+	switch so := o.SignedOrder.(type) {
+	case *SignedOrderV3:
+		return js.ValueOf(map[string]interface{}{
+			"timestamp":                o.Timestamp.Format(time.RFC3339),
+			"orderHash":                o.OrderHash.Hex(),
+			"signedOrder":              so.JSValue(),
+			"endState":                 string(o.EndState),
+			"fillableTakerAssetAmount": o.FillableTakerAssetAmount.String(),
+			"contractEvents":           contractEventsJS,
+		})
+	default:
+		panic("Unrecognized order type")
+	}
 }
 
-func (s SignedOrder) JSValue() js.Value {
+func (s SignedOrderV3) JSValue() js.Value {
 	makerAssetData := "0x"
 	if len(s.MakerAssetData) != 0 {
 		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerAssetData))

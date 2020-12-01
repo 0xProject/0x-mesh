@@ -51,7 +51,7 @@ func (s Stats) JSValue() js.Value {
 	})
 }
 
-func (o OrderWithMetadata) JSValue() js.Value {
+func (o OrderWithMetadataV3) JSValue() js.Value {
 	value, _ := jsutil.InefficientlyConvertToJS(o)
 	return value
 }

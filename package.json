@@ -37,7 +37,7 @@
         "webpack": "^4.41.5",
         "webpack-cli": "^3.3.10",
         "wrtc": "0.4.1",
-        "wsrun": "^5.2.0"
+        "wsrun": "^5.2.4"
     },
     "resolutions": {
         "@0x/ts-doc-gen/typedoc-plugin-markdown": "2.2.x"

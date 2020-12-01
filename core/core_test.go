@@ -283,12 +283,12 @@ func runOrdersyncTestCase(testCase ordersyncTestCase) func(t *testing.T) {
 			return orderOptions
 		}
 		numOrders := testCase.pConfig.paginationSubprotocolPerPage*3 + 1
-		originalOrders := scenario.NewSignedTestOrdersBatch(t, numOrders, orderOptionsForIndex)
+		originalOrders := scenario.NewSignedTestOrdersV3Batch(t, numOrders, orderOptionsForIndex)
 
 		// We have to wait for latest block to be processed by the Mesh node.
 		time.Sleep(blockProcessingWaitTime)
 
-		results, err := originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, constants.TestChainID, true, &types.AddOrdersOpts{})
+		results, err := originalNode.orderWatcher.ValidateAndStoreValidOrders(ctx, originalOrders, &types.AddOrdersOpts{Pinned: true})
 		require.NoError(t, err)
 		require.Empty(t, results.Rejected, "tried to add orders but some were invalid: \n%s\n", spew.Sdump(results))
 
@@ -317,7 +317,7 @@ func runOrdersyncTestCase(testCase ordersyncTestCase) func(t *testing.T) {
 
 		// Only the orders that satisfy the new node's orderfilter should
 		// be received during ordersync.
-		filteredOrders := []*zeroex.SignedOrder{}
+		filteredOrders := []*zeroex.SignedOrderV3{}
 		for _, order := range originalOrders {
 			matches, err := newNode.orderFilter.MatchOrder(order)
 			require.NoError(t, err)
@@ -356,7 +356,7 @@ func runOrdersyncTestCase(testCase ordersyncTestCase) func(t *testing.T) {
 			expectedOrder.ResetHash()
 			dbOrder, err := newNode.db.GetOrder(orderHash)
 			require.NoError(t, err)
-			actualOrder := dbOrder.SignedOrder()
+			actualOrder := dbOrder.SignedOrderV3()
 			assert.Equal(t, expectedOrder, actualOrder, "correct order was not stored in new node database")
 		}
 

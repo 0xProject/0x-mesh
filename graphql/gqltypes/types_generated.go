@@ -10,13 +10,16 @@ import (
 
 type AcceptedOrderResult struct {
 	// The order that was accepted, including metadata.
-	Order *OrderWithMetadata `json:"order"`
+	Order *OrderWithMetadataV3 `json:"order"`
 	// Whether or not the order is new. Set to true if this is the first time this Mesh node has accepted the order
 	// and false otherwise.
 	IsNew bool `json:"isNew"`
 }
 
 type AddOrdersOpts struct {
+	// Indicates that the order being added should be ignored when pruning the
+	// database using spam prevention techniques.
+	Pinned *bool `json:"pinned"`
 	// Indicates that the orders being added should be kept by the database after
 	// cancellation.
 	KeepCancelled *bool `json:"keepCancelled"`
@@ -71,28 +74,7 @@ type LatestBlock struct {
 }
 
 // A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format).
-type NewOrder struct {
-	ChainID               string `json:"chainId"`
-	ExchangeAddress       string `json:"exchangeAddress"`
-	MakerAddress          string `json:"makerAddress"`
-	MakerAssetData        string `json:"makerAssetData"`
-	MakerAssetAmount      string `json:"makerAssetAmount"`
-	MakerFeeAssetData     string `json:"makerFeeAssetData"`
-	MakerFee              string `json:"makerFee"`
-	TakerAddress          string `json:"takerAddress"`
-	TakerAssetData        string `json:"takerAssetData"`
-	TakerAssetAmount      string `json:"takerAssetAmount"`
-	TakerFeeAssetData     string `json:"takerFeeAssetData"`
-	TakerFee              string `json:"takerFee"`
-	SenderAddress         string `json:"senderAddress"`
-	FeeRecipientAddress   string `json:"feeRecipientAddress"`
-	ExpirationTimeSeconds string `json:"expirationTimeSeconds"`
-	Salt                  string `json:"salt"`
-	Signature             string `json:"signature"`
-}
-
-// A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format.)
-type Order struct {
+type NewOrderV3 struct {
 	ChainID               string `json:"chainId"`
 	ExchangeAddress       string `json:"exchangeAddress"`
 	MakerAddress          string `json:"makerAddress"`
@@ -114,7 +96,7 @@ type Order struct {
 
 type OrderEvent struct {
 	// The order that was affected.
-	Order *OrderWithMetadata `json:"order"`
+	Order *OrderWithMetadataV3 `json:"order"`
 	// A way of classifying the effect that the order event had on the order. You can
 	// think of different end states as different "types" of order events.
 	EndState OrderEndState `json:"endState"`
@@ -145,8 +127,29 @@ type OrderSort struct {
 	Direction SortDirection `json:"direction"`
 }
 
+// A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format.)
+type OrderV3 struct {
+	ChainID               string `json:"chainId"`
+	ExchangeAddress       string `json:"exchangeAddress"`
+	MakerAddress          string `json:"makerAddress"`
+	MakerAssetData        string `json:"makerAssetData"`
+	MakerAssetAmount      string `json:"makerAssetAmount"`
+	MakerFeeAssetData     string `json:"makerFeeAssetData"`
+	MakerFee              string `json:"makerFee"`
+	TakerAddress          string `json:"takerAddress"`
+	TakerAssetData        string `json:"takerAssetData"`
+	TakerAssetAmount      string `json:"takerAssetAmount"`
+	TakerFeeAssetData     string `json:"takerFeeAssetData"`
+	TakerFee              string `json:"takerFee"`
+	SenderAddress         string `json:"senderAddress"`
+	FeeRecipientAddress   string `json:"feeRecipientAddress"`
+	ExpirationTimeSeconds string `json:"expirationTimeSeconds"`
+	Salt                  string `json:"salt"`
+	Signature             string `json:"signature"`
+}
+
 // A signed 0x order along with some additional metadata about the order which is not part of the 0x protocol specification.
-type OrderWithMetadata struct {
+type OrderWithMetadataV3 struct {
 	ChainID               string `json:"chainId"`
 	ExchangeAddress       string `json:"exchangeAddress"`
 	MakerAddress          string `json:"makerAddress"`
@@ -174,7 +177,7 @@ type RejectedOrderResult struct {
 	// The hash of the order. May be null if the hash could not be computed.
 	Hash *string `json:"hash"`
 	// The order that was rejected.
-	Order *Order `json:"order"`
+	Order *OrderV3 `json:"order"`
 	// A machine-readable code indicating why the order was rejected. This code is designed to
 	// be used by programs and applications and will never change without breaking backwards-compatibility.
 	Code RejectedOrderCode `json:"code"`
