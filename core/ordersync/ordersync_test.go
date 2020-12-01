@@ -139,7 +139,7 @@ func (s *oneOrderSubprotocol) ParseResponseMetadata(metadata json.RawMessage) (i
 }
 
 func (s *oneOrderSubprotocol) HandleOrderSyncRequest(ctx context.Context, req *Request) (*Response, error) {
-	order := &zeroex.Order{
+	order := &zeroex.OrderV3{
 		ChainID:               big.NewInt(constants.TestChainID),
 		MakerAddress:          constants.GanacheAccount1,
 		TakerAddress:          constants.NullAddress,
@@ -155,7 +155,7 @@ func (s *oneOrderSubprotocol) HandleOrderSyncRequest(ctx context.Context, req *R
 		MakerAssetAmount:      big.NewInt(100),
 		TakerAssetAmount:      big.NewInt(42),
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		ExchangeAddress:       ethereum.GanacheAddresses.Exchange,
+		ExchangeAddress:       ethereum.GanacheAddresses.ExchangeV3,
 	}
 	signedOrder, err := zeroex.SignTestOrder(order)
 	if err != nil {

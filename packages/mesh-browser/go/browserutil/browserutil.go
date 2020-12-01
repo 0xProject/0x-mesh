@@ -36,7 +36,8 @@ func ConvertConfig(jsConfig js.Value) (core.Config, error) {
 		EthereumRPCMaxRequestsPerSecond:  30,
 		EnableEthereumRPCRateLimiting:    true,
 		MaxOrdersInStorage:               100000,
-		CustomOrderFilter:                orderfilter.DefaultCustomOrderSchema,
+		CustomOrderFilterV3:              orderfilter.DefaultCustomOrderSchema,
+		CustomOrderFilterV4:              orderfilter.DefaultCustomOrderSchema,
 		MaxBytesPerSecond:                5242880, // 5 MiB
 	}
 
@@ -78,8 +79,9 @@ func ConvertConfig(jsConfig js.Value) (core.Config, error) {
 	if maxOrdersInStorage := jsConfig.Get("maxOrdersInStorage"); !jsutil.IsNullOrUndefined(maxOrdersInStorage) {
 		config.MaxOrdersInStorage = maxOrdersInStorage.Int()
 	}
+	// TODO(mason) add v3/v4 split for this!!
 	if customOrderFilter := jsConfig.Get("customOrderFilter"); !jsutil.IsNullOrUndefined(customOrderFilter) {
-		config.CustomOrderFilter = customOrderFilter.String()
+		config.CustomOrderFilterV3 = customOrderFilter.String()
 	}
 	if ethereumRPCURL := jsConfig.Get("ethereumRPCURL"); !jsutil.IsNullOrUndefined(ethereumRPCURL) && ethereumRPCURL.String() != "" {
 		config.EthereumRPCURL = ethereumRPCURL.String()

@@ -139,7 +139,15 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []comm
 	if err := jsutil.InefficientlyConvertFromJS(jsRemoved, &dexieRemoved); err != nil {
 		return nil, nil, nil, err
 	}
-	return alreadyStored, dexietypes.OrdersToCommonType(dexieAdded), dexietypes.OrdersToCommonType(dexieRemoved), nil
+	added, err = dexietypes.OrdersToCommonType(dexieAdded)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	removed, err = dexietypes.OrdersToCommonType(dexieRemoved)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return alreadyStored, added, removed, nil
 }
 
 func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err error) {
@@ -158,7 +166,7 @@ func (db *DB) GetOrder(hash common.Hash) (order *types.OrderWithMetadata, err er
 	if err := jsutil.InefficientlyConvertFromJS(jsOrder, &dexieOrder); err != nil {
 		return nil, err
 	}
-	return dexietypes.OrderToCommonType(&dexieOrder), nil
+	return dexietypes.OrderToCommonType(&dexieOrder)
 }
 
 func (db *DB) GetOrderStatuses(hashes []common.Hash) (statuses []*StoredOrderStatus, err error) {
@@ -215,7 +223,7 @@ func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadata, 
 	if err := jsutil.InefficientlyConvertFromJS(jsOrders, &dexieOrders); err != nil {
 		return nil, err
 	}
-	return dexietypes.OrdersToCommonType(dexieOrders), nil
+	return dexietypes.OrdersToCommonType(dexieOrders)
 }
 
 func (db *DB) CountOrders(query *OrderQuery) (count int, err error) {
@@ -272,7 +280,7 @@ func (db *DB) DeleteOrders(query *OrderQuery) (deletedOrders []*types.OrderWithM
 	if err := jsutil.InefficientlyConvertFromJS(jsOrders, &dexieOrders); err != nil {
 		return nil, err
 	}
-	return dexietypes.OrdersToCommonType(dexieOrders), nil
+	return dexietypes.OrdersToCommonType(dexieOrders)
 }
 
 func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) (err error) {
@@ -289,7 +297,11 @@ func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types
 		if err := jsutil.InefficientlyConvertFromJS(jsExistingOrder, &dexieExistingOrder); err != nil {
 			panic(err)
 		}
-		orderToUpdate, err := updateFunc(dexietypes.OrderToCommonType(&dexieExistingOrder))
+		order, err := dexietypes.OrderToCommonType(&dexieExistingOrder)
+		if err != nil {
+			panic(err)
+		}
+		orderToUpdate, err := updateFunc(order)
 		if err != nil {
 			panic(err)
 		}

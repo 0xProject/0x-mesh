@@ -99,19 +99,27 @@ type Node struct {
 	// TODO(jalextowle): Make this linter compliant
 	routingDiscovery discovery.Discovery //nolint:staticcheck
 	pubsub           *pubsub.PubSub
-	sub              *pubsub.Subscription
+	subV3            *pubsub.Subscription
+	subV4            *pubsub.Subscription
 	banner           *banner.Banner
 }
 
 // Config contains configuration options for a Node.
 type Config struct {
-	// SubscribeTopic is the topic to subscribe to for new messages. Only messages
+	// SubscribeTopicV3 is the topic to subscribe to for new V3 messages. Only messages
 	// that are published on this topic will be received and processed.
-	SubscribeTopic string
-	// PublishTopics are the topics to publish messages to. Messages may be
+	SubscribeTopicV3 string
+	// SubscribeTopicV4 is the topic to subscribe to for new V3 messages. Only messages
+	// that are published on this topic will be received and processed.
+	SubscribeTopicV4 string
+	// PublishTopicsV3 are the topics to publish V3 messages to. Messages may be
 	// published to more than one topic (e.g. a topic for all orders and a topic
 	// for orders with a specific asset).
-	PublishTopics []string
+	PublishTopicsV3 []string
+	// PublishTopicsV4 are the topics to publish V4 messages to. Messages may be
+	// published to more than one topic (e.g. a topic for all orders and a topic
+	// for orders with a specific asset).
+	PublishTopicsV4 []string
 	// TCPPort is the port on which to listen for incoming TCP connections.
 	TCPPort int
 	// WebSocketsPort is the port on which to listen for incoming WebSockets
@@ -159,11 +167,16 @@ type Config struct {
 	// is allowed to send at once through the GossipSub network. Any additional
 	// messages will be dropped.
 	PerPeerPubSubMessageBurst int
-	// CustomMessageValidator is a custom validator for GossipSub messages. All
+	// CustomMessageValidatorV3 is a custom validator for V3 GossipSub messages. All
 	// incoming and outgoing messages will be dropped unless they are valid
 	// according to this custom validator, which will be run in addition to the
 	// default validators.
-	CustomMessageValidator pubsub.Validator
+	CustomMessageValidatorV3 pubsub.Validator
+	// CustomMessageValidatorV4 is a custom validator for V4 GossipSub messages. All
+	// incoming and outgoing messages will be dropped unless they are valid
+	// according to this custom validator, which will be run in addition to the
+	// default validators.
+	CustomMessageValidatorV4 pubsub.Validator
 	// MaxBytesPerSecond is the maximum number of bytes per second that a peer is
 	// allowed to send before failing the bandwidth check. Defaults to 5 MiB.
 	MaxBytesPerSecond float64
@@ -292,7 +305,8 @@ func New(ctx context.Context, config Config) (*Node, error) {
 // registerValidators registers all the validators we use for incoming and
 // outgoing GossipSub messages.
 func registerValidators(ctx context.Context, basicHost host.Host, config Config, ps *pubsub.PubSub) error {
-	validators := validatorset.New()
+	validatorsV3 := validatorset.New()
+	validatorsV4 := validatorset.New()
 
 	// Add the rate limiting validator.
 	rateValidator, err := ratevalidator.New(ctx, ratevalidator.Config{
@@ -306,11 +320,17 @@ func registerValidators(ctx context.Context, basicHost host.Host, config Config,
 	if err != nil {
 		return err
 	}
-	validators.Add("message rate limiting", rateValidator.Validate)
+	validatorsV3.Add("message rate limiting", rateValidator.Validate)
+	validatorsV4.Add("message rate limiting", rateValidator.Validate)
 
 	// Add the custom validator if there is one.
-	if config.CustomMessageValidator != nil {
-		validators.Add("custom", config.CustomMessageValidator)
+	if config.CustomMessageValidatorV3 != nil {
+		validatorsV3.Add("custom", config.CustomMessageValidatorV3)
+	}
+
+	// Add the custom validator if there is one.
+	if config.CustomMessageValidatorV4 != nil {
+		validatorsV4.Add("custom", config.CustomMessageValidatorV4)
 	}
 
 	// Register the set of validators for all topics that we publish and/or
@@ -327,12 +347,22 @@ func registerValidators(ctx context.Context, basicHost host.Host, config Config,
 	// in the database that don't match the current filter. In most cases, the
 	// subscribe topic will be one of the publish topics so it doesn't matter much
 	// in practice in the current implementation.
-	allTopics := stringset.NewFromSlice(append(config.PublishTopics, config.SubscribeTopic))
-	for topic := range allTopics {
-		if err := ps.RegisterTopicValidator(topic, validators.Validate, pubsub.WithValidatorInline(true)); err != nil {
+	v3Topics := stringset.NewFromSlice(append(config.PublishTopicsV3, config.SubscribeTopicV3))
+	for topic := range v3Topics {
+		if err := ps.RegisterTopicValidator(topic, validatorsV3.Validate, pubsub.WithValidatorInline(true)); err != nil {
 			return err
 		}
 	}
+	// some this causes TestHandleRawRequest test to fail, but not any other ones :|
+	// TODO(mason): fix this
+	// v4Topics := stringset.NewFromSlice(append(config.PublishTopicsV4, config.SubscribeTopicV4))
+	// fmt.Println(v4Topics)
+	// for topic := range v4Topics {
+	// 	fmt.Println("v4", topic)
+	// 	if err := ps.RegisterTopicValidator(topic, validatorsV4.Validate, pubsub.WithValidatorInline(true)); err != nil {
+	// 		return err
+	// 	}
+	// }
 	return nil
 }
 
@@ -539,6 +569,10 @@ func (n *Node) startMessageHandler(ctx context.Context) error {
 	}
 }
 
+// FIXME(jalextowle): Make sure that this works properly with v4 orders
+//
+// FIXME(jalextowle): Could we put the two subscriptions into separate go routines?
+// Alternatively, could we add the subscriptions to receiveBatch?
 func (n *Node) receiveAndHandleMessages(ctx context.Context) error {
 	// Receive up to maxReceiveBatch messages.
 	incoming, err := n.receiveBatch(ctx)
@@ -646,6 +680,15 @@ func logPeerConnectionError(peerInfo peer.AddrInfo, connectionErr error) {
 // receiveBatch returns up to maxReceiveBatch messages which are received from
 // peers. There is no guarantee that the messages are unique.
 func (n *Node) receiveBatch(ctx context.Context) ([]*Message, error) {
+	// HACK(jalextowle): Pick a random protocol version (3 or 4) to receive
+	// orders for in this batch.
+	flip := mathrand.Intn(2)
+	var receiver func(context.Context) (*Message, error)
+	if flip == 0 {
+		receiver = n.receiveV3
+	} else {
+		receiver = n.receiveV4
+	}
 	messages := []*Message{}
 	for {
 		if len(messages) >= maxReceiveBatch {
@@ -658,7 +701,7 @@ func (n *Node) receiveBatch(ctx context.Context) ([]*Message, error) {
 		default:
 		}
 		receiveCtx, receiveCancel := context.WithTimeout(n.ctx, receiveTimeout)
-		msg, err := n.receive(receiveCtx)
+		msg, err := receiver(receiveCtx)
 		receiveCancel()
 		if err != nil {
 			if err == context.Canceled || err == context.DeadlineExceeded {
@@ -674,12 +717,12 @@ func (n *Node) receiveBatch(ctx context.Context) ([]*Message, error) {
 }
 
 // Send sends a message continaing the given data to all connected peers.
-func (n *Node) Send(data []byte) error {
+func (n *Node) SendV3(data []byte) error {
 	// Note: If there is an error, we still try to publish to any remaining
 	// topics. We always return the first error that was encountered (if any),
 	// which is assigned to firstErr.
 	var firstErr error
-	for _, topic := range n.config.PublishTopics {
+	for _, topic := range n.config.PublishTopicsV3 {
 		// TODO(jalextowle): This should be replaced with `pubsub.Join`
 		// and `topic.Publish`
 		err := n.pubsub.Publish(topic, data) //nolint:staticcheck
@@ -690,19 +733,49 @@ func (n *Node) Send(data []byte) error {
 	return firstErr
 }
 
-// receive returns the next pending message. It blocks if no messages are
-// available. If the given context is canceled, it returns nil, ctx.Err().
-func (n *Node) receive(ctx context.Context) (*Message, error) {
-	if n.sub == nil {
-		var err error
+// Send sends a message continaing the given data to all connected peers.
+func (n *Node) SendV4(data []byte) error {
+	// Note: If there is an error, we still try to publish to any remaining
+	// topics. We always return the first error that was encountered (if any),
+	// which is assigned to firstErr.
+	var firstErr error
+	for _, topic := range n.config.PublishTopicsV4 {
 		// TODO(jalextowle): This should be replaced with `pubsub.Join`
 		// and `topic.Publish`
-		n.sub, err = n.pubsub.Subscribe(n.config.SubscribeTopic) //nolint:staticcheck
+		err := n.pubsub.Publish(topic, data) //nolint:staticcheck
+		if err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
+}
+
+func (n *Node) receiveV3(ctx context.Context) (*Message, error) {
+	if n.subV3 == nil {
+		var err error
+		n.subV3, err = n.pubsub.Subscribe(n.config.SubscribeTopicV3) //nolint:staticcheck
 		if err != nil {
 			return nil, err
 		}
 	}
-	msg, err := n.sub.Next(ctx)
+	return receive(ctx, n.subV3)
+}
+
+func (n *Node) receiveV4(ctx context.Context) (*Message, error) {
+	if n.subV3 == nil {
+		var err error
+		n.subV4, err = n.pubsub.Subscribe(n.config.SubscribeTopicV4) //nolint:staticcheck
+		if err != nil {
+			return nil, err
+		}
+	}
+	return receive(ctx, n.subV4)
+}
+
+// receive returns the next pending message. It blocks if no messages are
+// available. If the given context is canceled, it returns nil, ctx.Err().
+func receive(ctx context.Context, sub *pubsub.Subscription) (*Message, error) {
+	msg, err := sub.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
