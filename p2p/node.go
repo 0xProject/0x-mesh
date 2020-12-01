@@ -682,12 +682,13 @@ func logPeerConnectionError(peerInfo peer.AddrInfo, connectionErr error) {
 func (n *Node) receiveBatch(ctx context.Context) ([]*Message, error) {
 	// HACK(jalextowle): Pick a random protocol version (3 or 4) to receive
 	// orders for in this batch.
+	// TODO(mason) fix this!
 	flip := mathrand.Intn(2)
 	var receiver func(context.Context) (*Message, error)
 	if flip == 0 {
 		receiver = n.receiveV3
 	} else {
-		receiver = n.receiveV4
+		receiver = n.receiveV3
 	}
 	messages := []*Message{}
 	for {

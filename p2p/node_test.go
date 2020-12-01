@@ -224,7 +224,7 @@ func (mh *inMemoryMessageHandler) store(messages []*Message) error {
 // 	require.NoError(t, node1.SendV3(pongMessage.Data))
 // 	expectMessage(t, node0, testTopic, pongMessage, pingPongTimeout)
 // }
-
+//
 // func expectMessage(t *testing.T, node *Node, topic string, expected *Message, timeout time.Duration) {
 // 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 // 	defer cancel()
@@ -235,7 +235,7 @@ func (mh *inMemoryMessageHandler) store(messages []*Message) error {
 // 			return
 // 		default:
 // 		}
-// 		actual, err := receive(ctx, topic)
+// 		actual, err := receive(ctx, topic.str())
 // 		require.NoError(t, err)
 // 		// We might receive other messages. Ignore anything that doesn't match the
 // 		// expected message.
@@ -506,6 +506,7 @@ func TestRateValidatorPerPeer(t *testing.T) {
 	node1Config := Config{
 		SubscribeTopicV3: testTopic,
 		PublishTopicsV3:  []string{testTopic},
+		PublishTopicsV4:  []string{},
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),
@@ -520,6 +521,7 @@ func TestRateValidatorPerPeer(t *testing.T) {
 	node2Config := Config{
 		SubscribeTopicV3: testTopic,
 		PublishTopicsV3:  []string{testTopic},
+		PublishTopicsV4:  []string{},
 		MessageHandler: newInMemoryMessageHandler(func(*Message) (bool, error) {
 			return true, nil
 		}),
