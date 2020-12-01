@@ -71,6 +71,7 @@ type Filter struct {
 // TODO(jalextowle): We do not need `contractAddresses` since we only use `contractAddresses.Exchange`.
 // In a future refactor, we should update this interface.
 func New(chainID int, customOrderSchemaV3 string, customOrderSchemaV4 string, contractAddresses ethereum.ContractAddresses) (*Filter, error) {
+	// TODO(mason) use two filters instead of one filter with v3 and v4 arms
 	// Create v3 loaders
 	orderV3Loader, err := newV3Loader(chainID, customOrderSchemaV3, contractAddresses)
 	if err != nil {
@@ -142,7 +143,7 @@ func loadExchangeV4Address(loader *jsonschema.SchemaLoader, contractAddresses et
 	if checksummed_address != lower_case_address {
 		enum_variants = append(enum_variants, lower_case_address)
 	}
-	return loader.AddSchema("/exchange", jsonschema.NewStringLoader(fmt.Sprintf(`{"enum":%q}`, enum_variants)))
+	return loader.AddSchema("/exchange", jsonschema.NewStringLoader(fmt.Sprintf(`{"enum":[%q]}`, strings.Join(enum_variants, ","))))
 }
 
 func loadChainID(loader *jsonschema.SchemaLoader, chainID int) error {

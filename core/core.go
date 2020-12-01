@@ -383,7 +383,6 @@ func newWithPrivateConfig(ctx context.Context, config Config, pConfig privateCon
 		return nil, err
 	}
 
-	// Initialize the order filter
 	orderFilter, err := orderfilter.New(config.EthereumChainID, config.CustomOrderFilterV3, config.CustomOrderFilterV4, contractAddresses)
 	if err != nil {
 		return nil, fmt.Errorf("invalid custom order filter: %s", err.Error())

@@ -164,8 +164,8 @@ func TestRepeatedAppInitialization(t *testing.T) {
 		EthereumRPCMaxRequestsPer24HrUTC: 99999999999999,
 		EthereumRPCMaxRequestsPerSecond:  99999999999999,
 		MaxOrdersInStorage:               100000,
-		CustomOrderFilterV3:              "[]",
-		CustomOrderFilterV4:              "[]", // TODO(mason) this still expects an array???
+		CustomOrderFilterV3:              "{}",
+		CustomOrderFilterV4:              "{}",
 		CustomContractAddresses:          `{"exchangeV3":"0x48bacb9266a570d521063ef5dd96e61686dbe788","exchangeV4":"0x48bacb9266a570d521063ef5dd96e61686dbe788","devUtils":"0x38ef19fdf8e8415f18c307ed71967e19aac28ba1","erc20Proxy":"0x1dc4c1cefef38a777b15aa20260a54e584b16c48","erc721Proxy":"0x1d7022f5b17d2f8b695918fb48fa1089c9f85401","erc1155Proxy":"0x64517fa2b480ba3678a2a3c0cf08ef7fd4fad36f"}`,
 	}
 	_, err := New(ctx, config)
