@@ -37,7 +37,7 @@ type DB struct {
 	sqldb *sqlz.DB
 	// Additional connection contexts are created to avoid the `database is
 	// locked` issue when libp2p accesses the peerstore and DHT tables
-	// concurrently over the same connection. ref;
+	// concurrently over the same connection. ref:
 	// https://github.com/0xProject/0x-mesh/pull/873
 	dhtSQLdb  *sqlz.DB
 	peerSQLdb *sqlz.DB
@@ -339,9 +339,18 @@ const updateMetadataQuery = `UPDATE metadata SET
 
 func (db *DB) migrate() error {
 	_, err := db.sqldb.ExecContext(db.ctx, schema)
+	if err != nil {
+		return fmt.Errorf("meshdb schema migration failed with err: %s", err)
+	}
 	_, err = db.peerSQLdb.ExecContext(db.ctx, peerstoreSchema)
+	if err != nil {
+		return fmt.Errorf("peerstore schema migration failed with err: %s", err)
+	}
 	_, err = db.dhtSQLdb.ExecContext(db.ctx, dhtSchema)
-	return convertErr(err)
+	if err != nil {
+		return fmt.Errorf("dht schema migration failed with err: %s", err)
+	}
+	return nil
 }
 
 // ReadWriteTransactionalContext acquires a write lock, executes the transaction, then immediately releases the lock.
