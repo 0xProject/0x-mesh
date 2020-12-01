@@ -1126,7 +1126,7 @@ type Mutation {
     addOrders(
         orders: [NewOrder!]!,
         opts: AddOrdersOpts = {
-            pinned: false,
+            pinned: true,
             keepCancelled: false,
             keepExpired: false,
             keepFullyFilled: false,

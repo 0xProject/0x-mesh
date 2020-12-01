@@ -1561,6 +1561,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 
 // ValidateAndStoreValidOrders applies general 0x validation and Mesh-specific validation to
 // the given orders and if they are valid, adds them to the OrderWatcher
+// TODO(mason) remove chainId from ValidateAndStoreValidOrders arguments. it's in each order already!
 func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zeroex.SignedOrder, chainID int, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	if len(orders) == 0 {
 		return &ordervalidator.ValidationResults{}, nil
@@ -1613,7 +1614,7 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 	// Add the order to the OrderWatcher. This also saves the order in the
 	// database.
 	allOrderEvents := []*zeroex.OrderEvent{}
-	orderEvents, err := w.add(newOrderInfos, validationBlock, opts.Pinned, opts)
+	orderEvents, err := w.add(newOrderInfos, validationBlock, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -1658,7 +1659,7 @@ func (w *Watcher) onchainOrderValidation(ctx context.Context, orders []*zeroex.S
 	return latestBlock, zeroexResults, nil
 }
 
-func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, pinned bool) (*ordervalidator.ValidationResults, []*zeroex.SignedOrder, error) {
+func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chainID int, pinned bool) (*ordervalidator.ValidationResults, []*zeroex.SignedOrder, error) {
 	results := &ordervalidator.ValidationResults{}
 	validMeshOrders := []*zeroex.SignedOrder{}
 
@@ -1745,7 +1746,7 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, pinn
 			})
 			continue
 		}
-		if o.ChainID.Cmp(big.NewInt(int64(w.chainID))) != 0 {
+		if chainID != w.chainID {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:   orderHash,
 				SignedOrder: order,

@@ -2106,7 +2106,7 @@ func TestOrderWatcherCleanup(t *testing.T) {
 	watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrderOne, &types.AddOrdersOpts{})
 	signedOrderTwo := signedOrders[1]
 	watchOrder(ctx, t, orderWatcher, blockWatcher, signedOrderTwo, &types.AddOrdersOpts{})
-	signedOrderOneHash, err := signedOrderTwo.ComputeOrderHash()
+	signedOrderTwoHash, err := signedOrderTwo.Order.(*zeroex.OrderV3).ComputeOrderHash()
 	require.NoError(t, err)
 
 	// Set lastUpdate for signedOrderTwo to more than defaultLastUpdatedBuffer so that signedOrderTwo
