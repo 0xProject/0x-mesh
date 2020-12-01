@@ -270,7 +270,7 @@ export class Mesh {
     public async addOrdersAsync(
         orders: SignedOrder[],
         options: AddOrdersOpts = {
-            pinned: false,
+            pinned: true,
             keepCancelled: false,
             keepExpired: false,
             keepFullyFilled: false,
