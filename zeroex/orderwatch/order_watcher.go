@@ -64,21 +64,22 @@ var errNoBlocksStored = errors.New("no blocks were stored in the database")
 
 // Watcher watches all order-relevant state and handles the state transitions
 type Watcher struct {
-	db                         *db.DB
-	blockWatcher               *blockwatch.Watcher
-	eventDecoder               *decoder.Decoder
-	assetDataDecoder           *zeroex.AssetDataDecoder
-	blockSubscription          event.Subscription
-	blockEventsChan            chan []*blockwatch.Event
-	contractAddresses          ethereum.ContractAddresses
-	orderFeed                  event.Feed
-	orderScope                 event.SubscriptionScope // Subscription scope tracking current live listeners
-	contractAddressToSeenCount map[common.Address]uint
-	orderValidator             *ordervalidator.OrderValidator
-	wasStartedOnce             bool
-	mu                         sync.Mutex
-	maxOrders                  int
-	handleBlockEventsMu        sync.RWMutex
+	db                           *db.DB
+	blockWatcher                 *blockwatch.Watcher
+	eventDecoder                 *decoder.Decoder
+	assetDataDecoder             *zeroex.AssetDataDecoder
+	blockSubscription            event.Subscription
+	blockEventsChan              chan []*blockwatch.Event
+	contractAddresses            ethereum.ContractAddresses
+	orderFeed                    event.Feed
+	orderScope                   event.SubscriptionScope // Subscription scope tracking current live listeners
+	contractAddressToSeenCountMu sync.Mutex
+	contractAddressToSeenCount   map[common.Address]uint
+	orderValidator               *ordervalidator.OrderValidator
+	wasStartedOnce               bool
+	mu                           sync.Mutex
+	maxOrders                    int
+	handleBlockEventsMu          sync.RWMutex
 	// atLeastOneBlockProcessed is closed to signal that the BlockWatcher has processed at least one
 	// block. Validation of orders should block until this has completed
 	atLeastOneBlockProcessed   chan struct{}
@@ -1169,6 +1170,8 @@ func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.Accepte
 func (w *Watcher) setupInMemoryOrderState(order *types.OrderWithMetadata) error {
 	w.eventDecoder.AddKnownExchange(order.ExchangeAddress)
 
+	w.contractAddressToSeenCountMu.Lock()
+	defer w.contractAddressToSeenCountMu.Unlock()
 	// Add MakerAssetData and MakerFeeAssetData to EventDecoder
 	err := w.addAssetDataAddressToEventDecoder(order.MakerAssetData)
 	if err != nil {
