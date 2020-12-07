@@ -195,9 +195,9 @@ func (cw *MeshWrapper) GQLAddOrders(rawOrders js.Value, rawOptions js.Value) (js
 	}
 	var options *gqltypes.AddOrdersOpts
 	if err := jsutil.InefficientlyConvertFromJS(rawOptions, &options); err != nil {
-				return js.Undefined(), err
+		return js.Undefined(), err
 	}
- 	results, err := cw.resolver.Mutation().AddOrders(cw.ctx, newOrders, options)
+	results, err := cw.resolver.Mutation().AddOrders(cw.ctx, newOrders, options)
 	encodedResults, err := json.Marshal(results)
 	if err != nil {
 		return js.Undefined(), err

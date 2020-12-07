@@ -16,6 +16,9 @@ import (
 
 func AddOrderOptsToCommonType(opts *AddOrdersOpts) *types.AddOrdersOpts {
 	commonTypeOpts := &types.AddOrdersOpts{}
+	if opts.Pinned != nil {
+		commonTypeOpts.Pinned = *opts.Pinned
+	}
 	if opts.KeepCancelled != nil {
 		commonTypeOpts.KeepCancelled = *opts.KeepCancelled
 	}
@@ -33,10 +36,11 @@ func AddOrderOptsToCommonType(opts *AddOrdersOpts) *types.AddOrdersOpts {
 
 func StatsFromCommonType(stats *types.Stats) *Stats {
 	return &Stats{
-		Version:     stats.Version,
-		PubSubTopic: stats.PubSubTopic,
-		Rendezvous:  stats.Rendezvous,
-		PeerID:      stats.PeerID,
+		Version:        stats.Version,
+		PubSubTopicsV3: []string{stats.PubSubTopicV3},
+		PubSubTopicsV4: []string{stats.PubSubTopicV4},
+		Rendezvous:     stats.Rendezvous,
+		PeerID:         stats.PeerID,
 		// TODO(albrow): This should be a big.Int in core package.
 		EthereumChainID: stats.EthereumChainID,
 		// TODO(albrow): LatestBlock should be a pointer in core package.
@@ -61,7 +65,7 @@ func LatestBlockFromCommonType(latestBlock types.LatestBlock) *LatestBlock {
 
 func NewOrderToSignedOrder(newOrder *NewOrder) *zeroex.SignedOrder {
 	return &zeroex.SignedOrder{
-		Order: zeroex.Order{
+		Order: &zeroex.OrderV3{
 			ChainID:               math.MustParseBig256(newOrder.ChainID),
 			ExchangeAddress:       common.HexToAddress(newOrder.ExchangeAddress),
 			MakerAddress:          common.HexToAddress(newOrder.MakerAddress),
@@ -92,23 +96,28 @@ func NewOrdersToSignedOrders(newOrders []*NewOrder) []*zeroex.SignedOrder {
 }
 
 func NewOrderFromSignedOrder(signedOrder *zeroex.SignedOrder) *NewOrder {
+	// FIXME
+	o, ok := signedOrder.Order.(*zeroex.OrderV3)
+	if !ok {
+		panic("Can't use non-v3 orders")
+	}
 	return &NewOrder{
-		ChainID:               signedOrder.ChainID.String(),
-		ExchangeAddress:       strings.ToLower(signedOrder.ExchangeAddress.Hex()),
-		MakerAddress:          strings.ToLower(signedOrder.MakerAddress.Hex()),
-		MakerAssetData:        types.BytesToHex(signedOrder.MakerAssetData),
-		MakerFeeAssetData:     types.BytesToHex(signedOrder.MakerFeeAssetData),
-		MakerAssetAmount:      signedOrder.MakerAssetAmount.String(),
-		MakerFee:              signedOrder.MakerFee.String(),
-		TakerAddress:          strings.ToLower(signedOrder.TakerAddress.Hex()),
-		TakerAssetData:        types.BytesToHex(signedOrder.TakerAssetData),
-		TakerFeeAssetData:     types.BytesToHex(signedOrder.TakerFeeAssetData),
-		TakerAssetAmount:      signedOrder.TakerAssetAmount.String(),
-		TakerFee:              signedOrder.TakerFee.String(),
-		SenderAddress:         strings.ToLower(signedOrder.SenderAddress.Hex()),
-		FeeRecipientAddress:   strings.ToLower(signedOrder.FeeRecipientAddress.Hex()),
-		ExpirationTimeSeconds: signedOrder.ExpirationTimeSeconds.String(),
-		Salt:                  signedOrder.Salt.String(),
+		ChainID:               o.ChainID.String(),
+		ExchangeAddress:       strings.ToLower(o.ExchangeAddress.Hex()),
+		MakerAddress:          strings.ToLower(o.MakerAddress.Hex()),
+		MakerAssetData:        types.BytesToHex(o.MakerAssetData),
+		MakerFeeAssetData:     types.BytesToHex(o.MakerFeeAssetData),
+		MakerAssetAmount:      o.MakerAssetAmount.String(),
+		MakerFee:              o.MakerFee.String(),
+		TakerAddress:          strings.ToLower(o.TakerAddress.Hex()),
+		TakerAssetData:        types.BytesToHex(o.TakerAssetData),
+		TakerFeeAssetData:     types.BytesToHex(o.TakerFeeAssetData),
+		TakerAssetAmount:      o.TakerAssetAmount.String(),
+		TakerFee:              o.TakerFee.String(),
+		SenderAddress:         strings.ToLower(o.SenderAddress.Hex()),
+		FeeRecipientAddress:   strings.ToLower(o.FeeRecipientAddress.Hex()),
+		ExpirationTimeSeconds: o.ExpirationTimeSeconds.String(),
+		Salt:                  o.Salt.String(),
 		Signature:             types.BytesToHex(signedOrder.Signature),
 	}
 }
@@ -165,25 +174,30 @@ func AddOrdersResultsFromValidationResults(validationResults *ordervalidator.Val
 }
 
 func AcceptedOrderResultFromOrderInfo(info *ordervalidator.AcceptedOrderInfo) *AcceptedOrderResult {
+	// FIXME
+	o, ok := info.SignedOrder.Order.(*zeroex.OrderV3)
+	if !ok {
+		panic("Can't use non-v3 orders")
+	}
 	return &AcceptedOrderResult{
 		Order: &OrderWithMetadata{
 			Hash:                     info.OrderHash.String(),
-			ChainID:                  info.SignedOrder.ChainID.String(),
-			ExchangeAddress:          strings.ToLower(info.SignedOrder.ExchangeAddress.Hex()),
-			MakerAddress:             strings.ToLower(info.SignedOrder.MakerAddress.Hex()),
-			MakerAssetData:           types.BytesToHex(info.SignedOrder.MakerAssetData),
-			MakerFeeAssetData:        types.BytesToHex(info.SignedOrder.MakerFeeAssetData),
-			MakerAssetAmount:         info.SignedOrder.MakerAssetAmount.String(),
-			MakerFee:                 info.SignedOrder.MakerFee.String(),
-			TakerAddress:             strings.ToLower(info.SignedOrder.TakerAddress.Hex()),
-			TakerAssetData:           types.BytesToHex(info.SignedOrder.TakerAssetData),
-			TakerFeeAssetData:        types.BytesToHex(info.SignedOrder.TakerFeeAssetData),
-			TakerAssetAmount:         info.SignedOrder.TakerAssetAmount.String(),
-			TakerFee:                 info.SignedOrder.TakerFee.String(),
-			SenderAddress:            strings.ToLower(info.SignedOrder.SenderAddress.Hex()),
-			FeeRecipientAddress:      strings.ToLower(info.SignedOrder.FeeRecipientAddress.Hex()),
-			ExpirationTimeSeconds:    info.SignedOrder.ExpirationTimeSeconds.String(),
-			Salt:                     info.SignedOrder.Salt.String(),
+			ChainID:                  o.ChainID.String(),
+			ExchangeAddress:          strings.ToLower(o.ExchangeAddress.Hex()),
+			MakerAddress:             strings.ToLower(o.MakerAddress.Hex()),
+			MakerAssetData:           types.BytesToHex(o.MakerAssetData),
+			MakerFeeAssetData:        types.BytesToHex(o.MakerFeeAssetData),
+			MakerAssetAmount:         o.MakerAssetAmount.String(),
+			MakerFee:                 o.MakerFee.String(),
+			TakerAddress:             strings.ToLower(o.TakerAddress.Hex()),
+			TakerAssetData:           types.BytesToHex(o.TakerAssetData),
+			TakerFeeAssetData:        types.BytesToHex(o.TakerFeeAssetData),
+			TakerAssetAmount:         o.TakerAssetAmount.String(),
+			TakerFee:                 o.TakerFee.String(),
+			SenderAddress:            strings.ToLower(o.SenderAddress.Hex()),
+			FeeRecipientAddress:      strings.ToLower(o.FeeRecipientAddress.Hex()),
+			ExpirationTimeSeconds:    o.ExpirationTimeSeconds.String(),
+			Salt:                     o.Salt.String(),
 			Signature:                types.BytesToHex(info.SignedOrder.Signature),
 			FillableTakerAssetAmount: info.FillableTakerAssetAmount.String(),
 		},
@@ -208,25 +222,30 @@ func RejectedOrderResultFromOrderInfo(info *ordervalidator.RejectedOrderInfo) (*
 	if err != nil {
 		return nil, err
 	}
+	// FIXME
+	o, ok := info.SignedOrder.Order.(*zeroex.OrderV3)
+	if !ok {
+		panic("Can't use non-v3 orders")
+	}
 	return &RejectedOrderResult{
 		Hash: hash,
 		Order: &Order{
-			ChainID:               info.SignedOrder.ChainID.String(),
-			ExchangeAddress:       strings.ToLower(info.SignedOrder.ExchangeAddress.Hex()),
-			MakerAddress:          strings.ToLower(info.SignedOrder.MakerAddress.Hex()),
-			MakerAssetData:        types.BytesToHex(info.SignedOrder.MakerAssetData),
-			MakerFeeAssetData:     types.BytesToHex(info.SignedOrder.MakerFeeAssetData),
-			MakerAssetAmount:      info.SignedOrder.MakerAssetAmount.String(),
-			MakerFee:              info.SignedOrder.MakerFee.String(),
-			TakerAddress:          strings.ToLower(info.SignedOrder.TakerAddress.Hex()),
-			TakerAssetData:        types.BytesToHex(info.SignedOrder.TakerAssetData),
-			TakerFeeAssetData:     types.BytesToHex(info.SignedOrder.TakerFeeAssetData),
-			TakerAssetAmount:      info.SignedOrder.TakerAssetAmount.String(),
-			TakerFee:              info.SignedOrder.TakerFee.String(),
-			SenderAddress:         strings.ToLower(info.SignedOrder.SenderAddress.Hex()),
-			FeeRecipientAddress:   strings.ToLower(info.SignedOrder.FeeRecipientAddress.Hex()),
-			ExpirationTimeSeconds: info.SignedOrder.ExpirationTimeSeconds.String(),
-			Salt:                  info.SignedOrder.Salt.String(),
+			ChainID:               o.ChainID.String(),
+			ExchangeAddress:       strings.ToLower(o.ExchangeAddress.Hex()),
+			MakerAddress:          strings.ToLower(o.MakerAddress.Hex()),
+			MakerAssetData:        types.BytesToHex(o.MakerAssetData),
+			MakerFeeAssetData:     types.BytesToHex(o.MakerFeeAssetData),
+			MakerAssetAmount:      o.MakerAssetAmount.String(),
+			MakerFee:              o.MakerFee.String(),
+			TakerAddress:          strings.ToLower(o.TakerAddress.Hex()),
+			TakerAssetData:        types.BytesToHex(o.TakerAssetData),
+			TakerFeeAssetData:     types.BytesToHex(o.TakerFeeAssetData),
+			TakerAssetAmount:      o.TakerAssetAmount.String(),
+			TakerFee:              o.TakerFee.String(),
+			SenderAddress:         strings.ToLower(o.SenderAddress.Hex()),
+			FeeRecipientAddress:   strings.ToLower(o.FeeRecipientAddress.Hex()),
+			ExpirationTimeSeconds: o.ExpirationTimeSeconds.String(),
+			Salt:                  o.Salt.String(),
 			Signature:             types.BytesToHex(info.SignedOrder.Signature),
 		},
 		Code:    code,
@@ -247,25 +266,30 @@ func RejectedOrderResultsFromOrderInfos(infos []*ordervalidator.RejectedOrderInf
 }
 
 func OrderEventFromZeroExType(event *zeroex.OrderEvent) *OrderEvent {
+	// FIXME
+	o, ok := event.SignedOrder.Order.(*zeroex.OrderV3)
+	if !ok {
+		panic("Can't use non-v3 orders")
+	}
 	return &OrderEvent{
 		Order: &OrderWithMetadata{
 			Hash:                     event.OrderHash.String(),
-			ChainID:                  event.SignedOrder.ChainID.String(),
-			ExchangeAddress:          strings.ToLower(event.SignedOrder.ExchangeAddress.Hex()),
-			MakerAddress:             strings.ToLower(event.SignedOrder.MakerAddress.Hex()),
-			MakerAssetData:           types.BytesToHex(event.SignedOrder.MakerAssetData),
-			MakerFeeAssetData:        types.BytesToHex(event.SignedOrder.MakerFeeAssetData),
-			MakerAssetAmount:         event.SignedOrder.MakerAssetAmount.String(),
-			MakerFee:                 event.SignedOrder.MakerFee.String(),
-			TakerAddress:             strings.ToLower(event.SignedOrder.TakerAddress.Hex()),
-			TakerAssetData:           types.BytesToHex(event.SignedOrder.TakerAssetData),
-			TakerFeeAssetData:        types.BytesToHex(event.SignedOrder.TakerFeeAssetData),
-			TakerAssetAmount:         event.SignedOrder.TakerAssetAmount.String(),
-			TakerFee:                 event.SignedOrder.TakerFee.String(),
-			SenderAddress:            strings.ToLower(event.SignedOrder.SenderAddress.Hex()),
-			FeeRecipientAddress:      strings.ToLower(event.SignedOrder.FeeRecipientAddress.Hex()),
-			ExpirationTimeSeconds:    event.SignedOrder.ExpirationTimeSeconds.String(),
-			Salt:                     event.SignedOrder.Salt.String(),
+			ChainID:                  o.ChainID.String(),
+			ExchangeAddress:          strings.ToLower(o.ExchangeAddress.Hex()),
+			MakerAddress:             strings.ToLower(o.MakerAddress.Hex()),
+			MakerAssetData:           types.BytesToHex(o.MakerAssetData),
+			MakerFeeAssetData:        types.BytesToHex(o.MakerFeeAssetData),
+			MakerAssetAmount:         o.MakerAssetAmount.String(),
+			MakerFee:                 o.MakerFee.String(),
+			TakerAddress:             strings.ToLower(o.TakerAddress.Hex()),
+			TakerAssetData:           types.BytesToHex(o.TakerAssetData),
+			TakerFeeAssetData:        types.BytesToHex(o.TakerFeeAssetData),
+			TakerAssetAmount:         o.TakerAssetAmount.String(),
+			TakerFee:                 o.TakerFee.String(),
+			SenderAddress:            strings.ToLower(o.SenderAddress.Hex()),
+			FeeRecipientAddress:      strings.ToLower(o.FeeRecipientAddress.Hex()),
+			ExpirationTimeSeconds:    o.ExpirationTimeSeconds.String(),
+			Salt:                     o.Salt.String(),
 			Signature:                types.BytesToHex(event.SignedOrder.Signature),
 			FillableTakerAssetAmount: event.FillableTakerAssetAmount.String(),
 		},

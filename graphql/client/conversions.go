@@ -109,7 +109,7 @@ func statsFromGQLType(stats *gqltypes.Stats) (*Stats, error) {
 	}
 	return &Stats{
 		Version:                           stats.Version,
-		PubSubTopic:                       stats.PubSubTopic,
+		PubSubTopics:                      stats.PubSubTopicsV3,
 		Rendezvous:                        stats.Rendezvous,
 		PeerID:                            stats.PeerID,
 		EthereumChainID:                   stats.EthereumChainID,

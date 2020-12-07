@@ -15,10 +15,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-// Stats is the return value for core.GetStats. Also used in the browser interface.
+// Stats is the return type for core.GetStats. Also used in the browser interface.
 type Stats struct {
 	Version                           string      `json:"version"`
-	PubSubTopic                       string      `json:"pubSubTopic"`
+	PubSubTopicV3                     string      `json:"pubSubTopic"`
+	PubSubTopicV4                     string      `json:"pubSubTopicV4"`
 	Rendezvous                        string      `json:"rendezvous"`
 	SecondaryRendezvous               []string    `json:"secondaryRendezvous"`
 	PeerID                            string      `json:"peerID"`
@@ -170,7 +171,7 @@ type OrderWithMetadata struct {
 
 func (order OrderWithMetadata) SignedOrder() *zeroex.SignedOrder {
 	return &zeroex.SignedOrder{
-		Order: zeroex.Order{
+		Order: &zeroex.OrderV3{
 			ChainID:               order.ChainID,
 			ExchangeAddress:       order.ExchangeAddress,
 			MakerAddress:          order.MakerAddress,
