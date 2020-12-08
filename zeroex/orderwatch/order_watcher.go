@@ -64,22 +64,21 @@ var errNoBlocksStored = errors.New("no blocks were stored in the database")
 
 // Watcher watches all order-relevant state and handles the state transitions
 type Watcher struct {
-	db                           *db.DB
-	blockWatcher                 *blockwatch.Watcher
-	eventDecoder                 *decoder.Decoder
-	assetDataDecoder             *zeroex.AssetDataDecoder
-	blockSubscription            event.Subscription
-	blockEventsChan              chan []*blockwatch.Event
-	contractAddresses            ethereum.ContractAddresses
-	orderFeed                    event.Feed
-	orderScope                   event.SubscriptionScope // Subscription scope tracking current live listeners
-	contractAddressToSeenCountMu sync.Mutex
-	contractAddressToSeenCount   map[common.Address]uint
-	orderValidator               *ordervalidator.OrderValidator
-	wasStartedOnce               bool
-	mu                           sync.Mutex
-	maxOrders                    int
-	handleBlockEventsMu          sync.RWMutex
+	db                         *db.DB
+	blockWatcher               *blockwatch.Watcher
+	eventDecoder               *decoder.Decoder
+	assetDataDecoder           *zeroex.AssetDataDecoder
+	blockSubscription          event.Subscription
+	blockEventsChan            chan []*blockwatch.Event
+	contractAddresses          ethereum.ContractAddresses
+	orderFeed                  event.Feed
+	orderScope                 event.SubscriptionScope // Subscription scope tracking current live listeners
+	contractAddressToSeenCount *contractAddressesSeenCounter
+	orderValidator             *ordervalidator.OrderValidator
+	wasStartedOnce             bool
+	mu                         sync.Mutex
+	maxOrders                  int
+	handleBlockEventsMu        sync.RWMutex
 	// atLeastOneBlockProcessed is closed to signal that the BlockWatcher has processed at least one
 	// block. Validation of orders should block until this has completed
 	atLeastOneBlockProcessed   chan struct{}
@@ -121,7 +120,7 @@ func New(config Config) (*Watcher, error) {
 	w := &Watcher{
 		db:                         config.DB,
 		blockWatcher:               config.BlockWatcher,
-		contractAddressToSeenCount: map[common.Address]uint{},
+		contractAddressToSeenCount: NewContractAddressesSeenCounter(),
 		orderValidator:             config.OrderValidator,
 		eventDecoder:               decoder,
 		assetDataDecoder:           assetDataDecoder,
@@ -1170,8 +1169,6 @@ func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.Accepte
 func (w *Watcher) setupInMemoryOrderState(order *types.OrderWithMetadata) error {
 	w.eventDecoder.AddKnownExchange(order.ExchangeAddress)
 
-	w.contractAddressToSeenCountMu.Lock()
-	defer w.contractAddressToSeenCountMu.Unlock()
 	// Add MakerAssetData and MakerFeeAssetData to EventDecoder
 	err := w.addAssetDataAddressToEventDecoder(order.MakerAssetData)
 	if err != nil {
@@ -2002,7 +1999,7 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 			return err
 		}
 		w.eventDecoder.AddKnownERC20(decodedAssetData.Address)
-		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] + 1
+		w.contractAddressToSeenCount.Inc(decodedAssetData.Address)
 	case "ERC721Token":
 		var decodedAssetData zeroex.ERC721AssetData
 		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
@@ -2010,7 +2007,7 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 			return err
 		}
 		w.eventDecoder.AddKnownERC721(decodedAssetData.Address)
-		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] + 1
+		w.contractAddressToSeenCount.Inc(decodedAssetData.Address)
 	case "ERC1155Assets":
 		var decodedAssetData zeroex.ERC1155AssetData
 		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
@@ -2018,7 +2015,7 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 			return err
 		}
 		w.eventDecoder.AddKnownERC1155(decodedAssetData.Address)
-		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] + 1
+		w.contractAddressToSeenCount.Inc(decodedAssetData.Address)
 	case "StaticCall":
 		var decodedAssetData zeroex.StaticCallAssetData
 		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
@@ -2062,8 +2059,8 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 		if err != nil {
 			return err
 		}
-		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] - 1
-		if w.contractAddressToSeenCount[decodedAssetData.Address] == 0 {
+		count := w.contractAddressToSeenCount.Dec(decodedAssetData.Address)
+		if count == 0 {
 			w.eventDecoder.RemoveKnownERC20(decodedAssetData.Address)
 		}
 	case "ERC721Token":
@@ -2072,8 +2069,8 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 		if err != nil {
 			return err
 		}
-		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] - 1
-		if w.contractAddressToSeenCount[decodedAssetData.Address] == 0 {
+		count := w.contractAddressToSeenCount.Dec(decodedAssetData.Address)
+		if count == 0 {
 			w.eventDecoder.RemoveKnownERC721(decodedAssetData.Address)
 		}
 	case "ERC1155Assets":
@@ -2082,8 +2079,8 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 		if err != nil {
 			return err
 		}
-		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] - 1
-		if w.contractAddressToSeenCount[decodedAssetData.Address] == 0 {
+		count := w.contractAddressToSeenCount.Dec(decodedAssetData.Address)
+		if count == 0 {
 			w.eventDecoder.RemoveKnownERC1155(decodedAssetData.Address)
 		}
 	case "StaticCall":
