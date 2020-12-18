@@ -78,9 +78,9 @@ yarn add @0x/mesh-browser-lite
 ## Documentation
 
 -   Documentation for the `@0x/mesh-browser` package is available at
-    [0x-org.gitbook.io/mesh/browser-bindings/browser](https://0x-org.gitbook.io/mesh/browser-bindings/browser).
+    [0x-org.gitbook.io/mesh/getting-started/reference](https://0x-org.gitbook.io/mesh/getting-started/reference).
 -   Documentation for the `@0x/mesh-browser-lite` package is available at
-    [0x-org.gitbook.io/mesh/browser-bindings/browser-lite](https://0x-org.gitbook.io/mesh/browser-bindings/browser-lite).
+    [0x-org.gitbook.io/mesh/getting-started/reference-1](https://0x-org.gitbook.io/mesh/getting-started/reference-1).
 
 ### Example usage
 
