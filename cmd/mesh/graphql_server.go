@@ -17,23 +17,25 @@ import (
 // the signal to shutdown.
 const gracefulShutdownTimeout = 10 * time.Second
 
-func serveGraphQL(ctx context.Context, app *core.App, addr string, enableGraphiQL bool) error {
+func serveGraphQL(ctx context.Context, app *core.App, config *standaloneConfig) error {
 	handler := http.NewServeMux()
 
 	// Set up handler for GraphiQL
-	if enableGraphiQL {
+	if config.EnableGraphQLServer {
 		handler.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write(graphiQLPage)
 		}))
 	}
 
 	// Set up handler for GrqphQL queries
-	resolver := graphql.NewResolver(app)
+	resolver := graphql.NewResolver(app, &graphql.ResolverConfig{
+		SlowSubscriberTimeout: config.GraphQLSlowSubscriberTimeout,
+	})
 	graphQLServer := gqlserver.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: resolver}))
 	handler.Handle("/graphql", graphQLServer)
 
 	// Start the server
-	server := &http.Server{Addr: addr, Handler: handler}
+	server := &http.Server{Addr: config.GraphQLServerAddr, Handler: handler}
 	go func() {
 		<-ctx.Done()
 		shutdownContext, cancel := context.WithTimeout(context.Background(), gracefulShutdownTimeout)

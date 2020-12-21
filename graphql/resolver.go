@@ -1,13 +1,23 @@
 package graphql
 
-import "github.com/0xProject/0x-mesh/core"
+import (
+	"time"
 
-type Resolver struct {
-	app *core.App
+	"github.com/0xProject/0x-mesh/core"
+)
+
+type ResolverConfig struct {
+	SlowSubscriberTimeout time.Duration
 }
 
-func NewResolver(app *core.App) *Resolver {
+type Resolver struct {
+	app    *core.App
+	config *ResolverConfig
+}
+
+func NewResolver(app *core.App, config *ResolverConfig) *Resolver {
 	return &Resolver{
-		app: app,
+		app:    app,
+		config: config,
 	}
 }
