@@ -85,10 +85,12 @@ func NewMeshWrapper(config core.Config) (*MeshWrapper, error) {
 		return nil, err
 	}
 	return &MeshWrapper{
-		app:      app,
-		ctx:      ctx,
-		cancel:   cancel,
-		resolver: graphql.NewResolver(app),
+		app:    app,
+		ctx:    ctx,
+		cancel: cancel,
+		resolver: graphql.NewResolver(app, &graphql.ResolverConfig{
+			SlowSubscriberTimeout: 2 * time.Second,
+		}),
 	}, nil
 }
 
