@@ -20,8 +20,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/ido50/sqlz"
 	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-ds-sql"
+	sqlds "github.com/ipfs/go-ds-sql"
 	"github.com/jmoiron/sqlx"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -34,7 +35,13 @@ var _ Database = (*DB)(nil)
 type DB struct {
 	ctx   context.Context
 	sqldb *sqlz.DB
-	opts  *Options
+	// Additional connection contexts are created to avoid the `database is
+	// locked` issue when libp2p accesses the peerstore and DHT tables
+	// concurrently over the same connection. ref:
+	// https://github.com/0xProject/0x-mesh/pull/873
+	dhtSQLdb  *sqlz.DB
+	peerSQLdb *sqlz.DB
+	opts      *Options
 
 	// mu is used to protect all reads and writes to the database. This is a solution to the
 	// `database is locked` error that appears on SQLite. https://github.com/mattn/go-sqlite3/issues/607
@@ -44,20 +51,25 @@ type DB struct {
 
 func defaultOptions() *Options {
 	return &Options{
-		DriverName:     "sqlite3",
-		DataSourceName: "0x_mesh/db/db.sqlite",
-		MaxOrders:      100000,
-		MaxMiniHeaders: 20,
+		DriverName:              "sqlite3",
+		DataSourceName:          "0x_mesh/db/db.sqlite",
+		DataSourceDHTName:       "0x_mesh/db/dht.sqlite",
+		DataSourcePeerStoreName: "0x_mesh/db/peerstore.sqlite",
+		MaxOrders:               100000,
+		MaxMiniHeaders:          20,
 	}
 }
 
 // TestOptions returns a set of options suitable for testing.
 func TestOptions() *Options {
+	testingDir := filepath.Join("/tmp", "mesh_testing", uuid.New().String())
 	return &Options{
-		DriverName:     "sqlite3",
-		DataSourceName: filepath.Join("/tmp", "mesh_testing", uuid.New().String(), "db.sqlite"),
-		MaxOrders:      100,
-		MaxMiniHeaders: 20,
+		DriverName:              "sqlite3",
+		DataSourceName:          filepath.Join(testingDir, "db.sqlite"),
+		DataSourceDHTName:       filepath.Join(testingDir, "dht.sqlite"),
+		DataSourcePeerStoreName: filepath.Join(testingDir, "peerstore.sqlite"),
+		MaxOrders:               100,
+		MaxMiniHeaders:          20,
 	}
 }
 
@@ -69,8 +81,11 @@ func New(ctx context.Context, opts *Options) (*DB, error) {
 	connectCtx, cancel := context.WithTimeout(ctx, connectTimeout)
 	defer cancel()
 
-	if err := os.MkdirAll(filepath.Dir(opts.DataSourceName), os.ModePerm); err != nil && err != os.ErrExist {
-		return nil, err
+	pathsToCreate := []string{opts.DataSourceName, opts.DataSourceDHTName, opts.DataSourcePeerStoreName}
+	for _, path := range pathsToCreate {
+		if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil && err != os.ErrExist {
+			return nil, err
+		}
 	}
 
 	sqldb, err := sqlx.ConnectContext(connectCtx, opts.DriverName, opts.DataSourceName)
@@ -78,16 +93,30 @@ func New(ctx context.Context, opts *Options) (*DB, error) {
 		return nil, err
 	}
 
-	// Automatically close the database connection when the context is canceled.
+	dhtSQLdb, err := sqlx.ConnectContext(connectCtx, opts.DriverName, opts.DataSourceDHTName)
+	if err != nil {
+		return nil, err
+	}
+
+	peerSQLdb, err := sqlx.ConnectContext(connectCtx, opts.DriverName, opts.DataSourcePeerStoreName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Automatically close the database connections when the context is canceled.
 	go func() {
 		<-ctx.Done()
 		_ = sqldb.Close()
+		_ = dhtSQLdb.Close()
+		_ = peerSQLdb.Close()
 	}()
 
 	db := &DB{
-		ctx:   ctx,
-		sqldb: sqlz.Newx(sqldb),
-		opts:  opts,
+		ctx:       ctx,
+		sqldb:     sqlz.Newx(sqldb),
+		dhtSQLdb:  sqlz.Newx(dhtSQLdb),
+		peerSQLdb: sqlz.Newx(peerSQLdb),
+		opts:      opts,
 	}
 	if err := db.migrate(); err != nil {
 		return nil, err
@@ -97,11 +126,11 @@ func New(ctx context.Context, opts *Options) (*DB, error) {
 }
 
 func (db *DB) DHTStore() ds.Batching {
-	return sqlds.NewDatastore(db.sqldb.DB.DB, NewSqliteQueriesForTable("dhtstore"))
+	return sqlds.NewDatastore(db.dhtSQLdb.DB.DB, NewSqliteQueriesForTable("dhtstore"))
 }
 
 func (db *DB) PeerStore() ds.Batching {
-	return sqlds.NewDatastore(db.sqldb.DB.DB, NewSqliteQueriesForTable("peerstore"))
+	return sqlds.NewDatastore(db.peerSQLdb.DB.DB, NewSqliteQueriesForTable("peerstore"))
 }
 
 // TODO(albrow): Use a proper migration tool. We don't technically need this
@@ -157,12 +186,15 @@ CREATE TABLE IF NOT EXISTS metadata (
 	ethRPCRequestsSentInCurrentUTCDay BIGINT NOT NULL,
 	startOfCurrentUTCDay              DATETIME NOT NULL
 );
+`
 
+const peerstoreSchema = `
 CREATE TABLE IF NOT EXISTS peerstore (
 	key  TEXT NOT NULL UNIQUE,
 	data BYTEA NOT NULL
 );
-
+`
+const dhtSchema = `
 CREATE TABLE IF NOT EXISTS dhtstore (
 	key  TEXT NOT NULL UNIQUE,
 	data BYTEA NOT NULL
@@ -307,7 +339,18 @@ const updateMetadataQuery = `UPDATE metadata SET
 
 func (db *DB) migrate() error {
 	_, err := db.sqldb.ExecContext(db.ctx, schema)
-	return convertErr(err)
+	if err != nil {
+		return fmt.Errorf("meshdb schema migration failed with err: %s", err)
+	}
+	_, err = db.peerSQLdb.ExecContext(db.ctx, peerstoreSchema)
+	if err != nil {
+		return fmt.Errorf("peerstore schema migration failed with err: %s", err)
+	}
+	_, err = db.dhtSQLdb.ExecContext(db.ctx, dhtSchema)
+	if err != nil {
+		return fmt.Errorf("dht schema migration failed with err: %s", err)
+	}
+	return nil
 }
 
 // ReadWriteTransactionalContext acquires a write lock, executes the transaction, then immediately releases the lock.

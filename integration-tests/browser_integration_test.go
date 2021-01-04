@@ -103,9 +103,10 @@ func testBrowserIntegration(testBundlePath string) func(*testing.T) {
 		go func() {
 			defer wg.Done()
 			// Wait for the GraphQL server to start before sending the order.
-			_, err := waitForLogSubstring(ctx, standaloneLogMessages, "starting GraphQL server")
-			require.NoError(t, err, "GraphQL server didn't start")
-			time.Sleep(serverStartWaitTime)
+			// TODO: Have a reliable way of making sure the graphQL
+			// server actually started in the form of a test GraphQL
+			// request.
+			time.Sleep(2 * time.Second)
 			graphQLClient := gqlclient.New(graphQLServerURL)
 			require.NoError(t, err)
 			results, err := graphQLClient.AddOrders(ctx, []*zeroex.SignedOrder{standaloneOrder})

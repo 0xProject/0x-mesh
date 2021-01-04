@@ -9,6 +9,7 @@ import (
 	"context"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/0xProject/0x-mesh/core"
 	"github.com/plaid/go-envvar/envvar"
@@ -29,6 +30,9 @@ type standaloneConfig struct {
 	// By default, 0x Mesh will listen on 0.0.0.0 (all available addresses) and
 	// port 60557.
 	GraphQLServerAddr string `envvar:"GRAPHQL_SERVER_ADDR" default:"0.0.0.0:60557"`
+	// GraphQLSlowSubscriberTimeout is the maximum amount of time subscriber has to
+	// accept events before being dropped.
+	GraphQLSlowSubscriberTimeout time.Duration `envvar:"GRAPHQL_SLOW_SUBSCRIBER_TIMEOUT" default:"2s"`
 	// EnableGraphQLPlayground determines whether or not to enable GraphiQL, an interactive
 	// GraphQL playground which can be accessed by visiting GraphQLServerAddr in a browser.
 	// See https://github.com/graphql/graphiql for more information. By default, GraphiQL
@@ -76,7 +80,7 @@ func main() {
 		go func() {
 			defer wg.Done()
 			log.WithField("graphql_server_addr", config.GraphQLServerAddr).Info("starting GraphQL server")
-			if err := serveGraphQL(ctx, app, config.GraphQLServerAddr, config.EnableGraphQLPlayground); err != nil {
+			if err := serveGraphQL(ctx, app, &config); err != nil {
 				graphQLErrChan <- err
 			}
 		}()

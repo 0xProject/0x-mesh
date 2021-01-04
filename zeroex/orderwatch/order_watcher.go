@@ -73,7 +73,7 @@ type Watcher struct {
 	contractAddresses          ethereum.ContractAddresses
 	orderFeed                  event.Feed
 	orderScope                 event.SubscriptionScope // Subscription scope tracking current live listeners
-	contractAddressToSeenCount map[common.Address]uint
+	contractAddressToSeenCount *contractAddressesSeenCounter
 	orderValidator             *ordervalidator.OrderValidator
 	wasStartedOnce             bool
 	mu                         sync.Mutex
@@ -120,7 +120,7 @@ func New(config Config) (*Watcher, error) {
 	w := &Watcher{
 		db:                         config.DB,
 		blockWatcher:               config.BlockWatcher,
-		contractAddressToSeenCount: map[common.Address]uint{},
+		contractAddressToSeenCount: NewContractAddressesSeenCounter(),
 		orderValidator:             config.OrderValidator,
 		eventDecoder:               decoder,
 		assetDataDecoder:           assetDataDecoder,
@@ -1959,8 +1959,22 @@ func (w *Watcher) checkDecodeErr(err error, eventType string) bool {
 		}).Warn("unsupported event found")
 		return true
 	}
+	// NOTE(oskar): What happens here is that some tokens which do not
+	// respect the ERC20 specification can throw ABI decoder errors, we
+	// should handle them here and return it as a non-critical error.
+	// TODO(oskar): Should this be handled the same way for all non-ABI
+	// conforming ERC20 implementations?
+	if parserError, ok := err.(decoder.AbiTopicParserError); ok {
+		logger.WithFields(logger.Fields{
+			"eventType":       eventType,
+			"topics":          parserError.Topics,
+			"contractAddress": parserError.ContractAddress,
+		}).Warn("event parsing error")
+		return true
+	}
 	logger.WithFields(logger.Fields{
-		"error": err.Error(),
+		"error":     err.Error(),
+		"eventType": eventType,
 	}).Error("unexpected event decoder error encountered")
 	return false
 }
@@ -1985,7 +1999,7 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 			return err
 		}
 		w.eventDecoder.AddKnownERC20(decodedAssetData.Address)
-		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] + 1
+		w.contractAddressToSeenCount.Inc(decodedAssetData.Address)
 	case "ERC721Token":
 		var decodedAssetData zeroex.ERC721AssetData
 		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
@@ -1993,7 +2007,7 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 			return err
 		}
 		w.eventDecoder.AddKnownERC721(decodedAssetData.Address)
-		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] + 1
+		w.contractAddressToSeenCount.Inc(decodedAssetData.Address)
 	case "ERC1155Assets":
 		var decodedAssetData zeroex.ERC1155AssetData
 		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
@@ -2001,7 +2015,7 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 			return err
 		}
 		w.eventDecoder.AddKnownERC1155(decodedAssetData.Address)
-		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] + 1
+		w.contractAddressToSeenCount.Inc(decodedAssetData.Address)
 	case "StaticCall":
 		var decodedAssetData zeroex.StaticCallAssetData
 		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
@@ -2045,8 +2059,8 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 		if err != nil {
 			return err
 		}
-		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] - 1
-		if w.contractAddressToSeenCount[decodedAssetData.Address] == 0 {
+		count := w.contractAddressToSeenCount.Dec(decodedAssetData.Address)
+		if count == 0 {
 			w.eventDecoder.RemoveKnownERC20(decodedAssetData.Address)
 		}
 	case "ERC721Token":
@@ -2055,8 +2069,8 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 		if err != nil {
 			return err
 		}
-		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] - 1
-		if w.contractAddressToSeenCount[decodedAssetData.Address] == 0 {
+		count := w.contractAddressToSeenCount.Dec(decodedAssetData.Address)
+		if count == 0 {
 			w.eventDecoder.RemoveKnownERC721(decodedAssetData.Address)
 		}
 	case "ERC1155Assets":
@@ -2065,8 +2079,8 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 		if err != nil {
 			return err
 		}
-		w.contractAddressToSeenCount[decodedAssetData.Address] = w.contractAddressToSeenCount[decodedAssetData.Address] - 1
-		if w.contractAddressToSeenCount[decodedAssetData.Address] == 0 {
+		count := w.contractAddressToSeenCount.Dec(decodedAssetData.Address)
+		if count == 0 {
 			w.eventDecoder.RemoveKnownERC1155(decodedAssetData.Address)
 		}
 	case "StaticCall":

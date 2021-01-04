@@ -5,12 +5,14 @@ package graphql
 
 import (
 	"context"
+	"time"
 
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/graphql/generated"
 	"github.com/0xProject/0x-mesh/graphql/gqltypes"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
+	log "github.com/sirupsen/logrus"
 )
 
 func (r *mutationResolver) AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, pinned *bool, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error) {
@@ -114,7 +116,16 @@ func (r *subscriptionResolver) OrderEvents(ctx context.Context) (<-chan []*gqlty
 					panic(err)
 				}
 			case orderEvents := <-zeroExChan:
-				gqlChan <- gqltypes.OrderEventsFromZeroExType(orderEvents)
+				select {
+				case gqlChan <- gqltypes.OrderEventsFromZeroExType(orderEvents):
+					log.Debugf("sent %d orders to subscriber", len(orderEvents))
+				case <-time.After(r.config.SlowSubscriberTimeout):
+					log.Debug("subscriber is slow or disconnected, unsubscribing")
+					subscription.Unsubscribe()
+					close(gqlChan)
+					return
+				}
+
 			}
 		}
 	}()
