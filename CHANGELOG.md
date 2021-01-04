@@ -2,6 +2,15 @@
 
 This changelog is a work in progress and may contain notes for versions which have not actually been released. Check the [Releases](https://github.com/0xProject/0x-mesh/releases) page to see full release notes and more information about the latest released versions.
 
+## v10.2.0
+
+### Bug fixes 🐞
+
+-   Fixed `database is closed` issues related to our `go-sqlite3` databases.
+-   Fixed a bug that would cause the node to crash when receving log events for tokens that do not conform to the ERC20 specification.
+-   Fixed a data race condition in `OrderWatcher`.
+-   Fixed an issue with slow `OrderEvent` subscribers blocking handling of messages.
+
 ## v10.1.0
 
 ### Features ✅
