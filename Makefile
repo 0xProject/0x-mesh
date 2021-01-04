@@ -83,7 +83,7 @@ test-browser-legacy-integration:
 
 .PHONY: test-browser-graphql-integration
 test-browser-graphql-integration:
-	go test ./integration-tests -timeout 60s --enable-browser-graphql-integration-tests -run BrowserGraphQLIntegration
+	go test ./integration-tests -timeout 90s --enable-browser-graphql-integration-tests -run BrowserGraphQLIntegration
 
 
 .PHONY: test-browser-conversion
