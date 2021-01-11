@@ -37,8 +37,8 @@ func AddOrderOptsToCommonType(opts *AddOrdersOpts) *types.AddOrdersOpts {
 func StatsFromCommonType(stats *types.Stats) *Stats {
 	return &Stats{
 		Version:        stats.Version,
-		PubSubTopicsV3: []string{stats.PubSubTopicV3},
-		PubSubTopicsV4: []string{stats.PubSubTopicV4},
+		PubSubTopicV3: stats.PubSubTopicV3,
+		PubSubTopicV4: stats.PubSubTopicV4,
 		Rendezvous:     stats.Rendezvous,
 		PeerID:         stats.PeerID,
 		// TODO(albrow): This should be a big.Int in core package.

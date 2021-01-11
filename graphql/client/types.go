@@ -137,10 +137,12 @@ type RejectedOrderResult struct {
 	Message string `json:"message"`
 }
 
+// TODO(mason) why isn't this imported from common.types?
 // Contains configuration options and various stats for Mesh.
 type Stats struct {
 	Version                           string       `json:"version"`
-	PubSubTopics                      []string     `json:"pubSubTopic"`
+	PubSubTopicV3                     string      `json:"pubSubTopicV3"`
+	PubSubTopicV4                     string      `json:"pubSubTopicV4"`
 	Rendezvous                        string       `json:"rendezvous"`
 	PeerID                            string       `json:"peerID"`
 	EthereumChainID                   int          `json:"ethereumChainID"`

@@ -18,7 +18,7 @@ import (
 // Stats is the return type for core.GetStats. Also used in the browser interface.
 type Stats struct {
 	Version                           string      `json:"version"`
-	PubSubTopicV3                     string      `json:"pubSubTopic"`
+	PubSubTopicV3                     string      `json:"pubSubTopicV3"`
 	PubSubTopicV4                     string      `json:"pubSubTopicV4"`
 	Rendezvous                        string      `json:"rendezvous"`
 	SecondaryRendezvous               []string    `json:"secondaryRendezvous"`

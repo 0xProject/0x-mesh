@@ -744,7 +744,8 @@ export interface LatestBlock {
 /** @ignore */
 export interface WrapperStats {
     version: string;
-    pubSubTopics: string[];
+    pubSubTopicV3: string;
+    pubSubTopicV4: string;
     rendezvous: string;
     secondaryRendezvous: string[];
     peerID: string;
@@ -762,7 +763,8 @@ export interface WrapperStats {
 
 export interface Stats {
     version: string;
-    pubSubTopics: string[];
+    pubSubTopicV3: string;
+    pubSubTopicV4: string;
     rendezvous: string;
     secondaryRendezvous: string[];
     peerID: string;

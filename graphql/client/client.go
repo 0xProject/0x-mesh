@@ -128,8 +128,8 @@ const (
 	statsQuery = `query Stats {
 		stats {
 			version
-			pubSubTopicsV3
-			pubSubTopicsV4
+			pubSubTopicV3
+			pubSubTopicV4
 			rendezvous
 			peerID
 			ethereumChainID

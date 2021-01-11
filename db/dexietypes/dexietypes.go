@@ -218,6 +218,8 @@ func OrderToCommonType(order *Order) (*types.OrderWithMetadata, error) {
 			KeepFullyFilled:          order.KeepFullyFilled == 1,
 			KeepUnfunded:             order.KeepUnfunded == 1,
 		}, nil
+	// TODO(mason)
+	// case 4: ...
 	default:
 		return nil, errors.New("Unknown order version stored in database")
 	}

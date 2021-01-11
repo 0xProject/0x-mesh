@@ -147,8 +147,8 @@ type ComplexityRoot struct {
 		NumOrdersIncludingRemoved         func(childComplexity int) int
 		NumPeers                          func(childComplexity int) int
 		PeerID                            func(childComplexity int) int
-		PubSubTopicsV3                    func(childComplexity int) int
-		PubSubTopicsV4                    func(childComplexity int) int
+		PubSubTopicV3                     func(childComplexity int) int
+		PubSubTopicV4                     func(childComplexity int) int
 		Rendezvous                        func(childComplexity int) int
 		SecondaryRendezvous               func(childComplexity int) int
 		StartOfCurrentUTCDay              func(childComplexity int) int
@@ -699,19 +699,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Stats.PeerID(childComplexity), true
 
-	case "Stats.pubSubTopicsV3":
-		if e.complexity.Stats.PubSubTopicsV3 == nil {
+	case "Stats.pubSubTopicV3":
+		if e.complexity.Stats.PubSubTopicV3 == nil {
 			break
 		}
 
-		return e.complexity.Stats.PubSubTopicsV3(childComplexity), true
+		return e.complexity.Stats.PubSubTopicV3(childComplexity), true
 
-	case "Stats.pubSubTopicsV4":
-		if e.complexity.Stats.PubSubTopicsV4 == nil {
+	case "Stats.pubSubTopicV4":
+		if e.complexity.Stats.PubSubTopicV4 == nil {
 			break
 		}
 
-		return e.complexity.Stats.PubSubTopicsV4(childComplexity), true
+		return e.complexity.Stats.PubSubTopicV4(childComplexity), true
 
 	case "Stats.rendezvous":
 		if e.complexity.Stats.Rendezvous == nil {
@@ -971,8 +971,8 @@ Contains configuration options and various stats for Mesh.
 """
 type Stats {
     version: String!
-    pubSubTopicsV3: [String!]!
-    pubSubTopicsV4: [String!]!
+    pubSubTopicV3: String!
+    pubSubTopicV4: String!
     rendezvous: String!
     peerID: String!
     ethereumChainID: Int! # TODO(albrow): This should be String
@@ -1126,7 +1126,7 @@ type Mutation {
     addOrders(
         orders: [NewOrder!]!,
         opts: AddOrdersOpts = {
-            pinned: true,
+            pinned: false,
             keepCancelled: false,
             keepExpired: false,
             keepFullyFilled: false,
@@ -3630,7 +3630,7 @@ func (ec *executionContext) _Stats_version(ctx context.Context, field graphql.Co
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Stats_pubSubTopicsV3(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
+func (ec *executionContext) _Stats_pubSubTopicV3(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3647,7 +3647,7 @@ func (ec *executionContext) _Stats_pubSubTopicsV3(ctx context.Context, field gra
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.PubSubTopicsV3, nil
+		return obj.PubSubTopicV3, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3659,12 +3659,12 @@ func (ec *executionContext) _Stats_pubSubTopicsV3(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Stats_pubSubTopicsV4(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
+func (ec *executionContext) _Stats_pubSubTopicV4(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3681,7 +3681,7 @@ func (ec *executionContext) _Stats_pubSubTopicsV4(ctx context.Context, field gra
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.PubSubTopicsV4, nil
+		return obj.PubSubTopicV4, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3693,9 +3693,9 @@ func (ec *executionContext) _Stats_pubSubTopicsV4(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Stats_rendezvous(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
@@ -6003,13 +6003,13 @@ func (ec *executionContext) _Stats(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "pubSubTopicsV3":
-			out.Values[i] = ec._Stats_pubSubTopicsV3(ctx, field, obj)
+		case "pubSubTopicV3":
+			out.Values[i] = ec._Stats_pubSubTopicV3(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "pubSubTopicsV4":
-			out.Values[i] = ec._Stats_pubSubTopicsV4(ctx, field, obj)
+		case "pubSubTopicV4":
+			out.Values[i] = ec._Stats_pubSubTopicV4(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
