@@ -114,9 +114,9 @@ provider.start();
         throw new Error(`Expected no orders to be rejected but got: ${result.rejected.length}`);
     }
 
-    // Call getStatsAsync and make sure it works.
-    const stats = await client.getStatsAsync();
-    console.log(JSON.stringify(stats));
+    // // Call getStatsAsync and make sure it works.
+    // const stats = await client.getStatsAsync();
+    // console.log(JSON.stringify(stats));
 
     // This special #jsFinished div is used to signal the headless Chrome driver
     // that the JavaScript code is done running. This is not a native Javascript

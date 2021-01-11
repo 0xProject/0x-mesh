@@ -57,7 +57,7 @@ func init() {
 		MakerAssetAmount:      big.NewInt(100),
 		TakerAssetAmount:      big.NewInt(42),
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		ExchangeAddress:       ethereum.GanacheAddresses.Exchange,
+		ExchangeAddress:       ethereum.GanacheAddresses.ExchangeV3,
 	}
 	signedErc20Order, err := zeroex.SignTestOrder(&erc20Order)
 	if err != nil {
