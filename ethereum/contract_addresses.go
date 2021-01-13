@@ -1,3 +1,4 @@
+// FIXME(jalextowle) Add any new contract addresses needed for v4
 package ethereum
 
 import (
@@ -12,7 +13,8 @@ type ContractAddresses struct {
 	ERC20Proxy   common.Address `json:"erc20Proxy"`
 	ERC721Proxy  common.Address `json:"erc721Proxy"`
 	ERC1155Proxy common.Address `json:"erc1155Proxy"`
-	Exchange     common.Address `json:"exchange"`
+	ExchangeV3   common.Address `json:"exchangeV3"`
+	ExchangeV4   common.Address `json:"exchangeV4"`
 	// TODO(jalextowle): This should be removed when 0x v4 is released.
 	ExchangeProxyFlashWallet common.Address `json:"exchangeProxyFlashWallet"`
 	DevUtils                 common.Address `json:"devUtils"`
@@ -34,7 +36,7 @@ func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 			ERC20Proxy:               common.HexToAddress("0x95e6f48254609a6ee006f7d493c8e5fb97094cef"),
 			ERC721Proxy:              common.HexToAddress("0xefc70a1b18c432bdc64b596838b4d138f6bc6cad"),
 			ERC1155Proxy:             common.HexToAddress("0x7eefbd48fd63d441ec7435d024ec7c5131019add"),
-			Exchange:                 common.HexToAddress("0x61935cbdd02287b511119ddb11aeb42f1593b7ef"),
+			ExchangeV3:               common.HexToAddress("0x61935cbdd02287b511119ddb11aeb42f1593b7ef"),
 			ExchangeProxyFlashWallet: common.HexToAddress("0x22f9dcf4647084d6c31b2765f6910cd85c178c18"),
 			DevUtils:                 common.HexToAddress("0xb1a3d901bad1df7d710fc8d008db7cdd6bbbffe6"),
 			WETH9:                    common.HexToAddress("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"),
@@ -48,7 +50,7 @@ func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 			ERC20Proxy:               common.HexToAddress("0xb1408f4c245a23c31b98d2c626777d4c0d766caa"),
 			ERC721Proxy:              common.HexToAddress("0xe654aac058bfbf9f83fcaee7793311dd82f6ddb4"),
 			ERC1155Proxy:             common.HexToAddress("0x19bb6caa3bc34d39e5a23cedfa3e6c7e7f3c931d"),
-			Exchange:                 common.HexToAddress("0xfb2dd2a1366de37f7241c83d47da58fd503e2c64"),
+			ExchangeV3:               common.HexToAddress("0xfb2dd2a1366de37f7241c83d47da58fd503e2c64"),
 			ExchangeProxyFlashWallet: common.HexToAddress("0x22f9dcf4647084d6c31b2765f6910cd85c178c18"),
 			DevUtils:                 common.HexToAddress("0xb1a3d901bad1df7d710fc8d008db7cdd6bbbffe6"),
 			WETH9:                    common.HexToAddress("0xc778417e063141139fce010982780140aa0cd5ab"),
@@ -62,7 +64,7 @@ func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 			ERC20Proxy:               common.HexToAddress("0x2f5ae4f6106e89b4147651688a92256885c5f410"),
 			ERC721Proxy:              common.HexToAddress("0x7656d773e11ff7383a14dcf09a9c50990481cd10"),
 			ERC1155Proxy:             common.HexToAddress("0x19bb6caa3bc34d39e5a23cedfa3e6c7e7f3c931d"),
-			Exchange:                 common.HexToAddress("0x198805e9682fceec29413059b68550f92868c129"),
+			ExchangeV3:               common.HexToAddress("0x198805e9682fceec29413059b68550f92868c129"),
 			ExchangeProxyFlashWallet: common.HexToAddress("0x22f9dcf4647084d6c31b2765f6910cd85c178c18"),
 			DevUtils:                 common.HexToAddress("0xb1a3d901bad1df7d710fc8d008db7cdd6bbbffe6"),
 			WETH9:                    common.HexToAddress("0xc778417e063141139fce010982780140aa0cd5ab"),
@@ -76,7 +78,7 @@ func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 			ERC20Proxy:               common.HexToAddress("0xf1ec01d6236d3cd881a0bf0130ea25fe4234003e"),
 			ERC721Proxy:              common.HexToAddress("0x2a9127c745688a165106c11cd4d647d2220af821"),
 			ERC1155Proxy:             common.HexToAddress("0x64517fa2b480ba3678a2a3c0cf08ef7fd4fad36f"),
-			Exchange:                 common.HexToAddress("0x4eacd0af335451709e1e7b570b8ea68edec8bc97"),
+			ExchangeV3:               common.HexToAddress("0x4eacd0af335451709e1e7b570b8ea68edec8bc97"),
 			ExchangeProxyFlashWallet: common.HexToAddress("0x22f9dcf4647084d6c31b2765f6910cd85c178c18"),
 			DevUtils:                 common.HexToAddress("0xb1a3d901bad1df7d710fc8d008db7cdd6bbbffe6"),
 			WETH9:                    common.HexToAddress("0xd0a1e359811322d97991e03f863a0c30c2cf029c"),
@@ -96,8 +98,11 @@ func ValidateContractAddressesForChainID(chainID int, addresses ContractAddresse
 	if chainID == 1 {
 		return fmt.Errorf("cannot add contract addresses for chainID 1: addresses for mainnet are hard-coded and cannot be changed")
 	}
-	if addresses.Exchange == constants.NullAddress {
-		return fmt.Errorf("cannot add contract addresses for chain ID %d: Exchange address is required", chainID)
+	if addresses.ExchangeV3 == constants.NullAddress {
+		return fmt.Errorf("cannot add contract addresses for chain ID %d: ExchangeV3 address is required", chainID)
+	}
+	if addresses.ExchangeV4 == constants.NullAddress {
+		return fmt.Errorf("cannot add contract addresses for chain ID %d: ExchangeV4 address is required", chainID)
 	}
 	if addresses.DevUtils == constants.NullAddress {
 		return fmt.Errorf("cannot add contract addresses for chain ID %d: DevUtils address is required", chainID)
@@ -121,7 +126,7 @@ func ganacheAddresses() ContractAddresses {
 		ERC20Proxy:               common.HexToAddress("0x1dc4c1cefef38a777b15aa20260a54e584b16c48"),
 		ERC721Proxy:              common.HexToAddress("0x1d7022f5b17d2f8b695918fb48fa1089c9f85401"),
 		ERC1155Proxy:             common.HexToAddress("0x6a4a62e5a7ed13c361b176a5f62c2ee620ac0df8"),
-		Exchange:                 common.HexToAddress("0x48bacb9266a570d521063ef5dd96e61686dbe788"),
+		ExchangeV3:               common.HexToAddress("0x48bacb9266a570d521063ef5dd96e61686dbe788"),
 		ExchangeProxyFlashWallet: common.HexToAddress("0x22f9dcf4647084d6c31b2765f6910cd85c178c18"),
 		DevUtils:                 common.HexToAddress("0xb23672f74749bf7916ba6827c64111a4d6de7f11"),
 		WETH9:                    common.HexToAddress("0x0b1ba0af832d7c05fd64161e0db78e85978e8082"),

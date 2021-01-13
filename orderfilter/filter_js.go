@@ -13,53 +13,92 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+// TODO(mason) have two filters instead of this craziness!!
 type Filter struct {
-	orderValidator       js.Value
-	messageValidator     js.Value
-	encodedSchema        string
-	chainID              int
-	rawCustomOrderSchema string
-	exchangeAddress      common.Address
+	orderValidatorV3       js.Value
+	orderValidatorV4       js.Value
+	messageValidatorV3     js.Value
+	messageValidatorV4     js.Value
+	encodedSchemaV3        string
+	encodedSchemaV4        string
+	chainID                int
+	rawCustomOrderSchemaV3 string
+	rawCustomOrderSchemaV4 string
+	exchangeAddressV3      common.Address
+	exchangeAddressV4      common.Address
 }
 
-func New(chainID int, customOrderSchema string, contractAddresses ethereum.ContractAddresses) (*Filter, error) {
+func New(chainID int, customOrderSchemaV3 string, customOrderSchemaV4 string, contractAddresses ethereum.ContractAddresses) (*Filter, error) {
 	chainIDSchema := fmt.Sprintf(`{"$id": "/chainId", "const":%d}`, chainID)
-	exchangeAddressSchema := fmt.Sprintf(`{"$id": "/exchangeAddress", "enum":[%q,%q]}`, contractAddresses.Exchange.Hex(), strings.ToLower(contractAddresses.Exchange.Hex()))
+	exchangeAddressSchema := fmt.Sprintf(`{"$id": "/exchangeAddress", "enum":[%q,%q]}`, contractAddresses.ExchangeV3.Hex(), strings.ToLower(contractAddresses.ExchangeV3.Hex()))
 
 	if jsutil.IsNullOrUndefined(js.Global().Get("__mesh_createSchemaValidator__")) {
 		return nil, errors.New(`"__mesh_createSchemaValidator__" has not been set on the Javascript "global" object`)
 	}
 	// NOTE(jalextowle): The order of the schemas within the two arrays
 	// defines their order of compilation.
-	schemaValidator := js.Global().Call(
+	schemaValidatorV3 := js.Global().Call(
 		"__mesh_createSchemaValidator__",
-		customOrderSchema,
+		customOrderSchemaV3,
 		[]interface{}{
 			addressSchema,
 			wholeNumberSchema,
 			hexSchema,
 			chainIDSchema,
 			exchangeAddressSchema,
-			orderSchema,
-			signedOrderSchema,
+			orderSchemaV3,
+			signedOrderSchemaV3,
 		},
 		[]interface{}{
-			rootOrderSchema,
-			rootOrderMessageSchema,
+			rootOrderSchemaV3,
+			rootOrderMessageSchemaV3,
 		})
-	orderValidator := schemaValidator.Get("orderValidator")
-	if jsutil.IsNullOrUndefined(orderValidator) {
-		return nil, errors.New(`"orderValidator" has not been set on the provided "schemaValidator"`)
+
+	schemaValidatorV4 := js.Global().Call(
+		"__mesh_createSchemaValidator__",
+		customOrderSchemaV4,
+		[]interface{}{
+			addressSchema,
+			wholeNumberSchema,
+			hexSchema,
+			chainIDSchema,
+			exchangeAddressSchema,
+			orderSchemaV4,
+			signedOrderSchemaV4,
+		},
+		[]interface{}{
+			rootOrderSchemaV4,
+			rootOrderMessageSchemaV4,
+		})
+
+	orderValidatorV3 := schemaValidatorV3.Get("orderValidator")
+	orderValidatorV4 := schemaValidatorV4.Get("orderValidator")
+
+	if jsutil.IsNullOrUndefined(orderValidatorV3) {
+		return nil, errors.New(`"orderValidator" has not been set on the provided "schemaValidatorV3"`)
 	}
-	messageValidator := schemaValidator.Get("messageValidator")
-	if jsutil.IsNullOrUndefined(messageValidator) {
-		return nil, errors.New(`"messageValidator" has not been set on the provided "schemaValidator"`)
+	if jsutil.IsNullOrUndefined(orderValidatorV4) {
+		return nil, errors.New(`"orderValidator" has not been set on the provided "schemaValidatorV4"`)
 	}
+
+	messageValidatorV3 := schemaValidatorV3.Get("messageValidator")
+	if jsutil.IsNullOrUndefined(messageValidatorV3) {
+		return nil, errors.New(`"messageValidator" has not been set on the provided "schemaValidatorV3"`)
+	}
+	messageValidatorV4 := schemaValidatorV4.Get("messageValidator")
+	if jsutil.IsNullOrUndefined(messageValidatorV4) {
+		return nil, errors.New(`"messageValidator" has not been set on the provided "schemaValidatorV3"`)
+	}
+
 	return &Filter{
-		orderValidator:       orderValidator,
-		messageValidator:     messageValidator,
-		chainID:              chainID,
-		rawCustomOrderSchema: customOrderSchema,
-		exchangeAddress:      contractAddresses.Exchange,
+		orderValidatorV3:       orderValidatorV3,
+		messageValidatorV3:     messageValidatorV3,
+		chainID:                chainID,
+		rawCustomOrderSchemaV3: customOrderSchemaV3,
+		exchangeAddressV3:      contractAddresses.ExchangeV3,
+		orderValidatorV4:       orderValidatorV4,
+		messageValidatorV4:     messageValidatorV4,
+		rawCustomOrderSchemaV4: customOrderSchemaV4,
+		exchangeAddressV4:      contractAddresses.ExchangeV4,
 	}, nil
 }

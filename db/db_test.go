@@ -1237,7 +1237,7 @@ func newTestOrder() *types.OrderWithMetadata {
 		MakerAssetAmount:         math.MaxBig256,
 		TakerAssetAmount:         big.NewInt(42),
 		ExpirationTimeSeconds:    big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		ExchangeAddress:          contractAddresses.Exchange,
+		ExchangeAddress:          contractAddresses.ExchangeV3,
 		Signature:                []byte{1, 2, 255, 255},
 		LastUpdated:              time.Now(),
 		FillableTakerAssetAmount: big.NewInt(42),
@@ -1368,6 +1368,17 @@ func makeOrderFilterTestCases(t *testing.T, db *DB) ([]*types.OrderWithMetadata,
 			filters:                []OrderFilter{},
 			expectedMatchingOrders: storedOrders,
 		},
+		// {
+		// 	name: "Version = 3",
+		// 	filters: []OrderFilter{
+		// 		{
+		// 			Field: OFVersion,
+		// 			Kind:  Equal,
+		// 			Value: 3,
+		// 		},
+		// 	},
+		// 	expectedMatchingOrders: storedOrders,
+		// },
 		{
 			name: "IsRemoved = false",
 			filters: []OrderFilter{

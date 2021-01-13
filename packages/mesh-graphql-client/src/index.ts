@@ -64,7 +64,8 @@ const statsQuery = gql`
     query Stats {
         stats {
             version
-            pubSubTopic
+            pubSubTopicV3
+            pubSubTopicV4
             rendezvous
             peerID
             ethereumChainID
@@ -343,6 +344,7 @@ export class MeshGraphQLClient {
             variables: {
                 orders: orders.map(toStringifiedSignedOrder),
                 opts: {
+                    pinned: false,
                     keepCancelled: false,
                     keepExpired: false,
                     keepFullyFilled: false,

@@ -386,7 +386,12 @@ func (p *FilteredPaginationSubProtocolV1) HandleOrderSyncResponse(ctx context.Co
 	// This is equal to the maximum order hash we have received so far.
 	var nextMinOrderHash common.Hash
 	if len(res.Orders) > 0 {
-		hash, err := res.Orders[len(res.Orders)-1].ComputeOrderHash()
+		// FIXME
+		o, ok := res.Orders[len(res.Orders)-1].Order.(*zeroex.OrderV3)
+		if !ok {
+			panic("Can't use non-v3 orders")
+		}
+		hash, err := o.ComputeOrderHash()
 		if err != nil {
 			return nil, len(filteredOrders), err
 		}

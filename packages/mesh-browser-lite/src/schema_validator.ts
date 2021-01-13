@@ -51,16 +51,13 @@ export function createSchemaValidator(
         AJV.addSchema(JSON.parse(schema));
     }
 
-    const orderValidate = AJV.getSchema('/rootOrder');
+    const orderValidate = AJV.getSchema('/rootOrderV3');
     if (orderValidate === undefined) {
-        throw new Error('Cannot find "/rootOrder" schema in AJV');
+        throw new Error('Cannot find "/rootOrderV3" schema in AJV');
     }
-    if (orderValidate === undefined) {
-        throw new Error('Cannot find "/rootOrder" schema in AJV');
-    }
-    const messageValidate = AJV.getSchema('/rootOrderMessage');
+    const messageValidate = AJV.getSchema('/rootOrderMessageV3');
     if (messageValidate === undefined) {
-        throw new Error('Cannot find "rootOrderMessage" schema in AJV');
+        throw new Error('Cannot find "rootOrderMessageV3" schema in AJV');
     }
     return {
         orderValidator: constructValidationFunctionWrapper(orderValidate as SynchronousValidationFunction),

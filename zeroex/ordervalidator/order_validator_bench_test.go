@@ -41,7 +41,7 @@ func init() {
 	}
 
 	erc20Data := common.Hex2Bytes("f47261b000000000000000000000000038ae374ecf4db50b0ff37125b591a04997106a32")
-	erc20Order := zeroex.Order{
+	erc20Order := zeroex.OrderV3{
 		ChainID:               big.NewInt(constants.TestChainID),
 		MakerAddress:          constants.GanacheAccount1,
 		TakerAddress:          constants.NullAddress,
@@ -57,7 +57,7 @@ func init() {
 		MakerAssetAmount:      big.NewInt(100),
 		TakerAssetAmount:      big.NewInt(42),
 		ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		ExchangeAddress:       ethereum.GanacheAddresses.Exchange,
+		ExchangeAddress:       ethereum.GanacheAddresses.ExchangeV3,
 	}
 	signedErc20Order, err := zeroex.SignTestOrder(&erc20Order)
 	if err != nil {

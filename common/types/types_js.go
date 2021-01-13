@@ -34,7 +34,8 @@ func (s Stats) JSValue() js.Value {
 	}
 	return js.ValueOf(map[string]interface{}{
 		"version":                           s.Version,
-		"pubSubTopic":                       s.PubSubTopic,
+		"pubSubTopicV3":                     s.PubSubTopicV3,
+		"pubSubTopicV4":                     s.PubSubTopicV4,
 		"rendezvous":                        s.Rendezvous,
 		"secondaryRendezvous":               secondaryRendezvous,
 		"peerID":                            s.PeerID,

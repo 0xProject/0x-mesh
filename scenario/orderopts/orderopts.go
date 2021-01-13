@@ -8,7 +8,7 @@ import (
 )
 
 type Config struct {
-	Order             *zeroex.Order
+	Order             *zeroex.OrderV3
 	SetupMakerState   bool
 	SetupTakerAddress common.Address
 }

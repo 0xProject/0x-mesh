@@ -13,6 +13,8 @@ type orderMessage struct {
 	Topics      []string            `json:"topics"`
 }
 
+// To implement this, we'll need to implement a custom JSON Marshaler and Unmarshaler
+//
 // OrderToRawMessage encodes an order into an order message to be sent over the wire
 func OrderToRawMessage(topic string, order *zeroex.SignedOrder) ([]byte, error) {
 	return json.Marshal(orderMessage{

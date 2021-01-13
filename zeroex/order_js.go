@@ -27,24 +27,29 @@ func (o OrderEvent) JSValue() js.Value {
 }
 
 func (s SignedOrder) JSValue() js.Value {
+	// FIXME
+	o, ok := s.Order.(*OrderV3)
+	if !ok {
+		panic("can't use non-v3 orders")
+	}
 	makerAssetData := "0x"
-	if len(s.MakerAssetData) != 0 {
-		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerAssetData))
+	if len(o.MakerAssetData) != 0 {
+		makerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(o.MakerAssetData))
 	}
 	// Note(albrow): Because of how our smart contracts work, most fields of an
 	// order cannot be null. However, makerAssetFeeData and takerAssetFeeData are
 	// the exception. For these fields, "0x" is used to indicate a null value.
 	makerFeeAssetData := "0x"
-	if len(s.MakerFeeAssetData) != 0 {
-		makerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.MakerFeeAssetData))
+	if len(o.MakerFeeAssetData) != 0 {
+		makerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(o.MakerFeeAssetData))
 	}
 	takerAssetData := "0x"
-	if len(s.TakerAssetData) != 0 {
-		takerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.TakerAssetData))
+	if len(o.TakerAssetData) != 0 {
+		takerAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(o.TakerAssetData))
 	}
 	takerFeeAssetData := "0x"
-	if len(s.TakerFeeAssetData) != 0 {
-		takerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(s.TakerFeeAssetData))
+	if len(o.TakerFeeAssetData) != 0 {
+		takerFeeAssetData = fmt.Sprintf("0x%s", common.Bytes2Hex(o.TakerFeeAssetData))
 	}
 	signature := "0x"
 	if len(s.Signature) != 0 {
@@ -52,22 +57,22 @@ func (s SignedOrder) JSValue() js.Value {
 	}
 
 	return js.ValueOf(map[string]interface{}{
-		"chainId":               s.ChainID.Int64(),
-		"exchangeAddress":       strings.ToLower(s.ExchangeAddress.Hex()),
-		"makerAddress":          strings.ToLower(s.MakerAddress.Hex()),
+		"chainId":               o.ChainID.Int64(),
+		"exchangeAddress":       strings.ToLower(o.ExchangeAddress.Hex()),
+		"makerAddress":          strings.ToLower(o.MakerAddress.Hex()),
 		"makerAssetData":        makerAssetData,
 		"makerFeeAssetData":     makerFeeAssetData,
-		"makerAssetAmount":      s.MakerAssetAmount.String(),
-		"makerFee":              s.MakerFee.String(),
-		"takerAddress":          strings.ToLower(s.TakerAddress.Hex()),
+		"makerAssetAmount":      o.MakerAssetAmount.String(),
+		"makerFee":              o.MakerFee.String(),
+		"takerAddress":          strings.ToLower(o.TakerAddress.Hex()),
 		"takerAssetData":        takerAssetData,
 		"takerFeeAssetData":     takerFeeAssetData,
-		"takerAssetAmount":      s.TakerAssetAmount.String(),
-		"takerFee":              s.TakerFee.String(),
-		"senderAddress":         strings.ToLower(s.SenderAddress.Hex()),
-		"feeRecipientAddress":   strings.ToLower(s.FeeRecipientAddress.Hex()),
-		"expirationTimeSeconds": s.ExpirationTimeSeconds.String(),
-		"salt":                  s.Salt.String(),
+		"takerAssetAmount":      o.TakerAssetAmount.String(),
+		"takerFee":              o.TakerFee.String(),
+		"senderAddress":         strings.ToLower(o.SenderAddress.Hex()),
+		"feeRecipientAddress":   strings.ToLower(o.FeeRecipientAddress.Hex()),
+		"expirationTimeSeconds": o.ExpirationTimeSeconds.String(),
+		"salt":                  o.Salt.String(),
 		"signature":             signature,
 	})
 }

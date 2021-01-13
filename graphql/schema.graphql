@@ -140,7 +140,8 @@ Contains configuration options and various stats for Mesh.
 """
 type Stats {
     version: String!
-    pubSubTopic: String!
+    pubSubTopicV3: String!
+    pubSubTopicV4: String!
     rendezvous: String!
     peerID: String!
     ethereumChainID: Int! # TODO(albrow): This should be String
@@ -294,7 +295,7 @@ type Mutation {
     addOrders(
         orders: [NewOrder!]!,
         opts: AddOrdersOpts = {
-            pinned: true,
+            pinned: false,
             keepCancelled: false,
             keepExpired: false,
             keepFullyFilled: false,

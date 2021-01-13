@@ -94,7 +94,8 @@ func testBrowserIntegration(testBundlePath string) func(*testing.T) {
 		)
 
 		time.Sleep(blockProcessingWaitTime)
-		standaloneOrderHash, err := standaloneOrder.ComputeOrderHash()
+		// FIXME
+		standaloneOrderHash, err := standaloneOrder.Order.(*zeroex.OrderV3).ComputeOrderHash()
 		require.NoError(t, err, "could not compute order hash for standalone order")
 
 		// In a separate goroutine, send standaloneOrder through the GraphQL API for
