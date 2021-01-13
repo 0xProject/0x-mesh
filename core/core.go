@@ -953,9 +953,9 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 	schemaValidOrders := []*zeroex.SignedOrder{}
 	for _, signedOrderRaw := range signedOrdersRaw {
 		signedOrderBytes := []byte(*signedOrderRaw)
-		// TODO(mason): deal with v4 orders!!!
-		result, err := app.orderFilter.ValidateOrderV3JSON(signedOrderBytes)
-		if err != nil {
+		v3Result, v3Error := app.orderFilter.ValidateOrderV3JSON(signedOrderBytes)
+		v4Result, v4Error := app.orderFilter.ValidateOrderV3JSON(signedOrderBytes)
+		if v3Error != nil && v4Error != nil {
 			signedOrder := &zeroex.SignedOrder{}
 			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
 				signedOrder = nil
@@ -971,11 +971,11 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 			})
 			continue
 		}
-		if !result.Valid() {
+		if !v3Result.Valid() && !v4Result.Valid() {
 			log.WithField("signedOrderRaw", string(signedOrderBytes)).Info("Order failed schema validation")
 			status := ordervalidator.RejectedOrderStatus{
 				Code:    ordervalidator.ROInvalidSchemaCode,
-				Message: fmt.Sprintf("order did not pass JSON-schema validation: %s", result.Errors()),
+				Message: fmt.Sprintf("order did not pass JSON-schema validation: %s", signedOrderRaw),
 			}
 			signedOrder := &zeroex.SignedOrder{}
 			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
@@ -996,12 +996,7 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 			return nil, err
 		}
 
-		// FIXME
-		o, ok := signedOrder.Order.(*zeroex.OrderV3)
-		if !ok {
-			panic("Can't use non-v3 orders")
-		}
-		orderHash, err := o.ComputeOrderHash()
+		orderHash, err := computeOrderHash(signedOrder)
 		if err != nil {
 			return nil, err
 		}
@@ -1039,6 +1034,17 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 	}
 
 	return allValidationResults, nil
+}
+
+func computeOrderHash(signedOrder *zeroex.SignedOrder) (common.Hash, error) {
+		switch order := signedOrder.Order.(type) {
+		case *zeroex.OrderV3:
+			return order.ComputeOrderHash()
+		case *zeroex.OrderV4:
+			return order.ComputeOrderHash()
+		default:
+			panic("Can only use v3 or v4 orders")
+		}
 }
 
 // shareOrder immediately shares the given order on the GossipSub network.

@@ -40,10 +40,24 @@ type OrderV3 struct {
 	hash *common.Hash
 }
 
-type OrderV4 struct{}
+type OrderV4 struct {
+	ChainID               *big.Int       `json:"chainId"`
+	makerToken          common.Address `json:"makerToken"`
+	takerToken          common.Address `json:"takerToken"`
+	makerAmount         *big.Int `json:"makerAmount"`
+	takerAmount         *big.Int `json:"takerAmount"`
+	feeRecipient        common.Address `json:"feeRecipient"`
+	takerTokenFeeAmount *big.Int `json:"takerTokenFeeAmount"`
+	maker               common.Address `json:"maker"`
+	taker               common.Address`json:"taker"`
+	sender              common.Address`json:"sender"`
+	pool                []byte`json:"pool"`
+	expiry              *big.Int`json:"expiry"`
+	salt                *big.Int`json:"salt"`
 
-// FIXME(jalextowle): Decide on a new order format
-//
+	hash *common.Hash
+}
+
 // SignedOrder represents a signed 0x order
 type SignedOrder struct {
 	Order     interface{}
@@ -477,6 +491,11 @@ func (o *OrderV3) ComputeOrderHash() (common.Hash, error) {
 	hash := common.BytesToHash(hashBytes)
 	o.hash = &hash
 	return hash, nil
+}
+
+// TODO(v4)
+func (o *OrderV4) ComputeOrderHash() (common.Hash, error) {
+	return common.Hash{}, nil
 }
 
 // SignOrder signs the 0x order with the supplied Signer
