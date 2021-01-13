@@ -17,7 +17,8 @@ import (
 type OrderV4 struct {
 	// Domain information
 	// TODO: These are constant within a chain context (mainnet/testnet/etc)
-	// probably best to keep them out of the order struct
+	// probably best to keep them out of the order struct, but this is how V3
+	// does it.
 	ChainID         *big.Int       `json:"chainId"`
 	ExchangeAddress common.Address `json:"exchangeAddress"`
 
