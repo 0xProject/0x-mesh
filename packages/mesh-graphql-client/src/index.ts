@@ -313,6 +313,7 @@ export class MeshGraphQLClient {
         }
         this._client = new ApolloClient({
             cache: new InMemoryCache({
+                resultCaching: false,
                 // This custom merge function is required for our orderEvents subscription.
                 // See https://www.apollographql.com/docs/react/caching/cache-field-behavior/#the-merge-function
                 typePolicies: {
