@@ -78,6 +78,43 @@ func TestAddOrders(t *testing.T) {
 	}
 }
 
+func TestAddOrdersV4(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+
+	numOrders := 10
+	orderHashes := []common.Hash{}
+	orders := []*types.OrderWithMetadata{}
+	for i := 0; i < numOrders; i++ {
+		order := newTestOrderV4()
+		orders = append(orders, order)
+		orderHashes = append(orderHashes, order.Hash)
+	}
+
+	{
+		alreadyStored, added, removed, err := db.AddOrdersV4(orders)
+		require.NoError(t, err)
+		assert.Len(t, alreadyStored, 0, "Expected no orders to be already stored")
+		assert.Len(t, removed, 0, "Expected no orders to be removed")
+		assertOrderSlicesAreUnsortedEqual(t, orders, added)
+	}
+	{
+		alreadyStored, added, removed, err := db.AddOrdersV4(orders)
+		require.NoError(t, err)
+		assert.Len(t, alreadyStored, 10, "Expected 10 orders to be already stored")
+		for _, expectedHash := range orderHashes {
+			assert.Contains(t, alreadyStored, expectedHash, "Expected already stored to contain order hash")
+		}
+		assert.Len(t, removed, 0, "Expected no orders to be removed")
+		assert.Len(t, added, 0, "Expected no orders to be added (they should already exist)")
+	}
+
+	storedOrders, err := db.FindOrdersV4(nil)
+	require.NoError(t, err)
+	assert.Len(t, storedOrders, numOrders)
+}
+
 func TestAddOrdersMaxExpirationTime(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -1267,6 +1304,37 @@ func newTestOrder() *types.OrderWithMetadata {
 				TokenID: big.NewInt(567),
 			},
 		},
+		LastValidatedBlockNumber: big.NewInt(int64(rand.Int())),
+		LastValidatedBlockHash:   common.BigToHash(big.NewInt(int64(rand.Int()))),
+	}
+}
+
+func newTestOrderV4() *types.OrderWithMetadata {
+	return &types.OrderWithMetadata{
+		Hash: common.BigToHash(big.NewInt(int64(rand.Int()))),
+		OrderV4: zeroex.OrderV4{
+			ChainID:             big.NewInt(constants.TestChainID),
+			ExchangeAddress:     contractAddresses.Exchange,
+			MakerToken:          constants.GanacheDummyERC721TokenAddress,
+			TakerToken:          constants.GanacheDummyERC721TokenAddress,
+			MakerAmount:         math.MaxBig256,
+			TakerAmount:         big.NewInt(42),
+			Taker:               constants.NullAddress,
+			Maker:               constants.NullAddress,
+			Sender:              constants.NullAddress,
+			FeeRecipient:        constants.NullAddress,
+			Pool:                zeroex.BigToBytes32(big.NewInt(0)),
+			Salt:                big.NewInt(int64(time.Now().Nanosecond())),
+			Expiry:              big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
+			TakerTokenFeeAmount: big.NewInt(0),
+		},
+		Signature:                []byte{1, 2, 255, 255},
+		LastUpdated:              time.Now(),
+		FillableTakerAssetAmount: big.NewInt(42),
+		IsRemoved:                false,
+		IsPinned:                 true,
+		IsUnfillable:             false,
+		IsExpired:                false,
 		LastValidatedBlockNumber: big.NewInt(int64(rand.Int())),
 		LastValidatedBlockHash:   common.BigToHash(big.NewInt(int64(rand.Int()))),
 	}
