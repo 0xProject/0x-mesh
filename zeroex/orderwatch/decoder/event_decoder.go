@@ -21,8 +21,11 @@ var EVENT_SIGNATURES = [...]string{
 	"ApprovalForAll(address,address,bool)",                       // ERC721 & ERC1155
 	"Deposit(address,uint256)",                                   // WETH9
 	"Withdrawal(address,uint256)",                                // WETH9
-	"Fill(address,address,bytes,bytes,bytes,bytes,bytes32,address,address,uint256,uint256,uint256,uint256,uint256)", // Exchange
-	"Cancel(address,address,bytes,bytes,address,bytes32)",                                                           // Exchange
+
+	// Events are the same between Exchange V3 and V4.
+	// See <https://github.com/0xProject/protocol/blob/75dcd687e2999fbb489a55d069c6699dac8023f3/contracts/exchange/contracts/src/interfaces/IExchangeCore.sol#L28>
+	"Fill(address,address,bytes,bytes,bytes,bytes,bytes32,address,address,uint256,uint256,uint256,uint256,uint256)",
+	"Cancel(address,address,bytes,bytes,address,bytes32)",
 	"CancelUpTo(address,address,uint256)",
 }
 
