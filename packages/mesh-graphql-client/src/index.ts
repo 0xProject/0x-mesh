@@ -423,6 +423,7 @@ export class MeshGraphQLClient {
             //    do this, Apollo Client just ignores them completely and acts like everything is fine :(
             //
             const incomingObservable = this._client.subscribe({
+                fetchPolicy: 'no-cache',
                 query: orderEventsSubscription,
             }) as Observable<FetchResult<OrderEventResponse>>;
             const outgoingObservable = new Observable<OrderEvent[]>((observer) => {
