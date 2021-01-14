@@ -1,7 +1,6 @@
 package zeroex
 
 import (
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -46,14 +45,23 @@ func TestSignOrderV4(t *testing.T) {
 
 	privateKey, err := crypto.ToECDSA(privateKeyBytes)
 	require.NoError(t, err)
-	signer := signer.NewLocalSigner(privateKey)
+	localSigner := signer.NewLocalSigner(privateKey)
 
-	signedOrder, err := SignOrderV4(signer, testOrderV4)
+	// Only maker is allowed to sign
+	order := testOrderV4
+	order.Maker = localSigner.(*signer.LocalSigner).GetSignerAddress()
+
+	signedOrder, err := SignOrderV4(localSigner, testOrderV4)
 	require.NoError(t, err)
 
-	fmt.Printf("\n%+v\n", signedOrder)
-
 	// See <https://github.com/0xProject/protocol/blob/edda1edc507fbfceb6dcb02ef212ee4bdcb123a6/packages/protocol-utils/test/orders_test.ts#L77>
+	// TODO: Check if signature is wrong or if we are dealing with non-uniqueness
+	// of signatures. Maybe the private key is loaded differently than the reference, in which case the maker address will differ.
 	assert.Equal(t, EIP712SignatureV4, signedOrder.SignatureTypeV4)
-	// TODO: V, R, S
+	// assert.Equal(t, uint8(27), signedOrder.V)
+	// assert.Equal(t, HexToBytes32("0x030e27e0a261dda1139154d9ba7e814932bd6b8d15231a8c2cd78d634ff22c2b"), signedOrder.R)
+	// assert.Equal(t, HexToBytes32("0x50af45e0d6e81b721905bd35748168f1f348be34fe03073d7a2f2b053cbdca2d"), signedOrder.S)
+	assert.Equal(t, uint8(28), signedOrder.V)
+	assert.Equal(t, HexToBytes32("0x8a01b9be45f72e7080a23f415dcaa6b5dc69871c9964f0758704a678cbdfad9f"), signedOrder.R)
+	assert.Equal(t, HexToBytes32("0x33b0e281d2512bda7064138cfc7e7aefc99effc61d3191305006e963ae87efa8"), signedOrder.S)
 }

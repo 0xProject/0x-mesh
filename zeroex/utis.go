@@ -34,6 +34,16 @@ func HexToBytes32(s string) Bytes32 {
 	return BytesToBytes32(common.FromHex(s))
 }
 
+// BigToBytes32 creates a Bytes32 from a big.Int.
+func BigToBytes32(i *big.Int) Bytes32 {
+	return BytesToBytes32(i.Bytes())
+}
+
+// HashToBytes32 creates a Bytes32 from a Hash.
+func HashToBytes32(h common.Hash) Bytes32 {
+	return BytesToBytes32(h.Bytes())
+}
+
 // SetBytes sets the Bytes32 to the value of bytes.
 // If bytes is larger than 32, bytes will be cropped from the left.
 func (b *Bytes32) SetBytes(bytes []byte) {

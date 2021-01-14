@@ -49,8 +49,8 @@ type SignedOrderV4 struct {
 	OrderV4
 	SignatureTypeV4 `json:"signatureType"` // uint8
 	V               uint8                  `json:"v"` // uint8
-	R               *big.Int               `json:"r"` // uint256
-	S               *big.Int               `json:"s"` // uint256
+	R               Bytes32                `json:"r"` // bytes32
+	S               Bytes32                `json:"s"` // bytes32
 }
 
 // SignatureType values
@@ -172,18 +172,8 @@ func SignOrderV4(signer signer.Signer, order *OrderV4) (*SignedOrderV4, error) {
 		OrderV4:         *order,
 		SignatureTypeV4: EIP712SignatureV4,
 		V:               ecSignature.V,
-		R:               ecSignature.R.Big(),
-		S:               ecSignature.S.Big(),
-	}
-	return signedOrder, nil
-}
-
-// SignTestOrderV4 signs the 0x order with the local test signer
-func SignTestOrderV4(order *OrderV4) (*SignedOrderV4, error) {
-	testSigner := signer.NewTestSigner()
-	signedOrder, err := SignOrderV4(testSigner, order)
-	if err != nil {
-		return nil, err
+		R:               HashToBytes32(ecSignature.R),
+		S:               HashToBytes32(ecSignature.S),
 	}
 	return signedOrder, nil
 }
