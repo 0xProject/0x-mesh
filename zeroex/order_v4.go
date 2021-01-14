@@ -32,7 +32,7 @@ type OrderV4 struct {
 	Taker               common.Address `json:"makerAddress"`
 	Sender              common.Address `json:"sender"`
 	FeeRecipient        common.Address `json:"feeRecipient"`
-	Pool                *big.Int       `json:"pool"`   // bytes32
+	Pool                Bytes32        `json:"pool"`   // bytes32
 	Expiry              *big.Int       `json:"expiry"` // uint64
 	Salt                *big.Int       `json:"salt"`   // uint256
 
@@ -65,6 +65,8 @@ const (
 //  O R D E R   H A S H I N G
 ////////////////////////////////////////////////////////////////////////////////
 
+// See <https://0xprotocol.readthedocs.io/en/latest/basics/functions.html#getlimitorderhash>
+// See <https://github.com/0xProject/protocol/blob/682c07cb73e572929547ee65afb0ce79885a7828/packages/protocol-utils/src/orders.ts#L127>
 var eip712OrderTypesV4 = gethsigner.Types{
 	"EIP712Domain": {
 		{Name: "name", Type: "string"},
@@ -75,18 +77,16 @@ var eip712OrderTypesV4 = gethsigner.Types{
 	"LimitOrder": {
 		{Name: "makerToken", Type: "address"},
 		{Name: "takerToken", Type: "address"},
-		{Name: "feeRecipientAddress", Type: "address"},
-		{Name: "senderAddress", Type: "address"},
-		{Name: "makerAssetAmount", Type: "uint256"},
-		{Name: "takerAssetAmount", Type: "uint256"},
-		{Name: "makerFee", Type: "uint256"},
-		{Name: "takerFee", Type: "uint256"},
-		{Name: "expirationTimeSeconds", Type: "uint256"},
+		{Name: "makerAmount", Type: "uint128"},
+		{Name: "takerAmount", Type: "uint128"},
+		{Name: "takerTokenFeeAmount", Type: "uint128"},
+		{Name: "maker", Type: "address"},
+		{Name: "taker", Type: "address"},
+		{Name: "sender", Type: "address"},
+		{Name: "feeRecipient", Type: "address"},
+		{Name: "pool", Type: "bytes32"},
+		{Name: "expiry", Type: "uint64"},
 		{Name: "salt", Type: "uint256"},
-		{Name: "makerAssetData", Type: "bytes"},
-		{Name: "takerAssetData", Type: "bytes"},
-		{Name: "makerFeeAssetData", Type: "bytes"},
-		{Name: "takerFeeAssetData", Type: "bytes"},
 	},
 }
 
@@ -117,11 +117,11 @@ func (o *OrderV4) ComputeOrderHash() (common.Hash, error) {
 		"makerAmount":         o.MakerAmount.String(),
 		"takerAmount":         o.TakerAmount.String(),
 		"takerTokenFeeAmount": o.TakerTokenFeeAmount.String(),
-		"taker":               o.Taker,
-		"maker":               o.Maker,
-		"sender":              o.Sender,
-		"feeRecipient":        o.FeeRecipient,
-		"pool":                o.Pool.String(),
+		"taker":               o.Taker.Hex(),
+		"maker":               o.Maker.Hex(),
+		"sender":              o.Sender.Hex(),
+		"feeRecipient":        o.FeeRecipient.Hex(),
+		"pool":                o.Pool.Hex(),
 		"expiry":              o.Expiry.String(),
 		"salt":                o.Salt.String(),
 	}
