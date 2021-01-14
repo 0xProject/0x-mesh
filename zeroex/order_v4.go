@@ -121,11 +121,10 @@ func (o *OrderV4) ComputeOrderHash() (common.Hash, error) {
 		"maker":               o.Maker.Hex(),
 		"sender":              o.Sender.Hex(),
 		"feeRecipient":        o.FeeRecipient.Hex(),
-		"pool":                o.Pool,
+		"pool":                o.Pool.Bytes(),
 		"expiry":              o.Expiry.String(),
 		"salt":                o.Salt.String(),
 	}
-	fmt.Printf("\n%+v\n", message)
 
 	var typedData = gethsigner.TypedData{
 		Types:       eip712OrderTypesV4,

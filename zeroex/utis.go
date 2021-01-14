@@ -1,10 +1,11 @@
 package zeroex
 
 import (
-	"golang.org/x/crypto/sha3"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"golang.org/x/crypto/sha3"
 )
 
 // keccak256 calculates and returns the Keccak256 hash of the input data.
@@ -46,4 +47,19 @@ func (b *Bytes32) SetBytes(bytes []byte) {
 // Hex converts a Bytes32 to a hex string.
 func (b Bytes32) Hex() string {
 	return hexutil.Encode(b[:])
+}
+
+// Bytes converts a Bytes32 to a []bytes.
+func (b Bytes32) Bytes() []byte {
+	return b[:]
+}
+
+// Raw converts a Bytes32 to a [32]bytes.
+func (b Bytes32) Raw() [32]byte {
+	return b
+}
+
+// Raw converts a Bytes32 to a big.Int
+func (b Bytes32) Big() *big.Int {
+	return new(big.Int).SetBytes(b[:])
 }
