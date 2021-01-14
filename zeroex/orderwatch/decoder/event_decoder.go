@@ -926,7 +926,7 @@ func (d *Decoder) decodeExchange(log types.Log, decodedLog interface{}) error {
 // unpackLog unpacks a retrieved log into the provided output structure.
 func unpackLog(decodedEvent interface{}, event string, log types.Log, _abi abi.ABI) error {
 	if len(log.Data) > 0 {
-		if err := _abi.Unpack(decodedEvent, event, log.Data); err != nil {
+		if err := _abi.UnpackIntoInterface(decodedEvent, event, log.Data); err != nil {
 			if strings.Contains(err.Error(), "Unpack(no-values unmarshalled") {
 				return UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
 			}
