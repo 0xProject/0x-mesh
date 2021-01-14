@@ -207,6 +207,10 @@ jq < protocol/packages/contract-artifacts/artifacts/DevUtils.json .compilerOutpu
 
 **Generate wrapper:**
 
+Geth abi-gen is meant for single contracts, no ecosystems so a bit of editing is required.
+
 ```
-abigen --abi ./DevUtilsV4.abi.json --pkg wrappers --out ethereum/wrappers/dev_utils_v4.go
+abigen --abi ./DevUtilsV4.abi.json --pkg dev_utils --out ethereum/wrappers/dev_utils_v4.go
 ``
+
+Then edit the file and correct the `package` name and remove any commonalities between different wrappers.
