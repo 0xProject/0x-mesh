@@ -46,10 +46,12 @@ func TestSignOrderV4(t *testing.T) {
 	privateKey, err := crypto.ToECDSA(privateKeyBytes)
 	require.NoError(t, err)
 	localSigner := signer.NewLocalSigner(privateKey)
+	localSignerAddress := localSigner.(*signer.LocalSigner).GetSignerAddress()
+	assert.Equal(t, common.HexToAddress("0x05cAc48D17ECC4D8A9DB09Dde766A03959b98367"), localSignerAddress)
 
 	// Only maker is allowed to sign
 	order := testOrderV4
-	order.Maker = localSigner.(*signer.LocalSigner).GetSignerAddress()
+	order.Maker = localSignerAddress
 
 	signedOrder, err := SignOrderV4(localSigner, testOrderV4)
 	require.NoError(t, err)
