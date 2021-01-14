@@ -76,5 +76,5 @@ func (b Bytes32) Big() *big.Int {
 
 // String prints the value in hex
 func (b Bytes32) String() string {
-        return b.Hex()
+	return b.Hex()
 }
