@@ -1,10 +1,14 @@
 package zeroex
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
+	"github.com/0xProject/0x-mesh/ethereum/signer"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -34,4 +38,22 @@ func TestGenerateOrderHashV4(t *testing.T) {
 	actualOrderHash, err := testOrderV4.ComputeOrderHash()
 	require.NoError(t, err)
 	assert.Equal(t, expectedOrderHash, actualOrderHash)
+}
+
+func TestSignOrderV4(t *testing.T) {
+	// See <https://github.com/0xProject/protocol/blob/edda1edc507fbfceb6dcb02ef212ee4bdcb123a6/packages/protocol-utils/test/orders_test.ts#L15>
+	privateKeyBytes := hexutil.MustDecode("0xee094b79aa0315914955f2f09be9abe541dcdc51f0aae5bec5453e9f73a471a6")
+
+	privateKey, err := crypto.ToECDSA(privateKeyBytes)
+	require.NoError(t, err)
+	signer := signer.NewLocalSigner(privateKey)
+
+	signedOrder, err := SignOrderV4(signer, testOrderV4)
+	require.NoError(t, err)
+
+	fmt.Printf("\n%+v\n", signedOrder)
+
+	// See <https://github.com/0xProject/protocol/blob/edda1edc507fbfceb6dcb02ef212ee4bdcb123a6/packages/protocol-utils/test/orders_test.ts#L77>
+	assert.Equal(t, EIP712SignatureV4, signedOrder.SignatureTypeV4)
+	// TODO: V, R, S
 }
