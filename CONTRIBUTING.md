@@ -181,3 +181,32 @@ Prettier configurations for most popular text editors can be found
 
 TSLint configurations for most popular text editors can be found
 [here](https://palantir.github.io/tslint/usage/third-party-tools/).
+
+### Updating the Go contract wrappers
+
+
+**Installing abi-gen:**
+
+See <https://geth.ethereum.org/docs/dapp/native-bindings>
+
+```
+git clone git@github.com:ethereum/go-ethereum.git
+cd go-ethereum
+git checkout v1.9.24
+go install ./cmd/abigen
+```
+
+**Obtain contract ABIs:**
+
+Extract any ABI from [`@0x/contract-artifacts/artifacts/*.json`](https://github.com/0xProject/protocol/tree/development/packages/contract-artifacts/artifacts), taking only the contents of the `abi` key. For example for the V4 DevUtils contract:
+
+```
+git clone git@github.com:0xProject/protocol.git
+jq < protocol/packages/contract-artifacts/artifacts/DevUtils.json .compilerOutput.abi > DevUtilsV4.abi.json
+```
+
+**Generate wrapper:**
+
+```
+abigen --abi ./DevUtilsV4.abi.json --pkg wrappers --out ethereum/wrappers/dev_utils_v4.go
+``
