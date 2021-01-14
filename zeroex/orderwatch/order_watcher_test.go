@@ -1910,7 +1910,7 @@ func TestOrderWatcherDecreaseExpirationTime(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, remainingOrders, expectedRemainingOrders)
 	for _, order := range remainingOrders {
-		assert.True(t, order.ExpirationTimeSeconds.Cmp(storedMaxExpirationTime) != 1, "remaining order has an expiration time of %s which is *greater than* the maximum of %s", order.ExpirationTimeSeconds, storedMaxExpirationTime)
+		assert.True(t, order.OrderV3.ExpirationTimeSeconds.Cmp(storedMaxExpirationTime) != 1, "remaining order has an expiration time of %s which is *greater than* the maximum of %s", order.OrderV3.ExpirationTimeSeconds, storedMaxExpirationTime)
 	}
 
 	// Confirm that a pinned order will be accepted even if its expiration

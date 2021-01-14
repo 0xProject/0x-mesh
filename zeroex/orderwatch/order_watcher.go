@@ -1058,7 +1058,7 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 		orderEvents = append(orderEvents, stoppedWatchingEvent)
 
 		// Remove in-memory state
-		err = w.removeAssetDataAddressFromEventDecoder(order.MakerAssetData)
+		err = w.removeAssetDataAddressFromEventDecoder(order.OrderV3.MakerAssetData)
 		if err != nil {
 			// This should never happen since the same error would have happened when adding
 			// the assetData to the EventDecoder.
@@ -1130,23 +1130,25 @@ func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.Accepte
 		return nil, err
 	}
 	return &types.OrderWithMetadata{
-		Hash:                     orderInfo.OrderHash,
-		ChainID:                  orderInfo.SignedOrder.ChainID,
-		ExchangeAddress:          orderInfo.SignedOrder.ExchangeAddress,
-		MakerAddress:             orderInfo.SignedOrder.MakerAddress,
-		MakerAssetData:           orderInfo.SignedOrder.MakerAssetData,
-		MakerFeeAssetData:        orderInfo.SignedOrder.MakerFeeAssetData,
-		MakerAssetAmount:         orderInfo.SignedOrder.MakerAssetAmount,
-		MakerFee:                 orderInfo.SignedOrder.MakerFee,
-		TakerAddress:             orderInfo.SignedOrder.TakerAddress,
-		TakerAssetData:           orderInfo.SignedOrder.TakerAssetData,
-		TakerFeeAssetData:        orderInfo.SignedOrder.TakerFeeAssetData,
-		TakerAssetAmount:         orderInfo.SignedOrder.TakerAssetAmount,
-		TakerFee:                 orderInfo.SignedOrder.TakerFee,
-		SenderAddress:            orderInfo.SignedOrder.SenderAddress,
-		FeeRecipientAddress:      orderInfo.SignedOrder.FeeRecipientAddress,
-		ExpirationTimeSeconds:    orderInfo.SignedOrder.ExpirationTimeSeconds,
-		Salt:                     orderInfo.SignedOrder.Salt,
+		Hash: orderInfo.OrderHash,
+		OrderV3: zeroex.Order{
+			ChainID:               orderInfo.SignedOrder.ChainID,
+			ExchangeAddress:       orderInfo.SignedOrder.ExchangeAddress,
+			MakerAddress:          orderInfo.SignedOrder.MakerAddress,
+			MakerAssetData:        orderInfo.SignedOrder.MakerAssetData,
+			MakerFeeAssetData:     orderInfo.SignedOrder.MakerFeeAssetData,
+			MakerAssetAmount:      orderInfo.SignedOrder.MakerAssetAmount,
+			MakerFee:              orderInfo.SignedOrder.MakerFee,
+			TakerAddress:          orderInfo.SignedOrder.TakerAddress,
+			TakerAssetData:        orderInfo.SignedOrder.TakerAssetData,
+			TakerFeeAssetData:     orderInfo.SignedOrder.TakerFeeAssetData,
+			TakerAssetAmount:      orderInfo.SignedOrder.TakerAssetAmount,
+			TakerFee:              orderInfo.SignedOrder.TakerFee,
+			SenderAddress:         orderInfo.SignedOrder.SenderAddress,
+			FeeRecipientAddress:   orderInfo.SignedOrder.FeeRecipientAddress,
+			ExpirationTimeSeconds: orderInfo.SignedOrder.ExpirationTimeSeconds,
+			Salt:                  orderInfo.SignedOrder.Salt,
+		},
 		Signature:                orderInfo.SignedOrder.Signature,
 		IsRemoved:                false,
 		IsUnfillable:             orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0,
@@ -1167,15 +1169,15 @@ func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.Accepte
 
 // TODO(albrow): All in-memory state can be removed.
 func (w *Watcher) setupInMemoryOrderState(order *types.OrderWithMetadata) error {
-	w.eventDecoder.AddKnownExchange(order.ExchangeAddress)
+	w.eventDecoder.AddKnownExchange(order.OrderV3.ExchangeAddress)
 
 	// Add MakerAssetData and MakerFeeAssetData to EventDecoder
-	err := w.addAssetDataAddressToEventDecoder(order.MakerAssetData)
+	err := w.addAssetDataAddressToEventDecoder(order.OrderV3.MakerAssetData)
 	if err != nil {
 		return err
 	}
-	if order.MakerFee.Cmp(big.NewInt(0)) == 1 {
-		err = w.addAssetDataAddressToEventDecoder(order.MakerFeeAssetData)
+	if order.OrderV3.MakerFee.Cmp(big.NewInt(0)) == 1 {
+		err = w.addAssetDataAddressToEventDecoder(order.OrderV3.MakerFeeAssetData)
 		if err != nil {
 			return err
 		}
@@ -1417,7 +1419,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			// The order expiration time is valid if it is greater than the latest block timestamp
 			// of the validation block.
 			validationBlockTimestampSeconds := big.NewInt(validationBlock.Timestamp.Unix())
-			expirationTimeIsValid := order.ExpirationTimeSeconds.Cmp(validationBlockTimestampSeconds) == 1
+			expirationTimeIsValid := order.OrderV3.ExpirationTimeSeconds.Cmp(validationBlockTimestampSeconds) == 1
 			isOrderUnexpired := order.IsExpired && order.IsUnfillable && expirationTimeIsValid
 
 			// We can tell that an order was previously expired if it was marked as removed with a
@@ -1869,7 +1871,7 @@ func (w *Watcher) rewatchOrder(order *types.OrderWithMetadata, newFillableTakerA
 func (w *Watcher) markOrderUnfillable(order *types.OrderWithMetadata, newFillableAmount *big.Int, validationBlock *types.MiniHeader) {
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.IsUnfillable = true
-		if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.ExpirationTimeSeconds) >= 0 {
+		if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.OrderV3.ExpirationTimeSeconds) >= 0 {
 			orderToUpdate.IsExpired = true
 		}
 		orderToUpdate.LastUpdated = time.Now().UTC()
@@ -1892,7 +1894,7 @@ func (w *Watcher) unwatchOrder(order *types.OrderWithMetadata, newFillableAmount
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.IsRemoved = true
 		orderToUpdate.IsUnfillable = true
-		if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.ExpirationTimeSeconds) >= 0 {
+		if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.OrderV3.ExpirationTimeSeconds) >= 0 {
 			orderToUpdate.IsExpired = true
 		}
 		orderToUpdate.LastUpdated = time.Now().UTC()
@@ -1913,7 +1915,7 @@ func (w *Watcher) unwatchOrder(order *types.OrderWithMetadata, newFillableAmount
 
 func (w *Watcher) updateOrderExpirationState(order *types.OrderWithMetadata, validationBlock *types.MiniHeader) {
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
-		if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.ExpirationTimeSeconds) >= 0 {
+		if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.OrderV3.ExpirationTimeSeconds) >= 0 {
 			orderToUpdate.IsExpired = true
 		}
 		orderToUpdate.LastUpdated = time.Now().UTC()
@@ -1935,7 +1937,7 @@ func (w *Watcher) permanentlyDeleteOrder(order *types.OrderWithMetadata) error {
 	}
 
 	// After permanently deleting an order, we also remove its assetData from the Decoder
-	err := w.removeAssetDataAddressFromEventDecoder(order.MakerAssetData)
+	err := w.removeAssetDataAddressFromEventDecoder(order.OrderV3.MakerAssetData)
 	if err != nil {
 		// This should never happen since the same error would have happened when adding
 		// the assetData to the EventDecoder.

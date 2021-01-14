@@ -292,7 +292,7 @@ func (db *DB) GetCurrentMaxExpirationTime() (*big.Int, error) {
 	if len(ordersWithLongestExpirationTime) == 0 {
 		return constants.UnlimitedExpirationTime, nil
 	}
-	return ordersWithLongestExpirationTime[0].ExpirationTimeSeconds, nil
+	return ordersWithLongestExpirationTime[0].OrderV3.ExpirationTimeSeconds, nil
 }
 
 func ParseContractAddressesAndTokenIdsFromAssetData(assetDataDecoder *zeroex.AssetDataDecoder, assetData []byte, contractAddresses ethereum.ContractAddresses) ([]*types.SingleAssetData, error) {

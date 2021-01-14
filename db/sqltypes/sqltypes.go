@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/common/types"
+	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	ethmath "github.com/ethereum/go-ethereum/common/math"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -255,6 +256,43 @@ type Order struct {
 	KeepUnfunded             bool             `db:"keepUnfunded"`
 }
 
+// OrderV4 is the SQL database representation of V4 0x order along with some relevant metadata.
+type OrderV4 struct {
+	// Common with the zeroex type
+	Hash            common.Hash    `db:"hash"`
+	ChainID         *SortedBigInt  `db:"chainId"`
+	ExchangeAddress common.Address `db:"exchangeAddress"`
+	// Limit order values
+	MakerToken          common.Address `db:"makerToken"`
+	TakerToken          common.Address `db:"takerToken"`
+	MakerAmount         *SortedBigInt  `db:"makerAmount"`         // uint128
+	TakerAmount         *SortedBigInt  `db:"takerAmount"`         // uint128
+	TakerTokenFeeAmount *SortedBigInt  `db:"takerTokenFeeAmount"` // uint128
+	Maker               common.Address `db:"makerAddress"`
+	Taker               common.Address `db:"takerAddress"`
+	Sender              common.Address `db:"sender"`
+	FeeRecipient        common.Address `db:"feeRecipient"`
+	Pool                []byte         `db:"pool"`   // bytes32
+	Expiry              *SortedBigInt  `db:"expiry"` // uint64
+	Salt                *SortedBigInt  `db:"salt"`   // uint256
+	// metadata
+	Signature                []byte           `db:"signature"`
+	LastUpdated              time.Time        `db:"lastUpdated"`
+	FillableTakerAssetAmount *SortedBigInt    `db:"fillableTakerAssetAmount"`
+	IsRemoved                bool             `db:"isRemoved"`
+	IsPinned                 bool             `db:"isPinned"`
+	IsUnfillable             bool             `db:"isUnfillable"`
+	IsExpired                bool             `db:"isExpired"`
+	ParsedMakerAssetData     *ParsedAssetData `db:"parsedMakerAssetData"`
+	ParsedMakerFeeAssetData  *ParsedAssetData `db:"parsedMakerFeeAssetData"`
+	LastValidatedBlockNumber *SortedBigInt    `db:"lastValidatedBlockNumber"`
+	LastValidatedBlockHash   common.Hash      `db:"lastValidatedBlockHash"`
+	KeepCancelled            bool             `db:"keepCancelled"`
+	KeepExpired              bool             `db:"keepExpired"`
+	KeepFullyFilled          bool             `db:"keepFullyFilled"`
+	KeepUnfunded             bool             `db:"keepUnfunded"`
+}
+
 // EventLogs is a wrapper around []*ethtypes.Log that implements the
 // sql.Valuer and sql.Scanner interfaces.
 type EventLogs struct {
@@ -312,23 +350,25 @@ func OrderToCommonType(order *Order) *types.OrderWithMetadata {
 		return nil
 	}
 	return &types.OrderWithMetadata{
-		Hash:                     order.Hash,
-		ChainID:                  order.ChainID.Int,
-		ExchangeAddress:          order.ExchangeAddress,
-		MakerAddress:             order.MakerAddress,
-		MakerAssetData:           order.MakerAssetData,
-		MakerFeeAssetData:        order.MakerFeeAssetData,
-		MakerAssetAmount:         order.MakerAssetAmount.Int,
-		MakerFee:                 order.MakerFee.Int,
-		TakerAddress:             order.TakerAddress,
-		TakerAssetData:           order.TakerAssetData,
-		TakerFeeAssetData:        order.TakerFeeAssetData,
-		TakerAssetAmount:         order.TakerAssetAmount.Int,
-		TakerFee:                 order.TakerFee.Int,
-		SenderAddress:            order.SenderAddress,
-		FeeRecipientAddress:      order.FeeRecipientAddress,
-		ExpirationTimeSeconds:    order.ExpirationTimeSeconds.Int,
-		Salt:                     order.Salt.Int,
+		Hash: order.Hash,
+		OrderV3: zeroex.Order{
+			ChainID:               order.ChainID.Int,
+			ExchangeAddress:       order.ExchangeAddress,
+			MakerAddress:          order.MakerAddress,
+			MakerAssetData:        order.MakerAssetData,
+			MakerFeeAssetData:     order.MakerFeeAssetData,
+			MakerAssetAmount:      order.MakerAssetAmount.Int,
+			MakerFee:              order.MakerFee.Int,
+			TakerAddress:          order.TakerAddress,
+			TakerAssetData:        order.TakerAssetData,
+			TakerFeeAssetData:     order.TakerFeeAssetData,
+			TakerAssetAmount:      order.TakerAssetAmount.Int,
+			TakerFee:              order.TakerFee.Int,
+			SenderAddress:         order.SenderAddress,
+			FeeRecipientAddress:   order.FeeRecipientAddress,
+			ExpirationTimeSeconds: order.ExpirationTimeSeconds.Int,
+			Salt:                  order.Salt.Int,
+		},
 		Signature:                order.Signature,
 		FillableTakerAssetAmount: order.FillableTakerAssetAmount.Int,
 		LastUpdated:              order.LastUpdated,
@@ -353,22 +393,22 @@ func OrderFromCommonType(order *types.OrderWithMetadata) *Order {
 	}
 	return &Order{
 		Hash:                     order.Hash,
-		ChainID:                  NewSortedBigInt(order.ChainID),
-		ExchangeAddress:          order.ExchangeAddress,
-		MakerAddress:             order.MakerAddress,
-		MakerAssetData:           order.MakerAssetData,
-		MakerFeeAssetData:        order.MakerFeeAssetData,
-		MakerAssetAmount:         NewSortedBigInt(order.MakerAssetAmount),
-		MakerFee:                 NewSortedBigInt(order.MakerFee),
-		TakerAddress:             order.TakerAddress,
-		TakerAssetData:           order.TakerAssetData,
-		TakerFeeAssetData:        order.TakerFeeAssetData,
-		TakerAssetAmount:         NewSortedBigInt(order.TakerAssetAmount),
-		TakerFee:                 NewSortedBigInt(order.TakerFee),
-		SenderAddress:            order.SenderAddress,
-		FeeRecipientAddress:      order.FeeRecipientAddress,
-		ExpirationTimeSeconds:    NewSortedBigInt(order.ExpirationTimeSeconds),
-		Salt:                     NewSortedBigInt(order.Salt),
+		ChainID:                  NewSortedBigInt(order.OrderV3.ChainID),
+		ExchangeAddress:          order.OrderV3.ExchangeAddress,
+		MakerAddress:             order.OrderV3.MakerAddress,
+		MakerAssetData:           order.OrderV3.MakerAssetData,
+		MakerFeeAssetData:        order.OrderV3.MakerFeeAssetData,
+		MakerAssetAmount:         NewSortedBigInt(order.OrderV3.MakerAssetAmount),
+		MakerFee:                 NewSortedBigInt(order.OrderV3.MakerFee),
+		TakerAddress:             order.OrderV3.TakerAddress,
+		TakerAssetData:           order.OrderV3.TakerAssetData,
+		TakerFeeAssetData:        order.OrderV3.TakerFeeAssetData,
+		TakerAssetAmount:         NewSortedBigInt(order.OrderV3.TakerAssetAmount),
+		TakerFee:                 NewSortedBigInt(order.OrderV3.TakerFee),
+		SenderAddress:            order.OrderV3.SenderAddress,
+		FeeRecipientAddress:      order.OrderV3.FeeRecipientAddress,
+		ExpirationTimeSeconds:    NewSortedBigInt(order.OrderV3.ExpirationTimeSeconds),
+		Salt:                     NewSortedBigInt(order.OrderV3.Salt),
 		Signature:                order.Signature,
 		LastUpdated:              order.LastUpdated,
 		FillableTakerAssetAmount: NewSortedBigInt(order.FillableTakerAssetAmount),

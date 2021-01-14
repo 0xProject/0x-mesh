@@ -91,7 +91,7 @@ func TestAddOrdersMaxExpirationTime(t *testing.T) {
 	originalOrders := []*types.OrderWithMetadata{}
 	for i := 0; i < opts.MaxOrders; i++ {
 		testOrder := newTestOrder()
-		testOrder.ExpirationTimeSeconds = big.NewInt(int64(i))
+		testOrder.OrderV3.ExpirationTimeSeconds = big.NewInt(int64(i))
 		testOrder.IsPinned = false
 		originalOrders = append(originalOrders, testOrder)
 	}
@@ -105,13 +105,13 @@ func TestAddOrdersMaxExpirationTime(t *testing.T) {
 	// Add two new orders, one with an expiration time too far in the future
 	// and another with an expiration time soon enough to replace an existing
 	// order.
-	currentMaxExpirationTime := originalOrders[len(originalOrders)-1].ExpirationTimeSeconds
+	currentMaxExpirationTime := originalOrders[len(originalOrders)-1].OrderV3.ExpirationTimeSeconds
 	orderWithLongerExpirationTime := newTestOrder()
 	orderWithLongerExpirationTime.IsPinned = false
-	orderWithLongerExpirationTime.ExpirationTimeSeconds = big.NewInt(0).Add(currentMaxExpirationTime, big.NewInt(1))
+	orderWithLongerExpirationTime.OrderV3.ExpirationTimeSeconds = big.NewInt(0).Add(currentMaxExpirationTime, big.NewInt(1))
 	orderWithShorterExpirationTime := newTestOrder()
 	orderWithShorterExpirationTime.IsPinned = false
-	orderWithShorterExpirationTime.ExpirationTimeSeconds = big.NewInt(0).Add(currentMaxExpirationTime, big.NewInt(-1))
+	orderWithShorterExpirationTime.OrderV3.ExpirationTimeSeconds = big.NewInt(0).Add(currentMaxExpirationTime, big.NewInt(-1))
 	newOrders := []*types.OrderWithMetadata{orderWithLongerExpirationTime, orderWithShorterExpirationTime}
 	alreadyStored, added, removed, err = db.AddOrders(newOrders)
 	require.NoError(t, err)
@@ -132,7 +132,7 @@ func TestAddOrdersMaxExpirationTime(t *testing.T) {
 	pinnedOrders := []*types.OrderWithMetadata{}
 	for i := 0; i < opts.MaxOrders; i++ {
 		testOrder := newTestOrder()
-		testOrder.ExpirationTimeSeconds = big.NewInt(int64(i * 10))
+		testOrder.OrderV3.ExpirationTimeSeconds = big.NewInt(int64(i * 10))
 		testOrder.IsPinned = true
 		pinnedOrders = append(pinnedOrders, testOrder)
 	}
@@ -146,13 +146,13 @@ func TestAddOrdersMaxExpirationTime(t *testing.T) {
 	// and another with an expiration time soon enough to replace an existing
 	// order. Then check that new pinned orders do replace existing pinned orders with
 	// longer expiration times.
-	currentMaxExpirationTime = pinnedOrders[len(pinnedOrders)-1].ExpirationTimeSeconds
+	currentMaxExpirationTime = pinnedOrders[len(pinnedOrders)-1].OrderV3.ExpirationTimeSeconds
 	pinnedOrderWithLongerExpirationTime := newTestOrder()
 	pinnedOrderWithLongerExpirationTime.IsPinned = true
-	pinnedOrderWithLongerExpirationTime.ExpirationTimeSeconds = big.NewInt(0).Add(currentMaxExpirationTime, big.NewInt(1))
+	pinnedOrderWithLongerExpirationTime.OrderV3.ExpirationTimeSeconds = big.NewInt(0).Add(currentMaxExpirationTime, big.NewInt(1))
 	pinnedOrderWithShorterExpirationTime := newTestOrder()
 	pinnedOrderWithShorterExpirationTime.IsPinned = true
-	pinnedOrderWithShorterExpirationTime.ExpirationTimeSeconds = big.NewInt(0).Add(currentMaxExpirationTime, big.NewInt(-1))
+	pinnedOrderWithShorterExpirationTime.OrderV3.ExpirationTimeSeconds = big.NewInt(0).Add(currentMaxExpirationTime, big.NewInt(-1))
 	newPinnedOrders := []*types.OrderWithMetadata{pinnedOrderWithLongerExpirationTime, pinnedOrderWithShorterExpirationTime}
 	alreadyStored, added, removed, err = db.AddOrders(newPinnedOrders)
 	require.NoError(t, err)
@@ -251,7 +251,7 @@ func TestGetCurrentMaxExpirationTime(t *testing.T) {
 	nonPinnedOrders := []*types.OrderWithMetadata{}
 	for i := 0; i < 5; i++ {
 		order := newTestOrder()
-		order.ExpirationTimeSeconds = big.NewInt(int64(i))
+		order.OrderV3.ExpirationTimeSeconds = big.NewInt(int64(i))
 		order.IsPinned = false
 		nonPinnedOrders = append(nonPinnedOrders, order)
 	}
@@ -262,14 +262,14 @@ func TestGetCurrentMaxExpirationTime(t *testing.T) {
 	pinnedOrders := []*types.OrderWithMetadata{}
 	for i := 0; i < 5; i++ {
 		order := newTestOrder()
-		order.ExpirationTimeSeconds = big.NewInt(int64(i * 2))
+		order.OrderV3.ExpirationTimeSeconds = big.NewInt(int64(i * 2))
 		order.IsPinned = true
 		pinnedOrders = append(pinnedOrders, order)
 	}
 	_, _, _, err = db.AddOrders(pinnedOrders)
 	require.NoError(t, err)
 
-	expectedMaxExpirationTime := nonPinnedOrders[len(nonPinnedOrders)-1].ExpirationTimeSeconds
+	expectedMaxExpirationTime := nonPinnedOrders[len(nonPinnedOrders)-1].OrderV3.ExpirationTimeSeconds
 	actualMaxExpirationTime, err := db.GetCurrentMaxExpirationTime()
 	require.NoError(t, err)
 	assert.Equal(t, expectedMaxExpirationTime, actualMaxExpirationTime)
@@ -341,14 +341,14 @@ func TestFindOrdersSort(t *testing.T) {
 	originalOrders := []*types.OrderWithMetadata{}
 	for i := 0; i < numOrders; i++ {
 		order := newTestOrder()
-		order.MakerAssetAmount = big.NewInt(int64(i))
+		order.OrderV3.MakerAssetAmount = big.NewInt(int64(i))
 		// It's important for some orders to have the same TakerAssetAmount
 		// so that we can test secondary sorts (sorting on more than one
 		// field).
 		if i%2 == 0 {
-			order.TakerAssetAmount = big.NewInt(100)
+			order.OrderV3.TakerAssetAmount = big.NewInt(100)
 		} else {
-			order.TakerAssetAmount = big.NewInt(200)
+			order.OrderV3.TakerAssetAmount = big.NewInt(200)
 		}
 		originalOrders = append(originalOrders, order)
 	}
@@ -613,7 +613,7 @@ func TestDeleteOrdersLimitAndOffset(t *testing.T) {
 	originalOrders := []*types.OrderWithMetadata{}
 	for i := 0; i < numOrders; i++ {
 		testOrder := newTestOrder()
-		testOrder.MakerAssetAmount = big.NewInt(int64(i))
+		testOrder.OrderV3.MakerAssetAmount = big.NewInt(int64(i))
 		originalOrders = append(originalOrders, testOrder)
 	}
 	_, _, _, err := db.AddOrders(originalOrders)
@@ -1221,23 +1221,25 @@ func newTestDB(t testing.TB, ctx context.Context) *DB {
 // correct, so the order will not pass 0x validation.
 func newTestOrder() *types.OrderWithMetadata {
 	return &types.OrderWithMetadata{
-		Hash:                     common.BigToHash(big.NewInt(int64(rand.Int()))),
-		ChainID:                  big.NewInt(constants.TestChainID),
-		MakerAddress:             constants.GanacheAccount1,
-		TakerAddress:             constants.NullAddress,
-		SenderAddress:            constants.NullAddress,
-		FeeRecipientAddress:      constants.NullAddress,
-		MakerAssetData:           constants.ZRXAssetData,
-		MakerFeeAssetData:        constants.NullBytes,
-		TakerAssetData:           constants.WETHAssetData,
-		TakerFeeAssetData:        constants.NullBytes,
-		Salt:                     big.NewInt(int64(time.Now().Nanosecond())),
-		MakerFee:                 big.NewInt(0),
-		TakerFee:                 big.NewInt(0),
-		MakerAssetAmount:         math.MaxBig256,
-		TakerAssetAmount:         big.NewInt(42),
-		ExpirationTimeSeconds:    big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		ExchangeAddress:          contractAddresses.Exchange,
+		Hash: common.BigToHash(big.NewInt(int64(rand.Int()))),
+		OrderV3: zeroex.Order{
+			ChainID:               big.NewInt(constants.TestChainID),
+			MakerAddress:          constants.GanacheAccount1,
+			TakerAddress:          constants.NullAddress,
+			SenderAddress:         constants.NullAddress,
+			FeeRecipientAddress:   constants.NullAddress,
+			MakerAssetData:        constants.ZRXAssetData,
+			MakerFeeAssetData:     constants.NullBytes,
+			TakerAssetData:        constants.WETHAssetData,
+			TakerFeeAssetData:     constants.NullBytes,
+			Salt:                  big.NewInt(int64(time.Now().Nanosecond())),
+			MakerFee:              big.NewInt(0),
+			TakerFee:              big.NewInt(0),
+			MakerAssetAmount:      math.MaxBig256,
+			TakerAssetAmount:      big.NewInt(42),
+			ExpirationTimeSeconds: big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
+			ExchangeAddress:       contractAddresses.Exchange,
+		},
 		Signature:                []byte{1, 2, 255, 255},
 		LastUpdated:              time.Now(),
 		FillableTakerAssetAmount: big.NewInt(42),
@@ -1339,9 +1341,9 @@ func createAndStoreOrdersForFilterTests(t *testing.T, db *DB) []*types.OrderWith
 	storedOrders := []*types.OrderWithMetadata{}
 	for i := 0; i < numOrders; i++ {
 		order := newTestOrder()
-		order.MakerAssetAmount = big.NewInt(int64(i))
-		order.TakerAssetAmount = big.NewInt(int64(i))
-		order.MakerAssetData = []byte{97 + byte(i)}
+		order.OrderV3.MakerAssetAmount = big.NewInt(int64(i))
+		order.OrderV3.TakerAssetAmount = big.NewInt(int64(i))
+		order.OrderV3.MakerAssetData = []byte{97 + byte(i)}
 		parsedMakerAssetData := []*types.SingleAssetData{
 			{
 				Address: constants.GanacheDummyERC721TokenAddress,
@@ -1965,19 +1967,19 @@ func sortOrdersByHash(orders []*types.OrderWithMetadata) {
 
 func lessByMakerAssetAmountAsc(orders []*types.OrderWithMetadata) func(i, j int) bool {
 	return func(i, j int) bool {
-		return orders[i].MakerAssetAmount.Cmp(orders[j].MakerAssetAmount) == -1
+		return orders[i].OrderV3.MakerAssetAmount.Cmp(orders[j].OrderV3.MakerAssetAmount) == -1
 	}
 }
 
 func lessByMakerAssetAmountDesc(orders []*types.OrderWithMetadata) func(i, j int) bool {
 	return func(i, j int) bool {
-		return orders[i].MakerAssetAmount.Cmp(orders[j].MakerAssetAmount) == 1
+		return orders[i].OrderV3.MakerAssetAmount.Cmp(orders[j].OrderV3.MakerAssetAmount) == 1
 	}
 }
 
 func lessByTakerAssetAmountAscAndMakerAssetAmountAsc(orders []*types.OrderWithMetadata) func(i, j int) bool {
 	return func(i, j int) bool {
-		switch orders[i].TakerAssetAmount.Cmp(orders[j].TakerAssetAmount) {
+		switch orders[i].OrderV3.TakerAssetAmount.Cmp(orders[j].OrderV3.TakerAssetAmount) {
 		case -1:
 			// Less
 			return true
@@ -1987,14 +1989,14 @@ func lessByTakerAssetAmountAscAndMakerAssetAmountAsc(orders []*types.OrderWithMe
 		default:
 			// Equal. In this case we use MakerAssetAmount as a secondary sort
 			// (i.e. a tie-breaker)
-			return orders[i].MakerAssetAmount.Cmp(orders[j].MakerAssetAmount) == -1
+			return orders[i].OrderV3.MakerAssetAmount.Cmp(orders[j].OrderV3.MakerAssetAmount) == -1
 		}
 	}
 }
 
 func lessByTakerAssetAmountDescAndMakerAssetAmountDesc(orders []*types.OrderWithMetadata) func(i, j int) bool {
 	return func(i, j int) bool {
-		switch orders[i].TakerAssetAmount.Cmp(orders[j].TakerAssetAmount) {
+		switch orders[i].OrderV3.TakerAssetAmount.Cmp(orders[j].OrderV3.TakerAssetAmount) {
 		case -1:
 			// Less
 			return false
@@ -2004,7 +2006,7 @@ func lessByTakerAssetAmountDescAndMakerAssetAmountDesc(orders []*types.OrderWith
 		default:
 			// Equal. In this case we use MakerAssetAmount as a secondary sort
 			// (i.e. a tie-breaker)
-			return orders[i].MakerAssetAmount.Cmp(orders[j].MakerAssetAmount) == 1
+			return orders[i].OrderV3.MakerAssetAmount.Cmp(orders[j].OrderV3.MakerAssetAmount) == 1
 		}
 	}
 }
