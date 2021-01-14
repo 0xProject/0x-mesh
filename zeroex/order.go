@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	gethsigner "github.com/ethereum/go-ethereum/signer/core"
-	"golang.org/x/crypto/sha3"
 )
 
 // Order represents an unsigned 0x order
@@ -659,13 +658,4 @@ func (s *SignedOrder) UnmarshalJSON(data []byte) error {
 	}
 	s.Signature = common.FromHex(signedOrderJSON.Signature)
 	return nil
-}
-
-// keccak256 calculates and returns the Keccak256 hash of the input data.
-func keccak256(data ...[]byte) []byte {
-	d := sha3.NewLegacyKeccak256()
-	for _, b := range data {
-		_, _ = d.Write(b)
-	}
-	return d.Sum(nil)
 }

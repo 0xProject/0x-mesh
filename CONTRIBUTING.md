@@ -63,15 +63,13 @@ changing any Go code will require running `yarn build` at the root of the projec
 Some of the tests depend on having a test Ethereum node running. Before running
 the tests, make sure you have [Docker](https://docs.docker.com/install/)
 installed locally and start
-[0xorg/ganache-cli](https://hub.docker.com/r/0xorg/ganache-cli). In these commands,
-`$GANACHE_VERSION` should be set to the version of ganache-cli that is used in the mesh project's
-CI found [here](https://github.com/0xProject/0x-mesh/blob/development/.circleci/config.yml#L10):
+[0xorg/ganache-cli](https://hub.docker.com/r/0xorg/ganache-cli) with the appropriate [snapshot version](https://github.com/0xProject/protocol/blob/development/packages/migrations/README.md#publish
+) passed in the `VERSION` environment variable. The snapshot version that is used in the mesh project's
+CI can be found [here](https://github.com/0xProject/0x-mesh/blob/development/.circleci/config.yml#L10)
+
 
 ```
-docker pull 0xorg/ganache-cli
-
-# Run the $GANACHE_VERSION image of ganache-cli.
-docker run -ti -p 8545:8545 -e VERSION=$GANACHE_VERSION 0xorg/ganache-cli
+docker run --rm --pull -ti -p 8545:8545 -e VERSION=6.5.9 0xorg/ganache-cli
 ```
 
 There are various Make targets for running tests:

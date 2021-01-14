@@ -9,6 +9,8 @@ dmitri.shuralyov.com/state v0.0.0-20180228185332-28bcc343414c/go.mod h1:0PRwlb0D
 git.apache.org/thrift.git v0.0.0-20180902110319-2566ecd5d999/go.mod h1:fPE2ZNJGynbRyZ4dJvy6G277gSllfV2HJqblrnkyeyg=
 github.com/0xProject/go-ethereum v1.8.8-0.20200603225022-cb1f52043425 h1:BFs4B5VoJWA0PLH9DrtTvGDWqbg1thtfi6WSKQsUazg=
 github.com/0xProject/go-ethereum v1.8.8-0.20200603225022-cb1f52043425/go.mod h1:oP8FC5+TbICUyftkTWs+8JryntjIJLJvWvApK3z2AYw=
+github.com/0xProject/go-ethereum v1.8.8-0.20210114061118-a54f233b27f9 h1:LBmmI88RKTINgr/Zk82R48As+pds2w4/ZJRrIATAy4o=
+github.com/0xProject/go-ethereum v1.8.8-0.20210114061118-a54f233b27f9/go.mod h1:oP8FC5+TbICUyftkTWs+8JryntjIJLJvWvApK3z2AYw=
 github.com/0xProject/go-libp2p-pubsub v0.1.1-0.20200228234556-aaa0317e068a h1:OHjKy7tLiqETUbEzF2UmqaF8eUTjHqmJM2sP79dguJs=
 github.com/0xProject/go-libp2p-pubsub v0.1.1-0.20200228234556-aaa0317e068a/go.mod h1:R4R0kH/6p2vu8O9xsue0HNSjEuXMEPBgg4h3nVDI15o=
 github.com/0xProject/go-ws-transport v0.1.1-0.20200602173532-300f0ff55a11 h1:4FnZlElDsHYCEMeTEj2oS/tzzulsQU0ytrZiNpbE8SA=
