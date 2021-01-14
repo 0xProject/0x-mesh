@@ -29,9 +29,11 @@ var (
 
 type Database interface {
 	AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []common.Hash, added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error)
+	AddOrdersV4(orders []*types.OrderWithMetadata) (alreadyStored []common.Hash, added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error)
 	GetOrder(hash common.Hash) (*types.OrderWithMetadata, error)
 	GetOrderStatuses(hashes []common.Hash) (statuses []*StoredOrderStatus, err error)
 	FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
+	FindOrdersV4(opts *OrderQueryV4) ([]*types.OrderWithMetadata, error)
 	CountOrders(opts *OrderQuery) (int, error)
 	DeleteOrder(hash common.Hash) error
 	DeleteOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
@@ -292,7 +294,7 @@ func (db *DB) GetCurrentMaxExpirationTime() (*big.Int, error) {
 	if len(ordersWithLongestExpirationTime) == 0 {
 		return constants.UnlimitedExpirationTime, nil
 	}
-	return ordersWithLongestExpirationTime[0].ExpirationTimeSeconds, nil
+	return ordersWithLongestExpirationTime[0].OrderV3.ExpirationTimeSeconds, nil
 }
 
 func ParseContractAddressesAndTokenIdsFromAssetData(assetDataDecoder *zeroex.AssetDataDecoder, assetData []byte, contractAddresses ethereum.ContractAddresses) ([]*types.SingleAssetData, error) {

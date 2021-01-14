@@ -110,26 +110,13 @@ func (o *OrderInfo) UnmarshalJSON(data []byte) error {
 }
 
 type OrderWithMetadata struct {
-	Hash                     common.Hash    `json:"hash"`
-	ChainID                  *big.Int       `json:"chainID"`
-	ExchangeAddress          common.Address `json:"exchangeAddress"`
-	MakerAddress             common.Address `json:"makerAddress"`
-	MakerAssetData           []byte         `json:"makerAssetData"`
-	MakerFeeAssetData        []byte         `json:"makerFeeAssetData"`
-	MakerAssetAmount         *big.Int       `json:"makerAssetAmount"`
-	MakerFee                 *big.Int       `json:"makerFee"`
-	TakerAddress             common.Address `json:"takerAddress"`
-	TakerAssetData           []byte         `json:"takerAssetData"`
-	TakerFeeAssetData        []byte         `json:"takerFeeAssetData"`
-	TakerAssetAmount         *big.Int       `json:"takerAssetAmount"`
-	TakerFee                 *big.Int       `json:"takerFee"`
-	SenderAddress            common.Address `json:"senderAddress"`
-	FeeRecipientAddress      common.Address `json:"feeRecipientAddress"`
-	ExpirationTimeSeconds    *big.Int       `json:"expirationTimeSeconds"`
-	Salt                     *big.Int       `json:"salt"`
-	Signature                []byte         `json:"signature"`
-	FillableTakerAssetAmount *big.Int       `json:"fillableTakerAssetAmount"`
-	LastUpdated              time.Time      `json:"lastUpdated"`
+	OrderV3 zeroex.Order
+	OrderV4 zeroex.OrderV4
+
+	Hash                     common.Hash `json:"hash"`
+	Signature                []byte      `json:"signature"`
+	FillableTakerAssetAmount *big.Int    `json:"fillableTakerAssetAmount"`
+	LastUpdated              time.Time   `json:"lastUpdated"`
 	// Was this order flagged for removal? Due to the possibility of block-reorgs, instead
 	// of immediately removing an order when FillableTakerAssetAmount becomes 0, we instead
 	// flag it for removal. After this order isn't updated for X time and has IsRemoved = true,
@@ -171,22 +158,22 @@ type OrderWithMetadata struct {
 func (order OrderWithMetadata) SignedOrder() *zeroex.SignedOrder {
 	return &zeroex.SignedOrder{
 		Order: zeroex.Order{
-			ChainID:               order.ChainID,
-			ExchangeAddress:       order.ExchangeAddress,
-			MakerAddress:          order.MakerAddress,
-			MakerAssetData:        order.MakerAssetData,
-			MakerFeeAssetData:     order.MakerFeeAssetData,
-			MakerAssetAmount:      order.MakerAssetAmount,
-			MakerFee:              order.MakerFee,
-			TakerAddress:          order.TakerAddress,
-			TakerAssetData:        order.TakerAssetData,
-			TakerFeeAssetData:     order.TakerFeeAssetData,
-			TakerAssetAmount:      order.TakerAssetAmount,
-			TakerFee:              order.TakerFee,
-			SenderAddress:         order.SenderAddress,
-			FeeRecipientAddress:   order.FeeRecipientAddress,
-			ExpirationTimeSeconds: order.ExpirationTimeSeconds,
-			Salt:                  order.Salt,
+			ChainID:               order.OrderV3.ChainID,
+			ExchangeAddress:       order.OrderV3.ExchangeAddress,
+			MakerAddress:          order.OrderV3.MakerAddress,
+			MakerAssetData:        order.OrderV3.MakerAssetData,
+			MakerFeeAssetData:     order.OrderV3.MakerFeeAssetData,
+			MakerAssetAmount:      order.OrderV3.MakerAssetAmount,
+			MakerFee:              order.OrderV3.MakerFee,
+			TakerAddress:          order.OrderV3.TakerAddress,
+			TakerAssetData:        order.OrderV3.TakerAssetData,
+			TakerFeeAssetData:     order.OrderV3.TakerFeeAssetData,
+			TakerAssetAmount:      order.OrderV3.TakerAssetAmount,
+			TakerFee:              order.OrderV3.TakerFee,
+			SenderAddress:         order.OrderV3.SenderAddress,
+			FeeRecipientAddress:   order.OrderV3.FeeRecipientAddress,
+			ExpirationTimeSeconds: order.OrderV3.ExpirationTimeSeconds,
+			Salt:                  order.OrderV3.Salt,
 		},
 		Signature: order.Signature,
 	}
