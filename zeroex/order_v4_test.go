@@ -29,8 +29,8 @@ var testOrderV4 = &OrderV4{
 }
 
 func TestGenerateOrderHashV4(t *testing.T) {
-	// See <>
-	expectedOrderHash := common.HexToHash("0x05a78607ce1eafbbe994f04f8f0ae718d971bf420f089163ed8e7a022e95e468")
+	// See <https://github.com/0xProject/protocol/blob/edda1edc507fbfceb6dcb02ef212ee4bdcb123a6/packages/protocol-utils/test/orders_test.ts#L49>
+	expectedOrderHash := common.HexToHash("0x8bb1f6e880b3b4f91a901897c4b914ec606dc3b8b59f64983e1638a45bdf3116")
 	actualOrderHash, err := testOrderV4.ComputeOrderHash()
 	require.NoError(t, err)
 	assert.Equal(t, expectedOrderHash, actualOrderHash)
