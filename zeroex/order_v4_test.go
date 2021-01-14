@@ -42,7 +42,6 @@ func TestGenerateOrderHashV4(t *testing.T) {
 func TestSignOrderV4(t *testing.T) {
 	// See <https://github.com/0xProject/protocol/blob/edda1edc507fbfceb6dcb02ef212ee4bdcb123a6/packages/protocol-utils/test/orders_test.ts#L15>
 	privateKeyBytes := hexutil.MustDecode("0xee094b79aa0315914955f2f09be9abe541dcdc51f0aae5bec5453e9f73a471a6")
-
 	privateKey, err := crypto.ToECDSA(privateKeyBytes)
 	require.NoError(t, err)
 	localSigner := signer.NewLocalSigner(privateKey)
@@ -52,18 +51,17 @@ func TestSignOrderV4(t *testing.T) {
 	// Only maker is allowed to sign
 	order := testOrderV4
 	order.Maker = localSignerAddress
-
-	signedOrder, err := SignOrderV4(localSigner, testOrderV4)
+	order.ResetHash()
+	actualOrderHash, err := order.ComputeOrderHash()
 	require.NoError(t, err)
+	assert.Equal(t, common.HexToHash("0xddee5b1b08f4df161cafa12fd347e374779573773161906999a19a1cf5f692cc"), actualOrderHash)
 
-	// See <https://github.com/0xProject/protocol/blob/edda1edc507fbfceb6dcb02ef212ee4bdcb123a6/packages/protocol-utils/test/orders_test.ts#L77>
-	// TODO: Check if signature is wrong or if we are dealing with non-uniqueness
-	// of signatures. Maybe the private key is loaded differently than the reference, in which case the maker address will differ.
-	assert.Equal(t, EIP712SignatureV4, signedOrder.SignatureTypeV4)
-	// assert.Equal(t, uint8(27), signedOrder.V)
-	// assert.Equal(t, HexToBytes32("0x030e27e0a261dda1139154d9ba7e814932bd6b8d15231a8c2cd78d634ff22c2b"), signedOrder.R)
-	// assert.Equal(t, HexToBytes32("0x50af45e0d6e81b721905bd35748168f1f348be34fe03073d7a2f2b053cbdca2d"), signedOrder.S)
+	// Sign order
+	signedOrder, err := SignOrderV4(localSigner, order)
+	require.NoError(t, err)
+	// See <https://github.com/0xProject/protocol/blob/edda1edc507fbfceb6dcb02ef212ee4bdcb123a6/packages/protocol-utils/test/orders_test.ts#L67>
+	assert.Equal(t, EthSignSignatureV4, signedOrder.SignatureTypeV4)
 	assert.Equal(t, uint8(28), signedOrder.V)
-	assert.Equal(t, HexToBytes32("0x8a01b9be45f72e7080a23f415dcaa6b5dc69871c9964f0758704a678cbdfad9f"), signedOrder.R)
-	assert.Equal(t, HexToBytes32("0x33b0e281d2512bda7064138cfc7e7aefc99effc61d3191305006e963ae87efa8"), signedOrder.S)
+	assert.Equal(t, HexToBytes32("0x5d4fe9b4c8f94efc46ef9e7e3f996c238f9c930fd5c03014ec6db6d4d18a34e5"), signedOrder.R)
+	assert.Equal(t, HexToBytes32("0x0949269d29524aec1ba5b19236c392a3d1866ca39bb8c7b6345e90a3fbf404fc"), signedOrder.S)
 }

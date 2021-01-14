@@ -170,7 +170,7 @@ func SignOrderV4(signer signer.Signer, order *OrderV4) (*SignedOrderV4, error) {
 	// Generate 0x V4 Signature
 	signedOrder := &SignedOrderV4{
 		OrderV4:         *order,
-		SignatureTypeV4: EIP712SignatureV4,
+		SignatureTypeV4: EthSignSignatureV4,
 		V:               ecSignature.V,
 		R:               HashToBytes32(ecSignature.R),
 		S:               HashToBytes32(ecSignature.S),

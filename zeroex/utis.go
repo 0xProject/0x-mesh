@@ -73,3 +73,8 @@ func (b Bytes32) Raw() [32]byte {
 func (b Bytes32) Big() *big.Int {
 	return new(big.Int).SetBytes(b[:])
 }
+
+// String prints the value in hex
+func (b Bytes32) String() string {
+        return b.Hex()
+}
