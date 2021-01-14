@@ -127,6 +127,12 @@ func ValidateContractAddressesForChainID(chainID int, addresses ContractAddresse
 	if addresses.ERC1155Proxy == constants.NullAddress {
 		return fmt.Errorf("cannot add contract addresses for chain ID %d: ERC1155Proxy address is required", chainID)
 	}
+	if addresses.ExchangeProxy == constants.NullAddress {
+		return fmt.Errorf("cannot add contract addresses for chain ID %d: ExchangeProxy address is required", chainID)
+	}
+	if addresses.DevUtilsV4 == constants.NullAddress {
+		return fmt.Errorf("cannot add contract addresses for chain ID %d: DevUtilsV4 address is required", chainID)
+	}
 	return nil
 }
 
