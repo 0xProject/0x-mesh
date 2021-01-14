@@ -28,8 +28,8 @@ type OrderV4 struct {
 	MakerAmount         *big.Int       `json:"makerAmount"`         // uint128
 	TakerAmount         *big.Int       `json:"takerAmount"`         // uint128
 	TakerTokenFeeAmount *big.Int       `json:"takerTokenFeeAmount"` // uint128
-	Maker               common.Address `json:"takerAddress"`
-	Taker               common.Address `json:"makerAddress"`
+	Maker               common.Address `json:"makerAddress"`
+	Taker               common.Address `json:"takerAddress"`
 	Sender              common.Address `json:"sender"`
 	FeeRecipient        common.Address `json:"feeRecipient"`
 	Pool                Bytes32        `json:"pool"`   // bytes32
