@@ -32,25 +32,28 @@ const concurrencyLimit = 5
 // disruptions, etc...), we categorize them into `Kind`s and uniquely identify the reasons for
 // machines with a `Code`
 type RejectedOrderInfo struct {
-	OrderHash   common.Hash         `json:"orderHash"`
-	SignedOrder *zeroex.SignedOrder `json:"signedOrder"`
-	Kind        RejectedOrderKind   `json:"kind"`
-	Status      RejectedOrderStatus `json:"status"`
+	OrderHash     common.Hash           `json:"orderHash"`
+	SignedOrder   *zeroex.SignedOrder   `json:"signedOrder"`
+	SignedOrderV4 *zeroex.SignedOrderV4 `json:"signedOrderV4"`
+	Kind          RejectedOrderKind     `json:"kind"`
+	Status        RejectedOrderStatus   `json:"status"`
 }
 
 // AcceptedOrderInfo represents an fillable order and how much it could be filled for
 type AcceptedOrderInfo struct {
-	OrderHash                common.Hash         `json:"orderHash"`
-	SignedOrder              *zeroex.SignedOrder `json:"signedOrder"`
-	FillableTakerAssetAmount *big.Int            `json:"fillableTakerAssetAmount"`
-	IsNew                    bool                `json:"isNew"`
+	OrderHash                common.Hash           `json:"orderHash"`
+	SignedOrder              *zeroex.SignedOrder   `json:"signedOrder"`
+	SignedOrderV4            *zeroex.SignedOrderV4 `json:"signedOrderV4"`
+	FillableTakerAssetAmount *big.Int              `json:"fillableTakerAssetAmount"`
+	IsNew                    bool                  `json:"isNew"`
 }
 
 type acceptedOrderInfoJSON struct {
-	OrderHash                string              `json:"orderHash"`
-	SignedOrder              *zeroex.SignedOrder `json:"signedOrder"`
-	FillableTakerAssetAmount string              `json:"fillableTakerAssetAmount"`
-	IsNew                    bool                `json:"isNew"`
+	OrderHash                string                `json:"orderHash"`
+	SignedOrder              *zeroex.SignedOrder   `json:"signedOrderV4"`
+	SignedOrderV4            *zeroex.SignedOrderV4 `json:"signedOrder"`
+	FillableTakerAssetAmount string                `json:"fillableTakerAssetAmount"`
+	IsNew                    bool                  `json:"isNew"`
 }
 
 // MarshalJSON is a custom Marshaler for AcceptedOrderInfo
@@ -220,6 +223,7 @@ type ValidationResults struct {
 type OrderValidator struct {
 	maxRequestContentLength      int
 	devUtils                     *wrappers.DevUtilsCaller
+	exchangeV4                   *wrappers.ExchangeV4Caller
 	assetDataDecoder             *zeroex.AssetDataDecoder
 	chainID                      int
 	cachedFeeRecipientToEndpoint map[common.Address]string
@@ -232,11 +236,16 @@ func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLengt
 	if err != nil {
 		return nil, err
 	}
+	exchangeV4, err := wrappers.NewExchangeV4Caller(contractAddresses.ExchangeProxy, contractCaller)
+	if err != nil {
+		return nil, err
+	}
 	assetDataDecoder := zeroex.NewAssetDataDecoder()
 
 	return &OrderValidator{
 		maxRequestContentLength:      maxRequestContentLength,
 		devUtils:                     devUtils,
+		exchangeV4:                   exchangeV4,
 		assetDataDecoder:             assetDataDecoder,
 		chainID:                      chainID,
 		cachedFeeRecipientToEndpoint: map[common.Address]string{},
