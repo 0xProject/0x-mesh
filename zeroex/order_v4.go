@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/0xProject/0x-mesh/ethereum/signer"
+	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	gethsigner "github.com/ethereum/go-ethereum/signer/core"
@@ -176,4 +177,35 @@ func SignOrderV4(signer signer.Signer, order *OrderV4) (*SignedOrderV4, error) {
 		S:               HashToBytes32(ecSignature.S),
 	}
 	return signedOrder, nil
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//  E T H E R E U M   A B I   C O N V E R S I O N S
+////////////////////////////////////////////////////////////////////////////////
+
+// EthereumAbiLimitOrder converts the order to the abigen equivalent
+func (s *OrderV4) EthereumAbiLimitOrder() wrappers.LibNativeOrderLimitOrder {
+	return wrappers.LibNativeOrderLimitOrder{
+		MakerToken:          s.MakerToken,
+		TakerToken:          s.TakerToken,
+		MakerAmount:         s.MakerAmount,
+		TakerAmount:         s.TakerAmount,
+		TakerTokenFeeAmount: s.TakerTokenFeeAmount,
+		Maker:               s.Maker,
+		Taker:               s.Taker,
+		Sender:              s.Sender,
+		FeeRecipient:        s.FeeRecipient,
+		Pool:                s.Pool,
+		Expiry:              s.Expiry.Uint64(),
+		Salt:                s.Salt,
+	}
+}
+
+// EthereumAbiSignature converts the signature to the abigen equivalent
+func (s *SignedOrderV4) EthereumAbiSignature() wrappers.LibSignatureSignature {
+	return wrappers.LibSignatureSignature{
+		V: s.V,
+		R: s.R,
+		S: s.S,
+	}
 }
