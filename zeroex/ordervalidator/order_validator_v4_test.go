@@ -67,7 +67,7 @@ func init() {
 
 func TestBatchValidateOffChainCasesV4(t *testing.T) {
 	invalidSignedOrder := scenario.NewSignedTestOrderV4(t)
-	invalidSignedOrder.R = zeroex.HexToBytes32("a2cb61b6585051bf9706585051bf97034d402f14d58e001d8efbe6585051bf97") // Random
+	invalidSignedOrder.SignatureTypeV4 = zeroex.InvalidSignatureV4
 
 	var testCases = []testCaseV4{
 		{
