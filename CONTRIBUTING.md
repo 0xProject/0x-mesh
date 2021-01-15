@@ -205,12 +205,14 @@ git clone git@github.com:0xProject/protocol.git
 jq < protocol/packages/contract-artifacts/artifacts/DevUtils.json .compilerOutput.abi > DevUtilsV4.abi.json
 ```
 
+jq < ../protocol/packages/contract-artifacts/artifacts/IZeroEx.json .compilerOutput.abi > IZeroEx.abi.json
+
+The V4 ABI contains some internal functions whose names start with `_`. The next `abigen` command will strip the underscores and fail due to name collisions with non-prefixed versions. The easiest solution is to manually remove these functions from the JSON. (TODO: Come up with a `jq` query to automate this).
+
 **Generate wrapper:**
 
-Geth abi-gen is meant for single contracts, no ecosystems so a bit of editing is required.
-
 ```
-abigen --abi ./DevUtilsV4.abi.json --pkg dev_utils --out ethereum/wrappers/dev_utils_v4.go
-``
+abigen --abi ./IZeroEx.abi.json --pkg wrappers --type ExchangeV4 --out ethereum/wrappers/exhange_v4.go
+```
 
 Then edit the file and correct the `package` name and remove any commonalities between different wrappers.
