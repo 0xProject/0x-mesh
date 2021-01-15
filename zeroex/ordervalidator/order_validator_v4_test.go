@@ -34,8 +34,8 @@ import (
 // required when calling `batchGetLimitOrderRelevantStates` that does not include the encoded
 // SignedOrderV4. By subtracting this amount from the calldata length returned from encoding a
 // call to `batchGetLimitOrderRelevantStates` involving a single SignedOrder, we get the number of
-// bytes taken up by the SignedOrderV4 alone. i.e.: len(`""`)
-const emptyBatchGetLimitOrderRelevantStatesCallDataStringLength = 268
+// bytes taken up by the SignedOrderV4 alone in hex encoding including prefix and string quotation marks. i.e.: len(`"0x[...]"`)
+const emptyBatchGetLimitOrderRelevantStatesCallDataStringLength = 4 + 8 + 64*4
 
 type testCaseV4 struct {
 	SignedOrder                 *zeroex.SignedOrderV4
@@ -67,9 +67,13 @@ func init() {
 
 func TestBatchValidateOffChainCasesV4(t *testing.T) {
 	invalidSignedOrder := scenario.NewSignedTestOrderV4(t)
-	invalidSignedOrder.R = zeroex.HexToBytes32("a2cb61b6585051bf9706585051bf97034d402f14d58e001d8efbe6585051bf97")
+	invalidSignedOrder.R = zeroex.HexToBytes32("a2cb61b6585051bf9706585051bf97034d402f14d58e001d8efbe6585051bf97") // Random
 
 	var testCases = []testCaseV4{
+		{
+			SignedOrder: scenario.NewSignedTestOrderV4(t),
+			IsValid:     true,
+		},
 		{
 			SignedOrder:                 scenario.NewSignedTestOrderV4(t, orderopts.MakerAssetAmount(big.NewInt(0))),
 			IsValid:                     false,
@@ -79,30 +83,6 @@ func TestBatchValidateOffChainCasesV4(t *testing.T) {
 			SignedOrder:                 scenario.NewSignedTestOrderV4(t, orderopts.TakerAssetAmount(big.NewInt(0))),
 			IsValid:                     false,
 			ExpectedRejectedOrderStatus: ROInvalidTakerAssetAmount,
-		},
-		{
-			SignedOrder: scenario.NewSignedTestOrderV4(t, orderopts.MakerAssetData(multiAssetAssetData)),
-			IsValid:     true,
-		},
-		{
-			SignedOrder:                 scenario.NewSignedTestOrderV4(t, orderopts.MakerAssetData(malformedAssetData)),
-			IsValid:                     false,
-			ExpectedRejectedOrderStatus: ROInvalidMakerAssetData,
-		},
-		{
-			SignedOrder:                 scenario.NewSignedTestOrderV4(t, orderopts.TakerAssetData(malformedAssetData)),
-			IsValid:                     false,
-			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
-		},
-		{
-			SignedOrder:                 scenario.NewSignedTestOrderV4(t, orderopts.MakerAssetData(unsupportedAssetData)),
-			IsValid:                     false,
-			ExpectedRejectedOrderStatus: ROInvalidMakerAssetData,
-		},
-		{
-			SignedOrder:                 scenario.NewSignedTestOrderV4(t, orderopts.TakerAssetData(unsupportedAssetData)),
-			IsValid:                     false,
-			ExpectedRejectedOrderStatus: ROInvalidTakerAssetData,
 		},
 		{
 			SignedOrder:                 invalidSignedOrder,
@@ -368,22 +348,16 @@ func abiEncodeV4(signedOrder *zeroex.SignedOrderV4) ([]byte, error) {
 }
 
 func TestComputeABIEncodedSignedOrderStringByteLengthV4(t *testing.T) {
-	testOrder := scenario.NewSignedTestOrder(t)
-
-	testMultiAssetOrder := scenario.NewSignedTestOrder(t)
-	testMultiAssetOrder.Order.MakerAssetData = common.Hex2Bytes("123412304102340120350120340123041023401234102341234234523452345234")
-	testMultiAssetOrder.Order.MakerAssetData = common.Hex2Bytes("132519348523094582039457283452")
-	testMultiAssetOrder.Order.MakerAssetData = multiAssetAssetData
-	testMultiAssetOrder.Order.MakerAssetData = common.Hex2Bytes("324857203942034562893723452345246529837")
-
-	testCases := []*zeroex.SignedOrder{testOrder, testMultiAssetOrder}
+	testOrder := scenario.NewSignedTestOrderV4(t)
+	testCases := []*zeroex.SignedOrderV4{testOrder}
 
 	for _, signedOrder := range testCases {
 		label := fmt.Sprintf("test order: %v", signedOrder)
 
-		encoded, err := abiEncode(signedOrder)
+		encoded, err := abiEncodeV4(signedOrder)
 		require.NoError(t, err)
-		expectedLength := len(encoded) - emptyGetOrderRelevantStatesCallDataStringLength
+		t.Logf("abiEncoded = %s\n", encoded)
+		expectedLength := len(encoded) - emptyBatchGetLimitOrderRelevantStatesCallDataStringLength
 
 		assert.Equal(t, expectedLength, signedOrderV4AbiHexLength, label)
 	}

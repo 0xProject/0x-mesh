@@ -17,9 +17,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// V4 Orders have a 32 fields. Signatures add 3 more, making 15.
+// V4 Orders have a 32 fields. Signatures add 4 more, making 15.
 // each field is encoded as 256 bytes, in hex, so 64 characters each.
-const signedOrderV4AbiHexLength = 15 * 64
+const signedOrderV4AbiHexLength = 16 * 64
 
 // BatchValidateV4 is like BatchValidate but for V4 orders
 func (o *OrderValidator) BatchValidateV4(ctx context.Context, signedOrders []*zeroex.SignedOrderV4, areNewOrders bool, validationBlock *types.MiniHeader) *ValidationResults {
