@@ -22,7 +22,7 @@ type ContractAddresses struct {
 	ChaiToken                common.Address `json:"chaiToken"`
 	MaximumGasPrice          common.Address `json:"maximumGasPrice"`
 
-	// Version 4 constracts
+	// Version 4 contracts
 	// Exchange proxy accumulates multiple APIs. For 0xMesh the most relevant is ExchangeCore
 	// See <https://github.com/0xProject/protocol/blob/development/contracts/exchange/contracts/src/MixinExchangeCore.sol#L36>
 	ExchangeProxy common.Address `json:"exchangeProxy"`
