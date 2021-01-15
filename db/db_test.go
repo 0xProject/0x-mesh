@@ -78,43 +78,6 @@ func TestAddOrders(t *testing.T) {
 	}
 }
 
-func TestAddOrdersV4(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	db := newTestDB(t, ctx)
-
-	numOrders := 10
-	orderHashes := []common.Hash{}
-	orders := []*types.OrderWithMetadata{}
-	for i := 0; i < numOrders; i++ {
-		order := newTestOrderV4()
-		orders = append(orders, order)
-		orderHashes = append(orderHashes, order.Hash)
-	}
-
-	{
-		alreadyStored, added, removed, err := db.AddOrdersV4(orders)
-		require.NoError(t, err)
-		assert.Len(t, alreadyStored, 0, "Expected no orders to be already stored")
-		assert.Len(t, removed, 0, "Expected no orders to be removed")
-		assertOrderSlicesAreUnsortedEqual(t, orders, added)
-	}
-	{
-		alreadyStored, added, removed, err := db.AddOrdersV4(orders)
-		require.NoError(t, err)
-		assert.Len(t, alreadyStored, 10, "Expected 10 orders to be already stored")
-		for _, expectedHash := range orderHashes {
-			assert.Contains(t, alreadyStored, expectedHash, "Expected already stored to contain order hash")
-		}
-		assert.Len(t, removed, 0, "Expected no orders to be removed")
-		assert.Len(t, added, 0, "Expected no orders to be added (they should already exist)")
-	}
-
-	storedOrders, err := db.FindOrdersV4(nil)
-	require.NoError(t, err)
-	assert.Len(t, storedOrders, numOrders)
-}
-
 func TestAddOrdersMaxExpirationTime(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

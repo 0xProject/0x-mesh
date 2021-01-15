@@ -3,6 +3,7 @@
 package db
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -114,6 +115,137 @@ func (db *DB) FindOrdersV4(query *OrderQueryV4) (orders []*types.OrderWithMetada
 		return nil, err
 	}
 	return sqltypes.OrdersToCommonTypeV4(foundOrders), nil
+}
+
+func (db *DB) GetOrderStatusesV4(hashes []common.Hash) (statuses []*StoredOrderStatus, err error) {
+	defer func() {
+		err = convertErr(err)
+	}()
+	orderStatuses := make([]*StoredOrderStatus, len(hashes))
+	err = db.ReadWriteTransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
+		for i, hash := range hashes {
+			var foundOrder sqltypes.OrderV4
+			err := db.sqldb.GetContext(db.ctx, &foundOrder, "SELECT isRemoved, isUnfillable, fillableTakerAssetAmount FROM ordersv4 WHERE hash = $1", hash)
+			if err != nil {
+				if err == sql.ErrNoRows {
+					orderStatuses[i] = &StoredOrderStatus{
+						IsStored:                 false,
+						IsMarkedRemoved:          false,
+						IsMarkedUnfillable:       false,
+						FillableTakerAssetAmount: nil,
+					}
+				} else {
+					return err
+				}
+			} else {
+				orderStatuses[i] = &StoredOrderStatus{
+					IsStored:                 true,
+					IsMarkedRemoved:          foundOrder.IsRemoved,
+					IsMarkedUnfillable:       foundOrder.IsUnfillable,
+					FillableTakerAssetAmount: foundOrder.FillableTakerAssetAmount.Int,
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return orderStatuses, nil
+}
+
+func (db *DB) CountOrdersV4(query *OrderQueryV4) (count int, err error) {
+	defer func() {
+		err = convertErr(err)
+	}()
+	if err := checkOrderQueryV4(query); err != nil {
+		return 0, err
+	}
+	stmt, err := addOptsToSelectOrdersQueryV4(db.sqldb.Select("COUNT(*)").From("ordersv4"), query)
+	if err != nil {
+		return 0, err
+	}
+	db.mu.RLock()
+	gotCount, err := stmt.GetCountContext(db.ctx)
+	db.mu.RUnlock()
+	if err != nil {
+		return 0, err
+	}
+	return int(gotCount), nil
+}
+
+func (db *DB) DeleteOrderV4(hash common.Hash) error {
+	db.mu.Lock()
+	_, err := db.sqldb.ExecContext(db.ctx, "DELETE FROM ordersv4 WHERE hash = $1", hash)
+	db.mu.Unlock()
+	if err != nil {
+		return convertErr(err)
+	}
+	return nil
+}
+
+func (db *DB) DeleteOrdersV4(query *OrderQueryV4) (deleted []*types.OrderWithMetadata, err error) {
+	defer func() {
+		err = convertErr(err)
+	}()
+	if err := checkOrderQueryV4(query); err != nil {
+		return nil, err
+	}
+	// HACK(albrow): sqlz doesn't support ORDER BY, LIMIT, and OFFSET
+	// for DELETE statements. It also doesn't support RETURNING. As a
+	// workaround, we do a SELECT and DELETE inside a transaction.
+	var ordersToDelete []*sqltypes.OrderV4
+	err = db.ReadWriteTransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
+		stmt, err := addOptsToSelectOrdersQueryV4(txn.Select("*").From("orders"), query)
+		if err != nil {
+			return err
+		}
+		if err := stmt.GetAllContext(db.ctx, &ordersToDelete); err != nil {
+			return err
+		}
+		for _, order := range ordersToDelete {
+			_, err := txn.DeleteFrom("ordersv4").Where(sqlz.Eq(string(OV4FHash), order.Hash)).ExecContext(db.ctx)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return sqltypes.OrdersToCommonTypeV4(ordersToDelete), nil
+}
+
+func (db *DB) UpdateOrderV4(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) (err error) {
+	defer func() {
+		err = convertErr(err)
+	}()
+	if updateFunc == nil {
+		return errors.New("db.UpdateOrdersV4: updateFunc cannot be nil")
+	}
+
+	return db.ReadWriteTransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
+		var existingOrder sqltypes.OrderV4
+		if err := txn.GetContext(db.ctx, &existingOrder, "SELECT * FROM ordersv4 WHERE hash = $1", hash); err != nil {
+			if err == sql.ErrNoRows {
+				return ErrNotFound
+			}
+			return err
+		}
+
+		commonOrder := sqltypes.OrderToCommonTypeV4(&existingOrder)
+		commonUpdatedOrder, err := updateFunc(commonOrder)
+		if err != nil {
+			return fmt.Errorf("db.UpdateOrders: updateFunc returned error")
+		}
+		updatedOrder := sqltypes.OrderFromCommonTypeV4(commonUpdatedOrder)
+		_, err = txn.NamedExecContext(db.ctx, updateOrderQueryV4, updatedOrder)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func addOptsToSelectOrdersQueryV4(stmt *sqlz.SelectStmt, opts *OrderQueryV4) (*sqlz.SelectStmt, error) {

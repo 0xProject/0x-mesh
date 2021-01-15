@@ -145,10 +145,39 @@ func OrderWithMetadataFromCommonType(order *types.OrderWithMetadata) *OrderWithM
 	}
 }
 
+func OrderWithMetadataFromCommonTypeV4(order *types.OrderWithMetadata) *OrderV4WithMetadata {
+	return &OrderV4WithMetadata{
+		Hash:                     order.Hash.Hex(),
+		ChainID:                  order.OrderV4.ChainID.String(),
+		ExchangeAddress:          strings.ToLower(order.OrderV4.ExchangeAddress.Hex()),
+		Maker:                    strings.ToLower(order.OrderV4.Maker.Hex()),
+		Taker:                    strings.ToLower(order.OrderV4.Taker.Hex()),
+		Sender:                   strings.ToLower(order.OrderV4.Sender.Hex()),
+		MakerAmount:              order.OrderV4.MakerAmount.String(),
+		MakerToken:               strings.ToLower(order.OrderV4.MakerToken.Hex()),
+		TakerAmount:              order.OrderV4.TakerAmount.String(),
+		TakerToken:               strings.ToLower(order.OrderV4.TakerToken.Hex()),
+		TakerTokenFeeAmount:      order.OrderV4.TakerTokenFeeAmount.String(),
+		Pool:                     order.OrderV4.Pool.String(),
+		Expiry:                   order.OrderV4.Expiry.String(),
+		Salt:                     order.OrderV4.Salt.String(),
+		Signature:                types.BytesToHex(order.Signature),
+		FillableTakerAssetAmount: order.FillableTakerAssetAmount.String(),
+	}
+}
+
 func OrdersWithMetadataFromCommonType(orders []*types.OrderWithMetadata) []*OrderWithMetadata {
 	result := make([]*OrderWithMetadata, len(orders))
 	for i, order := range orders {
 		result[i] = OrderWithMetadataFromCommonType(order)
+	}
+	return result
+}
+
+func OrdersWithMetadataFromCommonTypeV4(orders []*types.OrderWithMetadata) []*OrderV4WithMetadata {
+	result := make([]*OrderV4WithMetadata, len(orders))
+	for i, order := range orders {
+		result[i] = OrderWithMetadataFromCommonTypeV4(order)
 	}
 	return result
 }
@@ -383,6 +412,23 @@ func FilterValueFromJSON(f OrderFilter) (interface{}, error) {
 		return stringToAddress(f.Value)
 	case OrderFieldMakerAssetData, OrderFieldMakerFeeAssetData, OrderFieldTakerAssetData, OrderFieldTakerFeeAssetData:
 		return stringToBytes(f.Value)
+	default:
+		return "", fmt.Errorf("invalid filter field: %q", f.Field)
+	}
+}
+
+// FilterValueFromJSONV4 converts the filter value from the JSON type to the
+// corresponding Go type. It returns an error if the JSON type does not match
+// what was expected based on the filter field.
+func FilterValueFromJSONV4(f OrderFilterV4) (interface{}, error) {
+	// TODO(oskar) add byte32 conversions here
+	switch f.Field {
+	case OrderFieldV4ChainID, OrderFieldV4MakerAmount, OrderFieldV4TakerAmount, OrderFieldV4TakerTokenFeeAmount, OrderFieldV4Expiry, OrderFieldV4Salt, OrderFieldV4FillableTakerAssetAmount:
+		return stringToBigInt(f.Value)
+	case OrderFieldV4Hash:
+		return stringToHash(f.Value)
+	case OrderFieldV4ExchangeAddress, OrderFieldV4Maker, OrderFieldV4Taker, OrderFieldV4Sender, OrderFieldV4FeeRecipient:
+		return stringToAddress(f.Value)
 	default:
 		return "", fmt.Errorf("invalid filter field: %q", f.Field)
 	}

@@ -5,6 +5,7 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/0xProject/0x-mesh/db"
@@ -38,6 +39,10 @@ func (r *queryResolver) Order(ctx context.Context, hash string) (*gqltypes.Order
 		return nil, err
 	}
 	return gqltypes.OrderWithMetadataFromCommonType(order), nil
+}
+
+func (r *queryResolver) Orderv4(ctx context.Context, hash string) (*gqltypes.OrderV4WithMetadata, error) {
+	panic(fmt.Errorf("not implemented"))
 }
 
 func (r *queryResolver) Orders(ctx context.Context, sort []*gqltypes.OrderSort, filters []*gqltypes.OrderFilter, limit *int) ([]*gqltypes.OrderWithMetadata, error) {
@@ -88,6 +93,53 @@ func (r *queryResolver) Orders(ctx context.Context, sort []*gqltypes.OrderSort, 
 		return nil, err
 	}
 	return gqltypes.OrdersWithMetadataFromCommonType(orders), nil
+}
+
+func (r *queryResolver) Ordersv4(ctx context.Context, sort []*gqltypes.OrderSortV4, filters []*gqltypes.OrderFilterV4, limit *int) ([]*gqltypes.OrderV4WithMetadata, error) {
+	query := &db.OrderQueryV4{
+		// We never include orders that are marked as removed.
+		Filters: []db.OrderFilterV4{
+			{
+				Field: db.OV4FIsRemoved,
+				Kind:  db.Equal,
+				Value: false,
+			},
+		},
+	}
+	if limit != nil {
+		query.Limit = uint(*limit)
+	}
+	for _, filter := range filters {
+		kind, err := gqltypes.FilterKindToDBType(filter.Kind)
+		if err != nil {
+			return nil, err
+		}
+		filterValue, err := gqltypes.FilterValueFromJSONV4(*filter)
+		if err != nil {
+			return nil, err
+		}
+		query.Filters = append(query.Filters, db.OrderFilterV4{
+			Field: db.OrderFieldV4(filter.Field),
+			Kind:  kind,
+			Value: filterValue,
+		})
+	}
+	for _, sort := range sort {
+		direction, err := gqltypes.SortDirectionToDBType(sort.Direction)
+		if err != nil {
+			return nil, err
+		}
+		query.Sort = append(query.Sort, db.OrderSortV4{
+			Field:     db.OrderFieldV4(sort.Field),
+			Direction: direction,
+		})
+	}
+
+	orders, err := r.app.FindOrdersV4(query)
+	if err != nil {
+		return nil, err
+	}
+	return gqltypes.OrdersWithMetadataFromCommonTypeV4(orders), nil
 }
 
 func (r *queryResolver) Stats(ctx context.Context) (*gqltypes.Stats, error) {

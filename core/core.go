@@ -790,6 +790,11 @@ func (app *App) FindOrders(query *db.OrderQuery) ([]*types.OrderWithMetadata, er
 	return app.db.FindOrders(query)
 }
 
+func (app *App) FindOrdersV4(query *db.OrderQueryV4) ([]*types.OrderWithMetadata, error) {
+	<-app.started
+	return app.db.FindOrdersV4(query)
+}
+
 // ErrPerPageZero is the error returned when a GetOrders request specifies perPage to 0
 type ErrPerPageZero struct{}
 

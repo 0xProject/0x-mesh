@@ -92,3 +92,33 @@ const insertOrderQueryV4 = `INSERT INTO ordersv4 (
 	:keepUnfunded
 ) ON CONFLICT DO NOTHING
 `
+
+const updateOrderQueryV4 = `UPDATE ordersv4 SET
+	chainID = :chainID,
+	exchangeAddress = :exchangeAddress,
+	maker = :maker,
+	makerToken = :makerToken,
+	makerAmount = :makerAmount,
+	taker = :taker,
+	takerToken = :takerToken,
+	takerAmount = :takerAmount,
+	sender = :sender,
+	feeRecipient = :feeRecipient,
+	expiry = :expiry,
+	salt = :salt,
+	pool = :pool,
+	signature = :signature,
+	lastUpdated = :lastUpdated,
+	fillableTakerAssetAmount = :fillableTakerAssetAmount,
+	isRemoved = :isRemoved,
+	isPinned = :isPinned,
+	isUnfillable = :isUnfillable,
+	isExpired = :isExpired,
+	lastValidatedBlockNumber = :lastValidatedBlockNumber,
+	lastValidatedBlockHash = :lastValidatedBlockHash,
+	keepCancelled = :keepCancelled,
+	keepExpired = :keepExpired,
+	keepFullyFilled = :keepFullyFilled,
+	keepUnfunded = :keepUnfunded
+WHERE ordersv4.hash = :hash
+`
