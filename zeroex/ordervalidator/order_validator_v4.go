@@ -17,7 +17,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// TODO: Port over test scenarios like in `order_validator_test.go`
+// V4 Orders have a 32 fields. Signatures add 3 more, making 15.
+// each field is encoded as 256 bytes, in hex, so 64 characters each.
+const signedOrderV4AbiHexLength = 15 * 64
 
 // BatchValidateV4 is like BatchValidate but for V4 orders
 func (o *OrderValidator) BatchValidateV4(ctx context.Context, signedOrders []*zeroex.SignedOrderV4, areNewOrders bool, validationBlock *types.MiniHeader) *ValidationResults {
@@ -266,8 +268,8 @@ func (o *OrderValidator) computeOptimalChunkSizesV4(signedOrders []*zeroex.Signe
 	payloadLength := jsonRPCPayloadByteLength
 	nextChunkSize := 0
 	for _, signedOrder := range signedOrders {
-		// V4 Orders have a fixed length of 12 + 3 fields of 32 bytes for the order + signature.
-		encodedSignedOrderByteLength := 480
+		// TODO: With this being constant, the whole chunking mechanism probably simplifies substantially.
+		encodedSignedOrderByteLength := signedOrderV4AbiHexLength
 		if payloadLength+encodedSignedOrderByteLength < o.maxRequestContentLength {
 			payloadLength += encodedSignedOrderByteLength
 			nextChunkSize++
