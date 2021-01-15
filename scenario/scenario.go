@@ -60,9 +60,29 @@ func defaultTestOrder() *zeroex.Order {
 	}
 }
 
+func defaultTestOrderV4() *zeroex.OrderV4 {
+	return &zeroex.OrderV4{
+		ChainID:             big.NewInt(constants.TestChainID),
+		ExchangeAddress:     ganacheAddresses.Exchange,
+		MakerToken:          constants.NullAddress,
+		TakerToken:          constants.NullAddress,
+		MakerAmount:         big.NewInt(100),
+		TakerAmount:         big.NewInt(42),
+		TakerTokenFeeAmount: big.NewInt(0),
+		Maker:               constants.GanacheAccount1,
+		Taker:               constants.NullAddress,
+		Sender:              constants.NullAddress,
+		FeeRecipient:        constants.NullAddress,
+		Pool:                zeroex.HexToBytes32("0000000000000000000000000000000000000000000000000000000000000000"),
+		Expiry:              big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
+		Salt:                big.NewInt(int64(time.Now().Nanosecond())),
+	}
+}
+
 func defaultConfig() *orderopts.Config {
 	return &orderopts.Config{
 		Order:             defaultTestOrder(),
+		OrderV4:           defaultTestOrderV4(),
 		SetupMakerState:   false,
 		SetupTakerAddress: constants.NullAddress,
 	}
@@ -201,6 +221,16 @@ func (x *tokenBalances) add(y *tokenBalances) {
 		if !found {
 			x.erc1155Tokens = append(x.erc1155Tokens, yToken)
 		}
+	}
+}
+
+func (x *tokenBalances) addTokenAmount(t *testing.T, token common.Address, amount *big.Int) {
+	if token == ganacheAddresses.ZRXToken {
+		x.zrx.Add(x.zrx, amount)
+	} else if token == ganacheAddresses.WETH9 {
+		x.weth.Add(x.weth, amount)
+	} else {
+		t.Fatalf("scenario: cannot setup on-chain state for ERC20 token (unsupported token): %s", token.Hex())
 	}
 }
 
