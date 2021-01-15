@@ -17,6 +17,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// TODO: Port over test scenarios like in `order_validator_test.go`
+
 // BatchValidateV4 is like BatchValidate but for V4 orders
 func (o *OrderValidator) BatchValidateV4(ctx context.Context, signedOrders []*zeroex.SignedOrderV4, areNewOrders bool, validationBlock *types.MiniHeader) *ValidationResults {
 	if len(signedOrders) == 0 {
