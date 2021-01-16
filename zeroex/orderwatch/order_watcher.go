@@ -1131,7 +1131,7 @@ func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.Accepte
 	}
 	return &types.OrderWithMetadata{
 		Hash: orderInfo.OrderHash,
-		OrderV3: zeroex.Order{
+		OrderV3: &zeroex.Order{
 			ChainID:               orderInfo.SignedOrder.ChainID,
 			ExchangeAddress:       orderInfo.SignedOrder.ExchangeAddress,
 			MakerAddress:          orderInfo.SignedOrder.MakerAddress,

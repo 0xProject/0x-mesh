@@ -1222,7 +1222,7 @@ func newTestDB(t testing.TB, ctx context.Context) *DB {
 func newTestOrder() *types.OrderWithMetadata {
 	return &types.OrderWithMetadata{
 		Hash: common.BigToHash(big.NewInt(int64(rand.Int()))),
-		OrderV3: zeroex.Order{
+		OrderV3: &zeroex.Order{
 			ChainID:               big.NewInt(constants.TestChainID),
 			MakerAddress:          constants.GanacheAccount1,
 			TakerAddress:          constants.NullAddress,
@@ -1275,7 +1275,7 @@ func newTestOrder() *types.OrderWithMetadata {
 func newTestOrderV4() *types.OrderWithMetadata {
 	return &types.OrderWithMetadata{
 		Hash: common.BigToHash(big.NewInt(int64(rand.Int()))),
-		OrderV4: zeroex.OrderV4{
+		OrderV4: &zeroex.OrderV4{
 			ChainID:             big.NewInt(constants.TestChainID),
 			ExchangeAddress:     contractAddresses.Exchange,
 			MakerToken:          constants.GanacheDummyERC721TokenAddress,
@@ -1291,7 +1291,12 @@ func newTestOrderV4() *types.OrderWithMetadata {
 			Expiry:              big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
 			TakerTokenFeeAmount: big.NewInt(0),
 		},
-		Signature:                []byte{1, 2, 255, 255},
+		SignatureV4: zeroex.SignatureFieldV4{
+			SignatureType: 0,
+			V:             1,
+			R:             zeroex.BigToBytes32(big.NewInt(250)),
+			S:             zeroex.BigToBytes32(big.NewInt(250)),
+		},
 		LastUpdated:              time.Now(),
 		FillableTakerAssetAmount: big.NewInt(42),
 		IsRemoved:                false,

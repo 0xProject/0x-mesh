@@ -72,7 +72,8 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddOrders func(childComplexity int, orders []*gqltypes.NewOrder, pinned *bool, opts *gqltypes.AddOrdersOpts) int
+		AddOrders   func(childComplexity int, orders []*gqltypes.NewOrder, pinned *bool, opts *gqltypes.AddOrdersOpts) int
+		AddOrdersV4 func(childComplexity int, orders []*gqltypes.NewOrderV4, pinned *bool, opts *gqltypes.AddOrdersOpts) int
 	}
 
 	Order struct {
@@ -201,6 +202,7 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, pinned *bool, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error)
+	AddOrdersV4(ctx context.Context, orders []*gqltypes.NewOrderV4, pinned *bool, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error)
 }
 type QueryResolver interface {
 	Order(ctx context.Context, hash string) (*gqltypes.OrderWithMetadata, error)
@@ -337,6 +339,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.AddOrders(childComplexity, args["orders"].([]*gqltypes.NewOrder), args["pinned"].(*bool), args["opts"].(*gqltypes.AddOrdersOpts)), true
+
+	case "Mutation.addOrdersV4":
+		if e.complexity.Mutation.AddOrdersV4 == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addOrdersV4_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddOrdersV4(childComplexity, args["orders"].([]*gqltypes.NewOrderV4), args["pinned"].(*bool), args["opts"].(*gqltypes.AddOrdersOpts)), true
 
 	case "Order.chainId":
 		if e.complexity.Order.ChainID == nil {
@@ -1445,6 +1459,28 @@ input NewOrder {
 }
 
 """
+A signed v4 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format).
+"""
+input NewOrderV4 {
+    chainId: String!
+    exchangeAddress: String!
+    makerToken: String!
+    takerToken: String!
+    makerAmount: String!
+    takerAmount: String!
+    takerTokenFeeAmount: String!
+    maker: String!
+    taker: String!
+    sender: String!
+    feeRecipient: String!
+    pool: String!
+    expiry: String!
+    salt: String!
+    signature: String!
+}
+
+
+"""
 The results of the addOrders mutation. Includes which orders were accepted and which orders where rejected.
 """
 type AddOrdersResults {
@@ -1525,6 +1561,16 @@ type Mutation {
     """
     addOrders(
         orders: [NewOrder!]!,
+        pinned: Boolean = true,
+        opts: AddOrdersOpts = {
+            keepCancelled: false,
+            keepExpired: false,
+            keepFullyFilled: false,
+            keepUnfunded: false,
+        },
+    ): AddOrdersResults!
+    addOrdersV4(
+        orders: [NewOrderV4!]!,
         pinned: Boolean = true,
         opts: AddOrdersOpts = {
             keepCancelled: false,
@@ -1681,6 +1727,36 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_addOrdersV4_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []*gqltypes.NewOrderV4
+	if tmp, ok := rawArgs["orders"]; ok {
+		arg0, err = ec.unmarshalNNewOrderV42ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrderV4ᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["orders"] = arg0
+	var arg1 *bool
+	if tmp, ok := rawArgs["pinned"]; ok {
+		arg1, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["pinned"] = arg1
+	var arg2 *gqltypes.AddOrdersOpts
+	if tmp, ok := rawArgs["opts"]; ok {
+		arg2, err = ec.unmarshalOAddOrdersOpts2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddOrdersOpts(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["opts"] = arg2
+	return args, nil
+}
 
 func (ec *executionContext) field_Mutation_addOrders_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -2351,6 +2427,47 @@ func (ec *executionContext) _Mutation_addOrders(ctx context.Context, field graph
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Mutation().AddOrders(rctx, args["orders"].([]*gqltypes.NewOrder), args["pinned"].(*bool), args["opts"].(*gqltypes.AddOrdersOpts))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqltypes.AddOrdersResults)
+	fc.Result = res
+	return ec.marshalNAddOrdersResults2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddOrdersResults(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_addOrdersV4(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_addOrdersV4_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AddOrdersV4(rctx, args["orders"].([]*gqltypes.NewOrderV4), args["pinned"].(*bool), args["opts"].(*gqltypes.AddOrdersOpts))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6931,6 +7048,108 @@ func (ec *executionContext) unmarshalInputNewOrder(ctx context.Context, obj inte
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputNewOrderV4(ctx context.Context, obj interface{}) (gqltypes.NewOrderV4, error) {
+	var it gqltypes.NewOrderV4
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "chainId":
+			var err error
+			it.ChainID, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "exchangeAddress":
+			var err error
+			it.ExchangeAddress, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "makerToken":
+			var err error
+			it.MakerToken, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "takerToken":
+			var err error
+			it.TakerToken, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "makerAmount":
+			var err error
+			it.MakerAmount, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "takerAmount":
+			var err error
+			it.TakerAmount, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "takerTokenFeeAmount":
+			var err error
+			it.TakerTokenFeeAmount, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "maker":
+			var err error
+			it.Maker, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "taker":
+			var err error
+			it.Taker, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "sender":
+			var err error
+			it.Sender, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "feeRecipient":
+			var err error
+			it.FeeRecipient, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "pool":
+			var err error
+			it.Pool, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "expiry":
+			var err error
+			it.Expiry, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "salt":
+			var err error
+			it.Salt, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "signature":
+			var err error
+			it.Signature, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputOrderFilter(ctx context.Context, obj interface{}) (gqltypes.OrderFilter, error) {
 	var it gqltypes.OrderFilter
 	var asMap = obj.(map[string]interface{})
@@ -7222,6 +7441,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = graphql.MarshalString("Mutation")
 		case "addOrders":
 			out.Values[i] = ec._Mutation_addOrders(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "addOrdersV4":
+			out.Values[i] = ec._Mutation_addOrdersV4(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -8398,6 +8622,38 @@ func (ec *executionContext) unmarshalNNewOrder2ᚖgithubᚗcomᚋ0xProjectᚋ0x�
 		return nil, nil
 	}
 	res, err := ec.unmarshalNNewOrder2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrder(ctx, v)
+	return &res, err
+}
+
+func (ec *executionContext) unmarshalNNewOrderV42githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrderV4(ctx context.Context, v interface{}) (gqltypes.NewOrderV4, error) {
+	return ec.unmarshalInputNewOrderV4(ctx, v)
+}
+
+func (ec *executionContext) unmarshalNNewOrderV42ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrderV4ᚄ(ctx context.Context, v interface{}) ([]*gqltypes.NewOrderV4, error) {
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]*gqltypes.NewOrderV4, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalNNewOrderV42ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrderV4(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNNewOrderV42ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrderV4(ctx context.Context, v interface{}) (*gqltypes.NewOrderV4, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalNNewOrderV42githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐNewOrderV4(ctx, v)
 	return &res, err
 }
 

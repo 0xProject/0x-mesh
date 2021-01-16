@@ -5,7 +5,6 @@ package graphql
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/0xProject/0x-mesh/db"
@@ -17,6 +16,20 @@ import (
 )
 
 func (r *mutationResolver) AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, pinned *bool, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error) {
+	isPinned := false
+	if pinned != nil {
+		isPinned = (*pinned)
+	}
+	signedOrders := gqltypes.NewOrdersToSignedOrders(orders)
+	commonTypeOpts := gqltypes.AddOrderOptsToCommonType(opts)
+	results, err := r.app.AddOrders(ctx, signedOrders, isPinned, commonTypeOpts)
+	if err != nil {
+		return nil, err
+	}
+	return gqltypes.AddOrdersResultsFromValidationResults(results)
+}
+
+func (r *mutationResolver) AddOrdersV4(ctx context.Context, orders []*gqltypes.NewOrderV4, pinned *bool, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error) {
 	isPinned := false
 	if pinned != nil {
 		isPinned = (*pinned)
@@ -42,7 +55,14 @@ func (r *queryResolver) Order(ctx context.Context, hash string) (*gqltypes.Order
 }
 
 func (r *queryResolver) Orderv4(ctx context.Context, hash string) (*gqltypes.OrderV4WithMetadata, error) {
-	panic(fmt.Errorf("not implemented"))
+	order, err := r.app.GetOrderV4(common.HexToHash(hash))
+	if err != nil {
+		if err == db.ErrNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return gqltypes.OrderWithMetadataFromCommonTypeV4(order), nil
 }
 
 func (r *queryResolver) Orders(ctx context.Context, sort []*gqltypes.OrderSort, filters []*gqltypes.OrderFilter, limit *int) ([]*gqltypes.OrderWithMetadata, error) {

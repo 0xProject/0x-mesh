@@ -332,6 +332,28 @@ input NewOrder {
 }
 
 """
+A signed v4 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format).
+"""
+input NewOrderV4 {
+    chainId: String!
+    exchangeAddress: String!
+    makerToken: String!
+    takerToken: String!
+    makerAmount: String!
+    takerAmount: String!
+    takerTokenFeeAmount: String!
+    maker: String!
+    taker: String!
+    sender: String!
+    feeRecipient: String!
+    pool: String!
+    expiry: String!
+    salt: String!
+    signature: String!
+}
+
+
+"""
 The results of the addOrders mutation. Includes which orders were accepted and which orders where rejected.
 """
 type AddOrdersResults {
@@ -412,6 +434,16 @@ type Mutation {
     """
     addOrders(
         orders: [NewOrder!]!,
+        pinned: Boolean = true,
+        opts: AddOrdersOpts = {
+            keepCancelled: false,
+            keepExpired: false,
+            keepFullyFilled: false,
+            keepUnfunded: false,
+        },
+    ): AddOrdersResults!
+    addOrdersV4(
+        orders: [NewOrderV4!]!,
         pinned: Boolean = true,
         opts: AddOrdersOpts = {
             keepCancelled: false,

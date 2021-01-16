@@ -91,6 +91,25 @@ type NewOrder struct {
 	Signature             string `json:"signature"`
 }
 
+// A signed v4 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format).
+type NewOrderV4 struct {
+	ChainID             string `json:"chainId"`
+	ExchangeAddress     string `json:"exchangeAddress"`
+	MakerToken          string `json:"makerToken"`
+	TakerToken          string `json:"takerToken"`
+	MakerAmount         string `json:"makerAmount"`
+	TakerAmount         string `json:"takerAmount"`
+	TakerTokenFeeAmount string `json:"takerTokenFeeAmount"`
+	Maker               string `json:"maker"`
+	Taker               string `json:"taker"`
+	Sender              string `json:"sender"`
+	FeeRecipient        string `json:"feeRecipient"`
+	Pool                string `json:"pool"`
+	Expiry              string `json:"expiry"`
+	Salt                string `json:"salt"`
+	Signature           string `json:"signature"`
+}
+
 // A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format.)
 type Order struct {
 	ChainID               string `json:"chainId"`

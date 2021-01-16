@@ -60,8 +60,8 @@ func TestSignOrderV4(t *testing.T) {
 	signedOrder, err := SignOrderV4(localSigner, order)
 	require.NoError(t, err)
 	// See <https://github.com/0xProject/protocol/blob/edda1edc507fbfceb6dcb02ef212ee4bdcb123a6/packages/protocol-utils/test/orders_test.ts#L67>
-	assert.Equal(t, EthSignSignatureV4, signedOrder.SignatureTypeV4)
-	assert.Equal(t, uint8(28), signedOrder.V)
+	assert.Equal(t, EthSignSignatureV4, signedOrder.Signature.SignatureType)
+	assert.Equal(t, uint8(28), signedOrder.Signature.V)
 	assert.Equal(t, HexToBytes32("0x5d4fe9b4c8f94efc46ef9e7e3f996c238f9c930fd5c03014ec6db6d4d18a34e5"), signedOrder.R)
 	assert.Equal(t, HexToBytes32("0x0949269d29524aec1ba5b19236c392a3d1866ca39bb8c7b6345e90a3fbf404fc"), signedOrder.S)
 }

@@ -785,6 +785,11 @@ func (app *App) GetOrder(hash common.Hash) (*types.OrderWithMetadata, error) {
 	return app.db.GetOrder(hash)
 }
 
+func (app *App) GetOrderV4(hash common.Hash) (*types.OrderWithMetadata, error) {
+	<-app.started
+	return app.db.GetOrderV4(hash)
+}
+
 func (app *App) FindOrders(query *db.OrderQuery) ([]*types.OrderWithMetadata, error) {
 	<-app.started
 	return app.db.FindOrders(query)

@@ -40,6 +40,13 @@ type OrderV4 struct {
 	hash *common.Hash
 }
 
+type SignatureFieldV4 struct {
+	SignatureType SignatureTypeV4 `json:"signatureType"`
+	V             uint8           `json:"v"`
+	R             Bytes32         `json:"r"`
+	S             Bytes32         `json:"s"`
+}
+
 // SignatureTypeV4 represents the type of 0x signature encountered
 type SignatureTypeV4 uint8
 
@@ -47,10 +54,7 @@ type SignatureTypeV4 uint8
 // See <https://0xprotocol.readthedocs.io/en/latest/basics/orders.html#how-to-sign>
 type SignedOrderV4 struct {
 	OrderV4
-	SignatureTypeV4 `json:"signatureType"` // uint8
-	V               uint8                  `json:"v"` // uint8
-	R               Bytes32                `json:"r"` // bytes32
-	S               Bytes32                `json:"s"` // bytes32
+	Signature SignatureFieldV4
 }
 
 // SignatureType values
@@ -169,11 +173,13 @@ func SignOrderV4(signer signer.Signer, order *OrderV4) (*SignedOrderV4, error) {
 
 	// Generate 0x V4 Signature
 	signedOrder := &SignedOrderV4{
-		OrderV4:         *order,
-		SignatureTypeV4: EthSignSignatureV4,
-		V:               ecSignature.V,
-		R:               HashToBytes32(ecSignature.R),
-		S:               HashToBytes32(ecSignature.S),
+		OrderV4: *order,
+		Signature: SignatureFieldV4{
+			SignatureType: EthSignSignatureV4,
+			V:             ecSignature.V,
+			R:             HashToBytes32(ecSignature.R),
+			S:             HashToBytes32(ecSignature.S),
+		},
 	}
 	return signedOrder, nil
 }
