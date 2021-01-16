@@ -329,7 +329,7 @@ func TestOrderStateV4(t *testing.T) {
 		Sender:              common.HexToAddress("0x70f2d6c7acd257a6700d745b76c602ceefeb8e20"),
 		FeeRecipient:        common.HexToAddress("0xcc3c7ea403427154ec908203ba6c418bd699f7ce"),
 		Pool:                zeroex.HexToBytes32("0x0bbff69b85a87da39511aefc3211cb9aff00e1a1779dc35b8f3635d8b5ea2680"),
-		Expiry:              big.NewInt(1001),
+		Expiry:              big.NewInt(9223372036854775807),
 		Salt:                big.NewInt(2001),
 	}
 	fmt.Printf("order = %+v\n", order)
@@ -341,6 +341,8 @@ func TestOrderStateV4(t *testing.T) {
 	fmt.Printf("order.TakerToken = %+v\n", order.TakerToken.Hex())
 	fmt.Printf("order.FeeRecipient = %+v\n", order.FeeRecipient.Hex())
 	fmt.Printf("order.Sender = %+v\n", order.Sender.Hex())
+	fmt.Printf("order.Expiry = %+v\n", order.Expiry)
+	fmt.Printf("order.Salt = %+v\n", order.Salt)
 
 	signed := order.TestSign(t)
 
