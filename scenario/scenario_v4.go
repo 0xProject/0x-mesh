@@ -3,7 +3,9 @@
 package scenario
 
 import (
+	"math/big"
 	"testing"
+	"time"
 
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/ethereum/signer"
@@ -11,6 +13,26 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/stretchr/testify/require"
 )
+
+func defaultTestOrderV4() *zeroex.OrderV4 {
+	return &zeroex.OrderV4{
+		ChainID:         big.NewInt(constants.TestChainID),
+		ExchangeAddress: ganacheAddresses.ExchangeProxy,
+		// FIXME: Ganache snapshot currently requires valid token addresses or it will revert
+		MakerToken:          ganacheAddresses.WETH9,
+		TakerToken:          ganacheAddresses.ZRXToken,
+		MakerAmount:         big.NewInt(100),
+		TakerAmount:         big.NewInt(42),
+		TakerTokenFeeAmount: big.NewInt(0),
+		Maker:               constants.GanacheAccount1,
+		Taker:               constants.NullAddress,
+		Sender:              constants.NullAddress,
+		FeeRecipient:        constants.NullAddress,
+		Pool:                zeroex.HexToBytes32("0000000000000000000000000000000000000000000000000000000000000000"),
+		Expiry:              big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
+		Salt:                big.NewInt(int64(time.Now().Nanosecond())),
+	}
+}
 
 func NewSignedTestOrderV4(t *testing.T, opts ...orderopts.Option) *zeroex.SignedOrderV4 {
 	// Generate v4 order with options applied
