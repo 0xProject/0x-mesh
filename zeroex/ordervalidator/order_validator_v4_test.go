@@ -313,18 +313,18 @@ func TestOrderHashV4(t *testing.T) {
 	assert.Equal(t, common.BytesToHash(ethHash[:]), localHash)
 }
 
-// clear; go test ./zeroex/ordervalidator ./zeroex/orderwatch ./core -race -timeout 90s -p=1 --serial -run TestOrderStateV4
 func TestOrderStateV4(t *testing.T) {
 	order := &zeroex.OrderV4{
 		ChainID:         big.NewInt(1337),
-		ExchangeAddress: common.HexToAddress("0x5315e44798395d4a952530d131249fE00f554565"),
+		ExchangeAddress: ganacheAddresses.ExchangeProxy,
 
-		MakerToken:          common.HexToAddress("0x349e8d89e8b37214d9ce3949fc5754152c525bc3"),
-		TakerToken:          common.HexToAddress("0x83c62b2e67dea0df2a27be0def7a22bd7102642c"),
+		// TODO: Invalid token addresses currently make the call fail. This should be fixed soon, but for now make sure we use valid tokens.
+		MakerToken:          ganacheAddresses.WETH9,
+		TakerToken:          ganacheAddresses.ZRXToken,
 		MakerAmount:         big.NewInt(1234),
 		TakerAmount:         big.NewInt(5678),
 		TakerTokenFeeAmount: big.NewInt(9101112),
-		Maker:               common.HexToAddress("0x8d5e5b5b5d187bdce2e0143eb6b3cc44eef3c0cb"),
+		Maker:               constants.NullAddress, // Will be set by signer
 		Taker:               common.HexToAddress("0x615312fb74c31303eab07dea520019bb23f4c6c2"),
 		Sender:              common.HexToAddress("0x70f2d6c7acd257a6700d745b76c602ceefeb8e20"),
 		FeeRecipient:        common.HexToAddress("0xcc3c7ea403427154ec908203ba6c418bd699f7ce"),
@@ -332,28 +332,20 @@ func TestOrderStateV4(t *testing.T) {
 		Expiry:              big.NewInt(9223372036854775807),
 		Salt:                big.NewInt(2001),
 	}
-	fmt.Printf("order = %+v\n", order)
-	fmt.Printf("order.ChainId = %+v\n", order.ChainID)
-	fmt.Printf("order.ExchangeAddress = %+v\n", order.ExchangeAddress.Hex())
-	fmt.Printf("order.Maker = %+v\n", order.Maker.Hex())
-	fmt.Printf("order.Taker = %+v\n", order.Taker.Hex())
-	fmt.Printf("order.MakerToken = %+v\n", order.MakerToken.Hex())
-	fmt.Printf("order.TakerToken = %+v\n", order.TakerToken.Hex())
-	fmt.Printf("order.FeeRecipient = %+v\n", order.FeeRecipient.Hex())
-	fmt.Printf("order.Sender = %+v\n", order.Sender.Hex())
-	fmt.Printf("order.Expiry = %+v\n", order.Expiry)
-	fmt.Printf("order.Salt = %+v\n", order.Salt)
-
 	signed := order.TestSign(t)
+	orderHash, err := signed.OrderV4.ComputeOrderHash()
+	require.NoError(t, err)
 
 	eth, opts, err := makeEthClient()
 	require.NoError(t, err)
 
 	ethState, err := eth.exchangeV4.GetLimitOrderRelevantState(opts, signed.OrderV4.EthereumAbiLimitOrder(), signed.EthereumAbiSignature())
-	fmt.Printf("ethState = %+v\n", ethState)
 	require.NoError(t, err)
-
-	assert.Equal(t, false, true)
+	assert.Equal(t, orderHash, common.BytesToHash(ethState.OrderInfo.OrderHash[:]))
+	assert.Equal(t, zeroex.OSInvalidMakerAssetAmount, zeroex.OrderStatus(ethState.OrderInfo.Status))
+	assert.Equal(t, "0", ethState.OrderInfo.TakerTokenFilledAmount.String())
+	assert.Equal(t, "0", ethState.ActualFillableTakerTokenAmount.String())
+	assert.Equal(t, true, ethState.IsSignatureValid)
 }
 
 func TestBatchValidateSignatureInvalidV4(t *testing.T) {
