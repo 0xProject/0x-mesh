@@ -43,12 +43,12 @@ func TestGanacheOrderHashV4(t *testing.T) {
 	// See <https://0xproject.slack.com/archives/CAU8U19LJ/p1610762234026600?thread_ts=1610761930.023900&cid=CAU8U19LJ>
 	expectedOrderHash := common.HexToHash("0xef61679248399669a4dd10de335d0c151a5c42568618abace01f7a8ec1e693e1")
 
-	order := testOrderV4
+	order := *testOrderV4
 	order.ChainID = big.NewInt(1337)
 	order.ExchangeAddress = common.HexToAddress("0x5315e44798395d4a952530d131249fE00f554565")
 	order.ResetHash()
 
-	actualOrderHash, err := testOrderV4.ComputeOrderHash()
+	actualOrderHash, err := order.ComputeOrderHash()
 	require.NoError(t, err)
 	assert.Equal(t, expectedOrderHash, actualOrderHash)
 }
