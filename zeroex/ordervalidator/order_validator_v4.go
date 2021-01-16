@@ -2,6 +2,7 @@ package ordervalidator
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"regexp"
 	"sync"
@@ -158,6 +159,7 @@ func (o *OrderValidator) batchOnchainValidationV4(
 		opts.BlockNumber = validationBlock.Number
 
 		results, err := o.exchangeV4.BatchGetLimitOrderRelevantStates(opts, ethOrders, signatures)
+		fmt.Printf("### result = %+v\n", results)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error":     err.Error(),
@@ -204,39 +206,29 @@ func (o *OrderValidator) batchOnchainValidationV4(
 		}
 
 		for j, orderInfo := range results.OrderInfos {
+			fmt.Printf("### orderInfo = %+v\n", orderInfo)
 			isValidSignature := results.IsSignatureValids[j]
 			fillableTakerAssetAmount := results.ActualFillableTakerTokenAmounts[j]
 			orderHash := common.Hash(orderInfo.OrderHash)
 			signedOrder := signedOrders[j]
-			orderStatus := zeroex.OrderStatus(orderInfo.Status)
+			orderStatus := zeroex.OrderStatusV4(orderInfo.Status)
 			if !isValidSignature {
-				orderStatus = zeroex.OSSignatureInvalid
+				orderStatus = zeroex.OS4InvalidSignature
 			}
+			fmt.Printf("-=- orderStatus = %+v\n", orderStatus)
+			fmt.Printf("-=- orderStatus = %+v\n", zeroex.OS4Fillable)
+			fmt.Printf("-=- orderStatus = %+v\n", orderStatus == zeroex.OS4Fillable)
 			switch orderStatus {
-			case zeroex.OSExpired, zeroex.OSFullyFilled, zeroex.OSCancelled, zeroex.OSSignatureInvalid:
-				var status RejectedOrderStatus
-				switch orderStatus {
-				case zeroex.OSExpired:
-					status = ROExpired
-				case zeroex.OSFullyFilled:
-					status = ROFullyFilled
-				case zeroex.OSCancelled:
-					status = ROCancelled
-				case zeroex.OSSignatureInvalid:
-					status = ROInvalidSignature
-				}
-				validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
-					OrderHash:     orderHash,
-					SignedOrderV4: signedOrder,
-					Kind:          ZeroExValidation,
-					Status:        status,
-				})
-				continue
-			case zeroex.OSFillable:
+			case zeroex.OS4Fillable:
+				fmt.Printf("signedOrder.TakerAmount = %v\n", signedOrder.TakerAmount)
+				fmt.Printf("orderInfo.TakerTokenFilledAmount = %v\n", orderInfo.TakerTokenFilledAmount)
 				remainingTakerAssetAmount := big.NewInt(0).Sub(signedOrder.TakerAmount, orderInfo.TakerTokenFilledAmount)
+				fmt.Printf("fillableTakerAssetAmount = %v\n", fillableTakerAssetAmount)
+				fmt.Printf("remainingTakerAssetAmount = %v\n", remainingTakerAssetAmount)
 				// If `fillableTakerAssetAmount` != `remainingTakerAssetAmount`, the order is partially fillable. We consider
 				// partially fillable orders as invalid
 				if fillableTakerAssetAmount.Cmp(remainingTakerAssetAmount) != 0 {
+					fmt.Printf("Rejecting!\n")
 					validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
 						OrderHash:     orderHash,
 						SignedOrderV4: signedOrder,
@@ -252,8 +244,34 @@ func (o *OrderValidator) batchOnchainValidationV4(
 					})
 				}
 				continue
+			default:
+				var status RejectedOrderStatus
+				switch orderStatus {
+				case zeroex.OS4Invalid:
+					// TODO: Add an ROInvalid constant
+					status = ROInternalError
+				case zeroex.OS4Expired:
+					status = ROExpired
+				case zeroex.OS4Filled:
+					status = ROFullyFilled
+				case zeroex.OS4Cancelled:
+					status = ROCancelled
+				case zeroex.OS4InvalidSignature:
+					status = ROInvalidSignature
+				default:
+					log.Errorf("Unknown order status %v", orderStatus)
+					status = ROInternalError
+				}
+				validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
+					OrderHash:     orderHash,
+					SignedOrderV4: signedOrder,
+					Kind:          ZeroExValidation,
+					Status:        status,
+				})
+				continue
 			}
 		}
+		fmt.Printf("-=# validationResults = %+v\n", validationResults)
 		return
 	}
 }

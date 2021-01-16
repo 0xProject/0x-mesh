@@ -67,6 +67,22 @@ const (
 	EthSignSignatureV4
 )
 
+// OrderStatusV4 represents the status of an order as returned from the 0x smart contracts
+// as part of OrderInfo for v4 orders
+type OrderStatusV4 uint8
+
+// Order status values
+// See <https://0xprotocol.readthedocs.io/en/latest/basics/functions.html?highlight=orderstatus#getlimitorderinfo>
+// See <https://github.com/0xProject/protocol/blob/edda1edc507fbfceb6dcb02ef212ee4bdcb123a6/contracts/zero-ex/contracts/src/features/libs/LibNativeOrder.sol#L28>
+const (
+	OS4Invalid OrderStatusV4 = iota
+	OS4Fillable
+	OS4Filled
+	OS4Cancelled
+	OS4Expired
+	OS4InvalidSignature // 0xMesh extension
+)
+
 ////////////////////////////////////////////////////////////////////////////////
 //  O R D E R   H A S H I N G
 ////////////////////////////////////////////////////////////////////////////////
