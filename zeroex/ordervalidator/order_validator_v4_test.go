@@ -21,6 +21,7 @@ import (
 	"github.com/0xProject/0x-mesh/scenario/orderopts"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -273,6 +274,44 @@ func TestBatchValidateMaxGasPriceOrderV4(t *testing.T) {
 
 		teardownSubTest(t)
 	}
+}
+
+func makeEthClient() (*OrderValidator, *bind.CallOpts, error) {
+	eth, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
+	if err != nil {
+		return nil, nil, err
+	}
+	ctx := context.Background()
+	latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	opts := &bind.CallOpts{
+		// HACK(albrow): From field should not be required for eth_call but
+		// including it here is a workaround for a bug in Ganache. Removing
+		// this line causes Ganache to crash.
+		From:    constants.GanacheDummyERC721TokenAddress,
+		Pending: false,
+		Context: ctx,
+	}
+	opts.BlockNumber = latestBlock.Number
+	return eth, opts, nil
+}
+
+func TestOrderHashV4(t *testing.T) {
+	signedOrder := scenario.NewSignedTestOrderV4(t)
+	order := signedOrder.OrderV4
+
+	localHash, err := order.ComputeOrderHash()
+	require.NoError(t, err)
+	fmt.Printf("hash = %+v\n", localHash.Hex())
+
+	eth, opts, err := makeEthClient()
+	require.NoError(t, err)
+
+	ethHash, err := eth.exchangeV4.GetLimitOrderHash(opts, order.EthereumAbiLimitOrder())
+	require.NoError(t, err)
+	assert.Equal(t, common.BytesToHash(ethHash[:]), localHash)
 }
 
 func TestBatchValidateSignatureInvalidV4(t *testing.T) {
