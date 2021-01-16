@@ -63,7 +63,7 @@ func defaultTestOrder() *zeroex.Order {
 func defaultTestOrderV4() *zeroex.OrderV4 {
 	return &zeroex.OrderV4{
 		ChainID:             big.NewInt(constants.TestChainID),
-		ExchangeAddress:     ganacheAddresses.Exchange,
+		ExchangeAddress:     ganacheAddresses.ExchangeProxy,
 		MakerToken:          constants.NullAddress,
 		TakerToken:          constants.NullAddress,
 		MakerAmount:         big.NewInt(100),

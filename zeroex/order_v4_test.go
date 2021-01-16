@@ -4,10 +4,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/0xProject/0x-mesh/ethereum/signer"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -54,28 +51,15 @@ func TestGanacheOrderHashV4(t *testing.T) {
 }
 
 func TestSignOrderV4(t *testing.T) {
-	// See <https://github.com/0xProject/protocol/blob/edda1edc507fbfceb6dcb02ef212ee4bdcb123a6/packages/protocol-utils/test/orders_test.ts#L15>
-	privateKeyBytes := hexutil.MustDecode("0xee094b79aa0315914955f2f09be9abe541dcdc51f0aae5bec5453e9f73a471a6")
-	privateKey, err := crypto.ToECDSA(privateKeyBytes)
-	require.NoError(t, err)
-	localSigner := signer.NewLocalSigner(privateKey)
-	localSignerAddress := localSigner.(*signer.LocalSigner).GetSignerAddress()
-	assert.Equal(t, common.HexToAddress("0x05cAc48D17ECC4D8A9DB09Dde766A03959b98367"), localSignerAddress)
+	signedOrder := testOrderV4.TestSign(t)
 
-	// Only maker is allowed to sign
-	order := testOrderV4
-	order.Maker = localSignerAddress
-	order.ResetHash()
-	actualOrderHash, err := order.ComputeOrderHash()
-	require.NoError(t, err)
-	assert.Equal(t, common.HexToHash("0xddee5b1b08f4df161cafa12fd347e374779573773161906999a19a1cf5f692cc"), actualOrderHash)
-
-	// Sign order
-	signedOrder, err := SignOrderV4(localSigner, order)
-	require.NoError(t, err)
 	// See <https://github.com/0xProject/protocol/blob/edda1edc507fbfceb6dcb02ef212ee4bdcb123a6/packages/protocol-utils/test/orders_test.ts#L67>
 	assert.Equal(t, EthSignSignatureV4, signedOrder.SignatureTypeV4)
 	assert.Equal(t, uint8(28), signedOrder.V)
 	assert.Equal(t, HexToBytes32("0x5d4fe9b4c8f94efc46ef9e7e3f996c238f9c930fd5c03014ec6db6d4d18a34e5"), signedOrder.R)
 	assert.Equal(t, HexToBytes32("0x0949269d29524aec1ba5b19236c392a3d1866ca39bb8c7b6345e90a3fbf404fc"), signedOrder.S)
+
+	actualOrderHash, err := signedOrder.OrderV4.ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Equal(t, common.HexToHash("0xddee5b1b08f4df161cafa12fd347e374779573773161906999a19a1cf5f692cc"), actualOrderHash)
 }

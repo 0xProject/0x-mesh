@@ -4,12 +4,17 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"testing"
 
 	"github.com/0xProject/0x-mesh/ethereum/signer"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
+	"github.com/ethereum/go-ethereum/crypto"
 	gethsigner "github.com/ethereum/go-ethereum/signer/core"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // OrderV4 represents an unsigned 0x v4 limit order
@@ -216,4 +221,29 @@ func (s *SignedOrderV4) EthereumAbiSignature() wrappers.LibSignatureSignature {
 		R:             s.R,
 		S:             s.S,
 	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//  T E S T   U T I L S
+////////////////////////////////////////////////////////////////////////////////
+
+func (o *OrderV4) TestSign(t *testing.T) *SignedOrderV4 {
+	// See <https://github.com/0xProject/protocol/blob/edda1edc507fbfceb6dcb02ef212ee4bdcb123a6/packages/protocol-utils/test/orders_test.ts#L15>
+	privateKeyBytes := hexutil.MustDecode("0xee094b79aa0315914955f2f09be9abe541dcdc51f0aae5bec5453e9f73a471a6")
+	privateKey, err := crypto.ToECDSA(privateKeyBytes)
+	require.NoError(t, err)
+	localSigner := signer.NewLocalSigner(privateKey)
+	localSignerAddress := localSigner.(*signer.LocalSigner).GetSignerAddress()
+	assert.Equal(t, common.HexToAddress("0x05cAc48D17ECC4D8A9DB09Dde766A03959b98367"), localSignerAddress)
+
+	// Only maker is allowed to sign
+	order := *o
+	order.ResetHash()
+	order.Maker = localSignerAddress
+
+	// Sign order
+	signedOrder, err := SignOrderV4(localSigner, &order)
+	require.NoError(t, err)
+
+	return signedOrder
 }
