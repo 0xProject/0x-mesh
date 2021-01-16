@@ -163,7 +163,7 @@ func (o *OrderValidator) batchOnchainValidationV4(
 				"error":     err.Error(),
 				"attempt":   b.Attempt(),
 				"numOrders": len(ethOrders),
-			}).Info("GetOrderRelevantStates request failed")
+			}).Info("BatchGetLimitOrderRelevantStates request failed")
 			d := b.Duration()
 			if d == maxDuration {
 				var fields log.Fields
@@ -267,7 +267,7 @@ func (o *OrderValidator) computeOptimalChunkSizesV4(signedOrders []*zeroex.Signe
 
 	payloadLength := jsonRPCPayloadByteLength
 	nextChunkSize := 0
-	for _, signedOrder := range signedOrders {
+	for range signedOrders {
 		// TODO: With this being constant, the whole chunking mechanism probably simplifies substantially.
 		encodedSignedOrderByteLength := signedOrderV4AbiHexLength
 		if payloadLength+encodedSignedOrderByteLength < o.maxRequestContentLength {
@@ -276,7 +276,7 @@ func (o *OrderValidator) computeOptimalChunkSizesV4(signedOrders []*zeroex.Signe
 		} else {
 			if nextChunkSize == 0 {
 				// This case should never be hit since we enforce that EthereumRPCMaxContentLength >= maxOrderSizeInBytes
-				log.WithField("signedOrder", signedOrder).Panic("EthereumRPCMaxContentLength is set so low, a single 0x order cannot fit beneath the payload limit")
+				log.Panic("EthereumRPCMaxContentLength is set so low, a single 0x order v4 cannot fit beneath the payload limit")
 			}
 			chunkSizes = append(chunkSizes, nextChunkSize)
 			nextChunkSize = 1

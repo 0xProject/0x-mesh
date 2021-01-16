@@ -116,8 +116,8 @@ func TestBatchValidateAValidOrderV4(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 
-	signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true))
-	signedOrders := []*zeroex.SignedOrder{
+	signedOrder := scenario.NewSignedTestOrderV4(t, orderopts.SetupMakerState(true))
+	signedOrders := []*zeroex.SignedOrderV4{
 		signedOrder,
 	}
 
@@ -127,7 +127,7 @@ func TestBatchValidateAValidOrderV4(t *testing.T) {
 	ctx := context.Background()
 	latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
 	require.NoError(t, err)
-	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock)
+	validationResults := orderValidator.BatchValidateV4(ctx, signedOrders, areNewOrders, latestBlock)
 	assert.Len(t, validationResults.Accepted, 1)
 	require.Len(t, validationResults.Rejected, 0)
 	orderHash, err := signedOrder.ComputeOrderHash()
@@ -143,8 +143,8 @@ func TestBatchOffchainValidateZeroFeeAmountV4(t *testing.T) {
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
 	makerFeeAssetData := common.Hex2Bytes("deadbeef")
-	signedTestOrder := scenario.NewSignedTestOrder(t, orderopts.MakerFeeAssetData(makerFeeAssetData))
-	signedOrders := []*zeroex.SignedOrder{
+	signedTestOrder := scenario.NewSignedTestOrderV4(t, orderopts.MakerFeeAssetData(makerFeeAssetData))
+	signedOrders := []*zeroex.SignedOrderV4{
 		signedTestOrder,
 	}
 
@@ -157,7 +157,7 @@ func TestBatchOffchainValidateZeroFeeAmountV4(t *testing.T) {
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
 	require.NoError(t, err)
 
-	accepted, rejected := orderValidator.BatchOffchainValidation(signedOrders)
+	accepted, rejected := orderValidator.BatchOffchainValidationV4(signedOrders)
 	assert.Len(t, accepted, 1)
 	require.Len(t, rejected, 0)
 	signedTestOrder.ResetHash()
@@ -177,12 +177,12 @@ func TestBatchOffchainValidateUnsupportedStaticCallV4(t *testing.T) {
 	defer teardownSubTest(t)
 	// NOTE(jalextowle): This asset data encodes a staticcall to a function called `unsupportedStaticCall`
 	makerFeeAssetData := common.Hex2Bytes("c339d10a000000000000000000000000692a70d2e424a56d2c6c27aa97d1a86395877b3a0000000000000000000000000000000000000000000000000000000000000060c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a47000000000000000000000000000000000000000000000000000000000000000048b24020700000000000000000000000000000000000000000000000000000000")
-	signedTestOrder := scenario.NewSignedTestOrder(
+	signedTestOrder := scenario.NewSignedTestOrderV4(
 		t,
 		orderopts.MakerFeeAssetData(makerFeeAssetData),
 		orderopts.MakerFee(big.NewInt(1)),
 	)
-	signedOrders := []*zeroex.SignedOrder{
+	signedOrders := []*zeroex.SignedOrderV4{
 		signedTestOrder,
 	}
 
@@ -195,7 +195,7 @@ func TestBatchOffchainValidateUnsupportedStaticCallV4(t *testing.T) {
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
 	require.NoError(t, err)
 
-	accepted, rejected := orderValidator.BatchOffchainValidation(signedOrders)
+	accepted, rejected := orderValidator.BatchOffchainValidationV4(signedOrders)
 	assert.Len(t, accepted, 0)
 	require.Len(t, rejected, 1)
 	signedTestOrder.ResetHash()
@@ -220,13 +220,13 @@ func TestBatchOffchainValidateMaxGasPriceOrderV4(t *testing.T) {
 		teardownSubTest := setupSubTest(t)
 
 		// Create the signed order with the staticcall asset data as its MakerFeeAssetData
-		signedOrder := scenario.NewSignedTestOrder(t, orderopts.MakerFeeAssetData(staticCallAssetData))
-		signedOrders := []*zeroex.SignedOrder{
+		signedOrder := scenario.NewSignedTestOrderV4(t, orderopts.MakerFeeAssetData(staticCallAssetData))
+		signedOrders := []*zeroex.SignedOrderV4{
 			signedOrder,
 		}
 
 		// Ensure that the order is accepted by offchain validation
-		accepted, rejected := orderValidator.BatchOffchainValidation(signedOrders)
+		accepted, rejected := orderValidator.BatchOffchainValidationV4(signedOrders)
 		assert.Len(t, accepted, 1)
 		require.Len(t, rejected, 0)
 		signedOrder.ResetHash()
@@ -256,8 +256,8 @@ func TestBatchValidateMaxGasPriceOrderV4(t *testing.T) {
 		teardownSubTest := setupSubTest(t)
 
 		// Create the signed order with the staticcall asset data as its MakerFeeAssetData
-		signedOrder := scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true), orderopts.MakerFeeAssetData(staticCallAssetData))
-		signedOrders := []*zeroex.SignedOrder{
+		signedOrder := scenario.NewSignedTestOrderV4(t, orderopts.SetupMakerState(true), orderopts.MakerFeeAssetData(staticCallAssetData))
+		signedOrders := []*zeroex.SignedOrderV4{
 			signedOrder,
 		}
 
@@ -265,7 +265,7 @@ func TestBatchValidateMaxGasPriceOrderV4(t *testing.T) {
 		ctx := context.Background()
 		latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
 		require.NoError(t, err)
-		validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock)
+		validationResults := orderValidator.BatchValidateV4(ctx, signedOrders, areNewOrders, latestBlock)
 		assert.Len(t, validationResults.Accepted, 1)
 		require.Len(t, validationResults.Rejected, 0)
 		expectedOrderHash, err := signedOrder.ComputeOrderHash()
@@ -304,7 +304,6 @@ func TestOrderHashV4(t *testing.T) {
 
 	localHash, err := order.ComputeOrderHash()
 	require.NoError(t, err)
-	fmt.Printf("hash = %+v\n", localHash.Hex())
 
 	eth, opts, err := makeEthClient()
 	require.NoError(t, err)
@@ -314,13 +313,54 @@ func TestOrderHashV4(t *testing.T) {
 	assert.Equal(t, common.BytesToHash(ethHash[:]), localHash)
 }
 
-func TestBatchValidateSignatureInvalidV4(t *testing.T) {
-	signedOrder := signedOrderWithCustomSignature(t, malformedSignature)
-	signedOrders := []*zeroex.SignedOrder{
-		signedOrder,
+// clear; go test ./zeroex/ordervalidator ./zeroex/orderwatch ./core -race -timeout 90s -p=1 --serial -run TestOrderStateV4
+func TestOrderStateV4(t *testing.T) {
+	order := &zeroex.OrderV4{
+		ChainID:         big.NewInt(1337),
+		ExchangeAddress: common.HexToAddress("0x5315e44798395d4a952530d131249fE00f554565"),
+
+		MakerToken:          common.HexToAddress("0x349e8d89e8b37214d9ce3949fc5754152c525bc3"),
+		TakerToken:          common.HexToAddress("0x83c62b2e67dea0df2a27be0def7a22bd7102642c"),
+		MakerAmount:         big.NewInt(1234),
+		TakerAmount:         big.NewInt(5678),
+		TakerTokenFeeAmount: big.NewInt(9101112),
+		Maker:               common.HexToAddress("0x8d5e5b5b5d187bdce2e0143eb6b3cc44eef3c0cb"),
+		Taker:               common.HexToAddress("0x615312fb74c31303eab07dea520019bb23f4c6c2"),
+		Sender:              common.HexToAddress("0x70f2d6c7acd257a6700d745b76c602ceefeb8e20"),
+		FeeRecipient:        common.HexToAddress("0xcc3c7ea403427154ec908203ba6c418bd699f7ce"),
+		Pool:                zeroex.HexToBytes32("0x0bbff69b85a87da39511aefc3211cb9aff00e1a1779dc35b8f3635d8b5ea2680"),
+		Expiry:              big.NewInt(1001),
+		Salt:                big.NewInt(2001),
 	}
+	fmt.Printf("order = %+v\n", order)
+	fmt.Printf("order.ChainId = %+v\n", order.ChainID)
+	fmt.Printf("order.ExchangeAddress = %+v\n", order.ExchangeAddress.Hex())
+	fmt.Printf("order.Maker = %+v\n", order.Maker.Hex())
+	fmt.Printf("order.Taker = %+v\n", order.Taker.Hex())
+	fmt.Printf("order.MakerToken = %+v\n", order.MakerToken.Hex())
+	fmt.Printf("order.TakerToken = %+v\n", order.TakerToken.Hex())
+	fmt.Printf("order.FeeRecipient = %+v\n", order.FeeRecipient.Hex())
+	fmt.Printf("order.Sender = %+v\n", order.Sender.Hex())
+
+	signed := order.TestSign(t)
+
+	eth, opts, err := makeEthClient()
+	require.NoError(t, err)
+
+	ethState, err := eth.exchangeV4.GetLimitOrderRelevantState(opts, signed.OrderV4.EthereumAbiLimitOrder(), signed.EthereumAbiSignature())
+	fmt.Printf("ethState = %+v\n", ethState)
+	require.NoError(t, err)
+
+	assert.Equal(t, false, true)
+}
+
+func TestBatchValidateSignatureInvalidV4(t *testing.T) {
+	signedOrder := scenario.NewSignedTestOrderV4(t)
+	signedOrder.R = zeroex.HexToBytes32("0000000000000000000000000000000000000000000000000000000000000000")
+
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
+	fmt.Printf("hash = %+v\n", orderHash.Hex())
 
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
 	require.NoError(t, err)
@@ -328,7 +368,8 @@ func TestBatchValidateSignatureInvalidV4(t *testing.T) {
 	ctx := context.Background()
 	latestBlock, err := ethRPCClient.HeaderByNumber(ctx, nil)
 	require.NoError(t, err)
-	validationResults := orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, latestBlock)
+	signedOrders := []*zeroex.SignedOrderV4{signedOrder}
+	validationResults := orderValidator.BatchValidateV4(ctx, signedOrders, areNewOrders, latestBlock)
 	assert.Len(t, validationResults.Accepted, 0)
 	require.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ROInvalidSignature, validationResults.Rejected[0].Status)
@@ -336,25 +377,25 @@ func TestBatchValidateSignatureInvalidV4(t *testing.T) {
 }
 
 func TestComputeOptimalChunkSizesMaxContentLengthTooLowV4(t *testing.T) {
-	signedOrder := scenario.NewSignedTestOrder(t)
-	maxContentLength := singleOrderPayloadSize - 10
+	signedOrder := scenario.NewSignedTestOrderV4(t)
+	maxContentLength := signedOrderV4AbiHexLength - 10
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, maxContentLength, ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrders := []*zeroex.SignedOrder{signedOrder}
+	signedOrders := []*zeroex.SignedOrderV4{signedOrder}
 	assert.Panics(t, func() {
-		orderValidator.computeOptimalChunkSizes(signedOrders)
+		orderValidator.computeOptimalChunkSizesV4(signedOrders)
 	})
 }
 
 func TestComputeOptimalChunkSizesV4(t *testing.T) {
-	signedOrder := scenario.NewSignedTestOrder(t)
-	maxContentLength := singleOrderPayloadSize * 3
+	signedOrder := scenario.NewSignedTestOrderV4(t)
+	maxContentLength := jsonRPCPayloadByteLength + signedOrderV4AbiHexLength*3
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, maxContentLength, ganacheAddresses)
 	require.NoError(t, err)
 
-	signedOrders := []*zeroex.SignedOrder{signedOrder, signedOrder, signedOrder, signedOrder}
-	chunkSizes := orderValidator.computeOptimalChunkSizes(signedOrders)
+	signedOrders := []*zeroex.SignedOrderV4{signedOrder, signedOrder, signedOrder, signedOrder}
+	chunkSizes := orderValidator.computeOptimalChunkSizesV4(signedOrders)
 	expectedChunkSizes := []int{3, 1}
 	assert.Equal(t, expectedChunkSizes, chunkSizes)
 }
