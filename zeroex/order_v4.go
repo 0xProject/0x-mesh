@@ -204,8 +204,9 @@ func (s *OrderV4) EthereumAbiLimitOrder() wrappers.LibNativeOrderLimitOrder {
 // EthereumAbiSignature converts the signature to the abigen equivalent
 func (s *SignedOrderV4) EthereumAbiSignature() wrappers.LibSignatureSignature {
 	return wrappers.LibSignatureSignature{
-		V: s.V,
-		R: s.R,
-		S: s.S,
+		SignatureType: uint8(s.SignatureTypeV4),
+		V:             s.V,
+		R:             s.R,
+		S:             s.S,
 	}
 }
