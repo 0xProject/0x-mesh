@@ -39,6 +39,20 @@ func TestGenerateOrderHashV4(t *testing.T) {
 	assert.Equal(t, expectedOrderHash, actualOrderHash)
 }
 
+func TestGanacheOrderHashV4(t *testing.T) {
+	// See <https://0xproject.slack.com/archives/CAU8U19LJ/p1610762234026600?thread_ts=1610761930.023900&cid=CAU8U19LJ>
+	expectedOrderHash := common.HexToHash("0xef61679248399669a4dd10de335d0c151a5c42568618abace01f7a8ec1e693e1")
+
+	order := testOrderV4
+	order.ChainID = big.NewInt(1337)
+	order.ExchangeAddress = common.HexToAddress("0x5315e44798395d4a952530d131249fE00f554565")
+	order.ResetHash()
+
+	actualOrderHash, err := testOrderV4.ComputeOrderHash()
+	require.NoError(t, err)
+	assert.Equal(t, expectedOrderHash, actualOrderHash)
+}
+
 func TestSignOrderV4(t *testing.T) {
 	// See <https://github.com/0xProject/protocol/blob/edda1edc507fbfceb6dcb02ef212ee4bdcb123a6/packages/protocol-utils/test/orders_test.ts#L15>
 	privateKeyBytes := hexutil.MustDecode("0xee094b79aa0315914955f2f09be9abe541dcdc51f0aae5bec5453e9f73a471a6")
