@@ -2,7 +2,6 @@ package ordervalidator
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"regexp"
 	"sync"
@@ -261,7 +260,6 @@ func (o *OrderValidator) batchOnchainValidationV4(
 				continue
 			}
 		}
-		fmt.Printf("-=# validationResults = %+v\n", validationResults)
 		return
 	}
 }
