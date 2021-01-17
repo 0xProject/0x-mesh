@@ -349,10 +349,9 @@ func TestOrderStateV4(t *testing.T) {
 }
 
 func TestBatchValidateV4(t *testing.T) {
-	signedOrder := scenario.NewSignedTestOrderV4(t)
+	signedOrder := scenario.NewSignedTestOrderV4(t, orderopts.SetupMakerState(true))
 	orderHash, err := signedOrder.OrderV4.ComputeOrderHash()
 	require.NoError(t, err)
-	t.Logf("hash = %+v\n", orderHash.Hex())
 
 	orderValidator, err := New(ethRPCClient, constants.TestChainID, constants.TestMaxContentLength, ganacheAddresses)
 	require.NoError(t, err)
@@ -362,11 +361,12 @@ func TestBatchValidateV4(t *testing.T) {
 	require.NoError(t, err)
 	signedOrders := []*zeroex.SignedOrderV4{signedOrder, signedOrder, signedOrder, signedOrder}
 	validationResults := orderValidator.BatchValidateV4(ctx, signedOrders, areNewOrders, latestBlock)
-	t.Logf("validationResults = %+v\n", validationResults)
 	assert.Len(t, validationResults.Accepted, 4)
 	assert.Len(t, validationResults.Rejected, 0)
-	assert.Equal(t, ROInvalidSignature, validationResults.Rejected[0].Status)
-	assert.Equal(t, orderHash, validationResults.Rejected[0].OrderHash)
+	assert.Equal(t, orderHash, validationResults.Accepted[0].OrderHash)
+	assert.Equal(t, orderHash, validationResults.Accepted[1].OrderHash)
+	assert.Equal(t, orderHash, validationResults.Accepted[2].OrderHash)
+	assert.Equal(t, orderHash, validationResults.Accepted[3].OrderHash)
 }
 
 func TestBatchValidateSignatureInvalidV4(t *testing.T) {

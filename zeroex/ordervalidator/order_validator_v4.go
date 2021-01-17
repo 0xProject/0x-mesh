@@ -159,7 +159,6 @@ func (o *OrderValidator) batchOnchainValidationV4(
 		opts.BlockNumber = validationBlock.Number
 
 		results, err := o.exchangeV4.BatchGetLimitOrderRelevantStates(opts, ethOrders, signatures)
-		fmt.Printf("### result = %+v\n", results)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error":     err.Error(),
@@ -206,7 +205,6 @@ func (o *OrderValidator) batchOnchainValidationV4(
 		}
 
 		for j, orderInfo := range results.OrderInfos {
-			fmt.Printf("### orderInfo = %+v\n", orderInfo)
 			isValidSignature := results.IsSignatureValids[j]
 			fillableTakerAssetAmount := results.ActualFillableTakerTokenAmounts[j]
 			orderHash := common.Hash(orderInfo.OrderHash)
@@ -215,20 +213,12 @@ func (o *OrderValidator) batchOnchainValidationV4(
 			if !isValidSignature {
 				orderStatus = zeroex.OS4InvalidSignature
 			}
-			fmt.Printf("-=- orderStatus = %+v\n", orderStatus)
-			fmt.Printf("-=- orderStatus = %+v\n", zeroex.OS4Fillable)
-			fmt.Printf("-=- orderStatus = %+v\n", orderStatus == zeroex.OS4Fillable)
 			switch orderStatus {
 			case zeroex.OS4Fillable:
-				fmt.Printf("signedOrder.TakerAmount = %v\n", signedOrder.TakerAmount)
-				fmt.Printf("orderInfo.TakerTokenFilledAmount = %v\n", orderInfo.TakerTokenFilledAmount)
 				remainingTakerAssetAmount := big.NewInt(0).Sub(signedOrder.TakerAmount, orderInfo.TakerTokenFilledAmount)
-				fmt.Printf("fillableTakerAssetAmount = %v\n", fillableTakerAssetAmount)
-				fmt.Printf("remainingTakerAssetAmount = %v\n", remainingTakerAssetAmount)
 				// If `fillableTakerAssetAmount` != `remainingTakerAssetAmount`, the order is partially fillable. We consider
 				// partially fillable orders as invalid
 				if fillableTakerAssetAmount.Cmp(remainingTakerAssetAmount) != 0 {
-					fmt.Printf("Rejecting!\n")
 					validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
 						OrderHash:     orderHash,
 						SignedOrderV4: signedOrder,
