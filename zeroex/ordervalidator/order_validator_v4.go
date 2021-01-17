@@ -276,7 +276,7 @@ func (o *OrderValidator) computeOptimalChunkSizesV4(signedOrders []*zeroex.Signe
 	for range signedOrders {
 		// TODO: With this being constant, the whole chunking mechanism probably simplifies substantially.
 		encodedSignedOrderByteLength := signedOrderV4AbiHexLength
-		if payloadLength+encodedSignedOrderByteLength < o.maxRequestContentLength {
+		if payloadLength+encodedSignedOrderByteLength <= o.maxRequestContentLength {
 			payloadLength += encodedSignedOrderByteLength
 			nextChunkSize++
 		} else {
