@@ -175,11 +175,8 @@ func TestBatchOffchainValidateUnsupportedStaticCallV4(t *testing.T) {
 
 	teardownSubTest := setupSubTest(t)
 	defer teardownSubTest(t)
-	// NOTE(jalextowle): This asset data encodes a staticcall to a function called `unsupportedStaticCall`
-	makerFeeAssetData := common.Hex2Bytes("c339d10a000000000000000000000000692a70d2e424a56d2c6c27aa97d1a86395877b3a0000000000000000000000000000000000000000000000000000000000000060c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a47000000000000000000000000000000000000000000000000000000000000000048b24020700000000000000000000000000000000000000000000000000000000")
 	signedTestOrder := scenario.NewSignedTestOrderV4(
 		t,
-		orderopts.MakerFeeAssetData(makerFeeAssetData),
 		orderopts.MakerFee(big.NewInt(1)),
 	)
 	signedOrders := []*zeroex.SignedOrderV4{
@@ -196,13 +193,8 @@ func TestBatchOffchainValidateUnsupportedStaticCallV4(t *testing.T) {
 	require.NoError(t, err)
 
 	accepted, rejected := orderValidator.BatchOffchainValidationV4(signedOrders)
-	assert.Len(t, accepted, 0)
-	require.Len(t, rejected, 1)
-	signedTestOrder.ResetHash()
-	expectedOrderHash, err := signedTestOrder.ComputeOrderHash()
-	require.NoError(t, err)
-	assert.Equal(t, expectedOrderHash, rejected[0].OrderHash)
-	require.Equal(t, ROInvalidMakerFeeAssetData, rejected[0].Status)
+	assert.Len(t, accepted, 1)
+	require.Len(t, rejected, 0)
 }
 
 func TestBatchOffchainValidateMaxGasPriceOrderV4(t *testing.T) {
