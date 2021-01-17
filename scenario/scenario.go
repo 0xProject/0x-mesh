@@ -60,25 +60,6 @@ func defaultTestOrder() *zeroex.Order {
 	}
 }
 
-func defaultTestOrderV4() *zeroex.OrderV4 {
-	return &zeroex.OrderV4{
-		ChainID:             big.NewInt(constants.TestChainID),
-		ExchangeAddress:     ganacheAddresses.Exchange,
-		MakerToken:          constants.NullAddress,
-		TakerToken:          constants.NullAddress,
-		MakerAmount:         big.NewInt(100),
-		TakerAmount:         big.NewInt(42),
-		TakerTokenFeeAmount: big.NewInt(0),
-		Maker:               constants.GanacheAccount1,
-		Taker:               constants.NullAddress,
-		Sender:              constants.NullAddress,
-		FeeRecipient:        constants.NullAddress,
-		Pool:                zeroex.HexToBytes32("0000000000000000000000000000000000000000000000000000000000000000"),
-		Expiry:              big.NewInt(time.Now().Add(24 * time.Hour).Unix()),
-		Salt:                big.NewInt(int64(time.Now().Nanosecond())),
-	}
-}
-
 func defaultConfig() *orderopts.Config {
 	return &orderopts.Config{
 		Order:             defaultTestOrder(),
@@ -376,7 +357,11 @@ func setWETHBalanceAndAllowance(t *testing.T, traderAddress common.Address, amou
 		From:   traderAddress,
 		Signer: GetTestSignerFn(traderAddress),
 	}
+	// V3
 	txn, err = weth9.Approve(opts, ganacheAddresses.ERC20Proxy, amount)
+	require.NoError(t, err)
+	// V4
+	txn, err = weth9.Approve(opts, ganacheAddresses.ExchangeProxy, amount)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, txn)
 }
@@ -401,7 +386,11 @@ func setZRXBalanceAndAllowance(t *testing.T, traderAddress common.Address, amoun
 		From:   traderAddress,
 		Signer: GetTestSignerFn(traderAddress),
 	}
+	// V3
 	txn, err = zrx.Approve(opts, ganacheAddresses.ERC20Proxy, amount)
+	require.NoError(t, err)
+	// V4
+	txn, err = zrx.Approve(opts, ganacheAddresses.ExchangeProxy, amount)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, txn)
 }

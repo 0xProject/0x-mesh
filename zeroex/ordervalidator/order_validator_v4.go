@@ -163,7 +163,7 @@ func (o *OrderValidator) batchOnchainValidationV4(
 				"error":     err.Error(),
 				"attempt":   b.Attempt(),
 				"numOrders": len(ethOrders),
-			}).Info("GetOrderRelevantStates request failed")
+			}).Info("BatchGetLimitOrderRelevantStates request failed")
 			d := b.Duration()
 			if d == maxDuration {
 				var fields log.Fields
@@ -208,31 +208,12 @@ func (o *OrderValidator) batchOnchainValidationV4(
 			fillableTakerAssetAmount := results.ActualFillableTakerTokenAmounts[j]
 			orderHash := common.Hash(orderInfo.OrderHash)
 			signedOrder := signedOrders[j]
-			orderStatus := zeroex.OrderStatus(orderInfo.Status)
+			orderStatus := zeroex.OrderStatusV4(orderInfo.Status)
 			if !isValidSignature {
-				orderStatus = zeroex.OSSignatureInvalid
+				orderStatus = zeroex.OS4InvalidSignature
 			}
 			switch orderStatus {
-			case zeroex.OSExpired, zeroex.OSFullyFilled, zeroex.OSCancelled, zeroex.OSSignatureInvalid:
-				var status RejectedOrderStatus
-				switch orderStatus {
-				case zeroex.OSExpired:
-					status = ROExpired
-				case zeroex.OSFullyFilled:
-					status = ROFullyFilled
-				case zeroex.OSCancelled:
-					status = ROCancelled
-				case zeroex.OSSignatureInvalid:
-					status = ROInvalidSignature
-				}
-				validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
-					OrderHash:     orderHash,
-					SignedOrderV4: signedOrder,
-					Kind:          ZeroExValidation,
-					Status:        status,
-				})
-				continue
-			case zeroex.OSFillable:
+			case zeroex.OS4Fillable:
 				remainingTakerAssetAmount := big.NewInt(0).Sub(signedOrder.TakerAmount, orderInfo.TakerTokenFilledAmount)
 				// If `fillableTakerAssetAmount` != `remainingTakerAssetAmount`, the order is partially fillable. We consider
 				// partially fillable orders as invalid
@@ -252,6 +233,31 @@ func (o *OrderValidator) batchOnchainValidationV4(
 					})
 				}
 				continue
+			default:
+				var status RejectedOrderStatus
+				switch orderStatus {
+				case zeroex.OS4Invalid:
+					// TODO: Add an ROInvalid constant
+					status = ROInternalError
+				case zeroex.OS4Expired:
+					status = ROExpired
+				case zeroex.OS4Filled:
+					status = ROFullyFilled
+				case zeroex.OS4Cancelled:
+					status = ROCancelled
+				case zeroex.OS4InvalidSignature:
+					status = ROInvalidSignature
+				default:
+					log.Errorf("Unknown order status %v", orderStatus)
+					status = ROInternalError
+				}
+				validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
+					OrderHash:     orderHash,
+					SignedOrderV4: signedOrder,
+					Kind:          ZeroExValidation,
+					Status:        status,
+				})
+				continue
 			}
 		}
 		return
@@ -267,16 +273,16 @@ func (o *OrderValidator) computeOptimalChunkSizesV4(signedOrders []*zeroex.Signe
 
 	payloadLength := jsonRPCPayloadByteLength
 	nextChunkSize := 0
-	for _, signedOrder := range signedOrders {
+	for range signedOrders {
 		// TODO: With this being constant, the whole chunking mechanism probably simplifies substantially.
 		encodedSignedOrderByteLength := signedOrderV4AbiHexLength
-		if payloadLength+encodedSignedOrderByteLength < o.maxRequestContentLength {
+		if payloadLength+encodedSignedOrderByteLength <= o.maxRequestContentLength {
 			payloadLength += encodedSignedOrderByteLength
 			nextChunkSize++
 		} else {
 			if nextChunkSize == 0 {
 				// This case should never be hit since we enforce that EthereumRPCMaxContentLength >= maxOrderSizeInBytes
-				log.WithField("signedOrder", signedOrder).Panic("EthereumRPCMaxContentLength is set so low, a single 0x order cannot fit beneath the payload limit")
+				log.Panic("EthereumRPCMaxContentLength is set so low, a single 0x order v4 cannot fit beneath the payload limit")
 			}
 			chunkSizes = append(chunkSizes, nextChunkSize)
 			nextChunkSize = 1

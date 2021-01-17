@@ -4,12 +4,17 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"testing"
 
 	"github.com/0xProject/0x-mesh/ethereum/signer"
 	"github.com/0xProject/0x-mesh/ethereum/wrappers"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
+	"github.com/ethereum/go-ethereum/crypto"
 	gethsigner "github.com/ethereum/go-ethereum/signer/core"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // OrderV4 represents an unsigned 0x v4 limit order
@@ -62,6 +67,22 @@ const (
 	EthSignSignatureV4
 )
 
+// OrderStatusV4 represents the status of an order as returned from the 0x smart contracts
+// as part of OrderInfo for v4 orders
+type OrderStatusV4 uint8
+
+// Order status values
+// See <https://0xprotocol.readthedocs.io/en/latest/basics/functions.html?highlight=orderstatus#getlimitorderinfo>
+// See <https://github.com/0xProject/protocol/blob/edda1edc507fbfceb6dcb02ef212ee4bdcb123a6/contracts/zero-ex/contracts/src/features/libs/LibNativeOrder.sol#L28>
+const (
+	OS4Invalid OrderStatusV4 = iota
+	OS4Fillable
+	OS4Filled
+	OS4Cancelled
+	OS4Expired
+	OS4InvalidSignature // 0xMesh extension
+)
+
 ////////////////////////////////////////////////////////////////////////////////
 //  O R D E R   H A S H I N G
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,9 +123,16 @@ func (o *OrderV4) ComputeOrderHash() (common.Hash, error) {
 		return *o.hash, nil
 	}
 
+	// HACK: Override chain id for ganache snapshot
+	// See <https://0xproject.slack.com/archives/CAU8U19LJ/p1610762170026200?thread_ts=1610761930.023900&cid=CAU8U19LJ>
+	var hackedChainID = o.ChainID.Int64()
+	if hackedChainID == 1337 {
+		hackedChainID = 1
+	}
+
 	// TODO: This domain is constant for a given environment and should probably
 	// not depend on the order.
-	chainID := math.NewHexOrDecimal256(o.ChainID.Int64())
+	chainID := math.NewHexOrDecimal256(hackedChainID)
 	var domain = gethsigner.TypedDataDomain{
 		Name:              "ZeroEx",
 		Version:           "1.0.0",
@@ -204,8 +232,34 @@ func (s *OrderV4) EthereumAbiLimitOrder() wrappers.LibNativeOrderLimitOrder {
 // EthereumAbiSignature converts the signature to the abigen equivalent
 func (s *SignedOrderV4) EthereumAbiSignature() wrappers.LibSignatureSignature {
 	return wrappers.LibSignatureSignature{
-		V: s.V,
-		R: s.R,
-		S: s.S,
+		SignatureType: uint8(s.SignatureTypeV4),
+		V:             s.V,
+		R:             s.R,
+		S:             s.S,
 	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//  T E S T   U T I L S
+////////////////////////////////////////////////////////////////////////////////
+
+func (o *OrderV4) TestSign(t *testing.T) *SignedOrderV4 {
+	// See <https://github.com/0xProject/protocol/blob/edda1edc507fbfceb6dcb02ef212ee4bdcb123a6/packages/protocol-utils/test/orders_test.ts#L15>
+	privateKeyBytes := hexutil.MustDecode("0xee094b79aa0315914955f2f09be9abe541dcdc51f0aae5bec5453e9f73a471a6")
+	privateKey, err := crypto.ToECDSA(privateKeyBytes)
+	require.NoError(t, err)
+	localSigner := signer.NewLocalSigner(privateKey)
+	localSignerAddress := localSigner.(*signer.LocalSigner).GetSignerAddress()
+	assert.Equal(t, common.HexToAddress("0x05cAc48D17ECC4D8A9DB09Dde766A03959b98367"), localSignerAddress)
+
+	// Only maker is allowed to sign
+	order := *o
+	order.ResetHash()
+	order.Maker = localSignerAddress
+
+	// Sign order
+	signedOrder, err := SignOrderV4(localSigner, &order)
+	require.NoError(t, err)
+
+	return signedOrder
 }
