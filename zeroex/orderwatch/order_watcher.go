@@ -1831,6 +1831,17 @@ func validateOrderSize(order *zeroex.SignedOrder) error {
 	return nil
 }
 
+func validateOrderSizeV4(order *zeroex.SignedOrderV4) error {
+	encoded, err := json.Marshal(order)
+	if err != nil {
+		return err
+	}
+	if len(encoded) > constants.MaxOrderSizeInBytes {
+		return constants.ErrMaxOrderSize
+	}
+	return nil
+}
+
 // TODO(albrow): Add tests for LastValidatedBlockNumber and LastValidatedBlockHash for
 // this and other similar functions.
 func (w *Watcher) updateOrderFillableTakerAssetAmountAndBlockInfo(order *types.OrderWithMetadata, newFillableTakerAssetAmount *big.Int, validationBlock *types.MiniHeader) {
