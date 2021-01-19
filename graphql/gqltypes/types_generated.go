@@ -107,7 +107,10 @@ type NewOrderV4 struct {
 	Pool                string `json:"pool"`
 	Expiry              string `json:"expiry"`
 	Salt                string `json:"salt"`
-	Signature           string `json:"signature"`
+	SignatureType       string `json:"signatureType"`
+	SignatureV          string `json:"signatureV"`
+	SignatureR          string `json:"signatureR"`
+	SignatureS          string `json:"signatureS"`
 }
 
 // A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format.)

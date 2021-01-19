@@ -349,7 +349,10 @@ input NewOrderV4 {
     pool: String!
     expiry: String!
     salt: String!
-    signature: String!
+    signatureType: String!
+    signatureV: String!
+    signatureR: String!
+    signatureS: String!
 }
 
 

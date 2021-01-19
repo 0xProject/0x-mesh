@@ -1476,7 +1476,10 @@ input NewOrderV4 {
     pool: String!
     expiry: String!
     salt: String!
-    signature: String!
+    signatureType: String!
+    signatureV: String!
+    signatureR: String!
+    signatureS: String!
 }
 
 
@@ -7138,9 +7141,27 @@ func (ec *executionContext) unmarshalInputNewOrderV4(ctx context.Context, obj in
 			if err != nil {
 				return it, err
 			}
-		case "signature":
+		case "signatureType":
 			var err error
-			it.Signature, err = ec.unmarshalNString2string(ctx, v)
+			it.SignatureType, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "signatureV":
+			var err error
+			it.SignatureV, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "signatureR":
+			var err error
+			it.SignatureR, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "signatureS":
+			var err error
+			it.SignatureS, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}

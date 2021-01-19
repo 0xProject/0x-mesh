@@ -3,6 +3,7 @@ package gqltypes
 import (
 	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 	"time"
 
@@ -83,10 +84,53 @@ func NewOrderToSignedOrder(newOrder *NewOrder) *zeroex.SignedOrder {
 	}
 }
 
+func NewOrderToSignedOrderV4(newOrder *NewOrderV4) *zeroex.SignedOrderV4 {
+	signatureType, err := strconv.ParseUint(newOrder.SignatureType, 10, 8)
+	if err != nil {
+		panic(err)
+	}
+	signatureV, err := strconv.ParseUint(newOrder.SignatureV, 10, 8)
+	if err != nil {
+		panic(err)
+	}
+	return &zeroex.SignedOrderV4{
+		OrderV4: zeroex.OrderV4{
+			ChainID:             math.MustParseBig256(newOrder.ChainID),
+			ExchangeAddress:     common.HexToAddress(newOrder.ExchangeAddress),
+			MakerToken:          common.HexToAddress(newOrder.MakerToken),
+			TakerToken:          common.HexToAddress(newOrder.TakerToken),
+			Maker:               common.HexToAddress(newOrder.Maker),
+			Taker:               common.HexToAddress(newOrder.Taker),
+			Sender:              common.HexToAddress(newOrder.Sender),
+			FeeRecipient:        common.HexToAddress(newOrder.FeeRecipient),
+			MakerAmount:         math.MustParseBig256(newOrder.MakerAmount),
+			TakerAmount:         math.MustParseBig256(newOrder.TakerAmount),
+			TakerTokenFeeAmount: math.MustParseBig256(newOrder.TakerTokenFeeAmount),
+			Salt:                math.MustParseBig256(newOrder.Salt),
+			Expiry:              math.MustParseBig256(newOrder.Expiry),
+			Pool:                zeroex.BigToBytes32(math.MustParseBig256(newOrder.Pool)),
+		},
+		Signature: zeroex.SignatureFieldV4{
+			SignatureType: zeroex.SignatureTypeV4(signatureType),
+			V:             uint8(signatureV),
+			R:             zeroex.BigToBytes32(math.MustParseBig256(newOrder.SignatureR)),
+			S:             zeroex.BigToBytes32(math.MustParseBig256(newOrder.SignatureS)),
+		},
+	}
+}
+
 func NewOrdersToSignedOrders(newOrders []*NewOrder) []*zeroex.SignedOrder {
 	result := make([]*zeroex.SignedOrder, len(newOrders))
 	for i, newOrder := range newOrders {
 		result[i] = NewOrderToSignedOrder(newOrder)
+	}
+	return result
+}
+
+func NewOrdersToSignedOrdersV4(newOrders []*NewOrderV4) []*zeroex.SignedOrderV4 {
+	result := make([]*zeroex.SignedOrderV4, len(newOrders))
+	for i, newOrder := range newOrders {
+		result[i] = NewOrderToSignedOrderV4(newOrder)
 	}
 	return result
 }

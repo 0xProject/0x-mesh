@@ -1,9 +1,12 @@
 package zeroex
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
+	"strings"
 
 	"github.com/0xProject/0x-mesh/ethereum/signer"
 	"github.com/ethereum/go-ethereum/common"
@@ -53,8 +56,30 @@ type SignatureTypeV4 uint8
 // SignedOrderV4 represents a signed 0x order
 // See <https://0xprotocol.readthedocs.io/en/latest/basics/orders.html#how-to-sign>
 type SignedOrderV4 struct {
-	OrderV4
-	Signature SignatureFieldV4
+	OrderV4   `json:"order"`
+	Signature SignatureFieldV4 `json:"signature"`
+}
+
+// SignedOrderJSONV4 is an unmodified JSON representation of a SignedOrder
+type SignedOrderJSONV4 struct {
+	ChainID             int64  `json:"chainId"`
+	ExchangeAddress     string `json:"exchangeAddress"`
+	MakerToken          string `json:"makerToken"`
+	TakerToken          string `json:"takerToken"`
+	MakerAmount         string `json:"makerAmount"`
+	TakerAmount         string `json:"takerAmount"`
+	TakerTokenFeeAmount string `json:"takerTokenFeeAmount"`
+	Maker               string `json:"maker"`
+	Taker               string `json:"taker"`
+	Sender              string `json:"sender"`
+	FeeRecipient        string `json:"feeRecipient"`
+	Pool                string `json:"pool"`
+	Expiry              string `json:"expiry"`
+	Salt                string `json:"salt"`
+	SignatureType       string `json:"signatureType"`
+	SignatureR          string `json:"signatureR"`
+	SignatureV          string `json:"signatureV"`
+	SignatureS          string `json:"signatureS"`
 }
 
 // SignatureType values
@@ -182,4 +207,80 @@ func SignOrderV4(signer signer.Signer, order *OrderV4) (*SignedOrderV4, error) {
 		},
 	}
 	return signedOrder, nil
+}
+
+// UnmarshalJSON implements a custom JSON unmarshaller for the SignedOrderV4 type.
+func (s *SignedOrderV4) UnmarshalJSON(data []byte) error {
+	var signedOrderJSON SignedOrderJSONV4
+	err := json.Unmarshal(data, &signedOrderJSON)
+	if err != nil {
+		return err
+	}
+
+	var ok bool
+	s.ChainID = big.NewInt(signedOrderJSON.ChainID)
+	s.ExchangeAddress = common.HexToAddress(signedOrderJSON.ExchangeAddress)
+	s.MakerToken = common.HexToAddress(signedOrderJSON.MakerToken)
+	s.TakerToken = common.HexToAddress(signedOrderJSON.TakerToken)
+	s.MakerAmount, ok = math.ParseBig256(signedOrderJSON.MakerAmount)
+	if !ok {
+		s.MakerAmount = nil
+	}
+	s.TakerAmount, ok = math.ParseBig256(signedOrderJSON.TakerAmount)
+	if !ok {
+		s.TakerAmount = nil
+	}
+	s.TakerTokenFeeAmount, ok = math.ParseBig256(signedOrderJSON.TakerTokenFeeAmount)
+	if !ok {
+		s.TakerTokenFeeAmount = nil
+	}
+	s.Maker = common.HexToAddress(signedOrderJSON.Maker)
+	s.Taker = common.HexToAddress(signedOrderJSON.Taker)
+	s.Sender = common.HexToAddress(signedOrderJSON.Sender)
+	s.FeeRecipient = common.HexToAddress(signedOrderJSON.FeeRecipient)
+	s.Pool = HexToBytes32(signedOrderJSON.Pool)
+	s.Expiry, ok = math.ParseBig256(signedOrderJSON.Expiry)
+	if !ok {
+		s.Expiry = nil
+	}
+	s.Salt, ok = math.ParseBig256(signedOrderJSON.Salt)
+	if !ok {
+		s.Expiry = nil
+	}
+	sigType, err := strconv.ParseUint(signedOrderJSON.SignatureType, 10, 8)
+	if err != nil {
+		return err
+	}
+	s.Signature.SignatureType = SignatureTypeV4(sigType)
+	sigV, err := strconv.ParseUint(signedOrderJSON.SignatureV, 10, 8)
+	if err != nil {
+		return err
+	}
+	s.Signature.V = uint8(sigV)
+	s.Signature.R = HexToBytes32(signedOrderJSON.SignatureR)
+	s.Signature.S = HexToBytes32(signedOrderJSON.SignatureS)
+	return nil
+}
+
+func (s *SignedOrderV4) MarshalJSON() ([]byte, error) {
+	return json.Marshal(SignedOrderJSONV4{
+		ChainID:             s.ChainID.Int64(),
+		ExchangeAddress:     strings.ToLower(s.ExchangeAddress.Hex()),
+		MakerToken:          strings.ToLower(s.MakerToken.Hex()),
+		TakerToken:          strings.ToLower(s.TakerToken.Hex()),
+		MakerAmount:         s.MakerAmount.String(),
+		TakerAmount:         s.TakerAmount.String(),
+		TakerTokenFeeAmount: s.TakerTokenFeeAmount.String(),
+		Maker:               strings.ToLower(s.Maker.Hex()),
+		Taker:               strings.ToLower(s.Taker.Hex()),
+		Sender:              strings.ToLower(s.Sender.Hex()),
+		FeeRecipient:        strings.ToLower(s.FeeRecipient.Hex()),
+		Pool:                s.Pool.Hex(),
+		Expiry:              s.Expiry.String(),
+		Salt:                s.Salt.String(),
+		SignatureType:       strconv.FormatUint(uint64(s.Signature.SignatureType), 10),
+		SignatureR:          s.Signature.R.Hex(),
+		SignatureV:          strconv.FormatUint(uint64(s.Signature.V), 10),
+		SignatureS:          s.Signature.S.Hex(),
+	})
 }

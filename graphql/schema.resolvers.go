@@ -34,9 +34,9 @@ func (r *mutationResolver) AddOrdersV4(ctx context.Context, orders []*gqltypes.N
 	if pinned != nil {
 		isPinned = (*pinned)
 	}
-	signedOrders := gqltypes.NewOrdersToSignedOrders(orders)
+	signedOrders := gqltypes.NewOrdersToSignedOrdersV4(orders)
 	commonTypeOpts := gqltypes.AddOrderOptsToCommonType(opts)
-	results, err := r.app.AddOrders(ctx, signedOrders, isPinned, commonTypeOpts)
+	results, err := r.app.AddOrdersV4(ctx, signedOrders, isPinned, commonTypeOpts)
 	if err != nil {
 		return nil, err
 	}

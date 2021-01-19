@@ -888,6 +888,19 @@ func (app *App) AddOrders(ctx context.Context, signedOrders []*zeroex.SignedOrde
 	return app.AddOrdersRaw(ctx, signedOrdersRaw, pinned, opts)
 }
 
+// TODO(oskar) - finish
+func (app *App) AddOrdersV4(ctx context.Context, signedOrders []*zeroex.SignedOrderV4, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
+	signedOrdersRaw := []*json.RawMessage{}
+	buf := &bytes.Buffer{}
+	if err := json.NewEncoder(buf).Encode(signedOrders); err != nil {
+		return nil, err
+	}
+	if err := json.NewDecoder(buf).Decode(&signedOrdersRaw); err != nil {
+		return nil, err
+	}
+	return app.AddOrdersRaw(ctx, signedOrdersRaw, pinned, opts)
+}
+
 // AddOrdersRaw is like AddOrders but accepts raw JSON messages.
 func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMessage, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	<-app.started
@@ -981,6 +994,100 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 
 	return allValidationResults, nil
 }
+
+// // AddOrdersRawV4 is like AddOrdersRaw but accepts for V4 orders.
+// func (app *App) AddOrdersRawV4(ctx context.Context, signedOrdersRaw []*json.RawMessage, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
+// 	<-app.started
+
+// 	allValidationResults := &ordervalidator.ValidationResults{
+// 		Accepted: []*ordervalidator.AcceptedOrderInfo{},
+// 		Rejected: []*ordervalidator.RejectedOrderInfo{},
+// 	}
+// 	orderHashesSeen := map[common.Hash]struct{}{}
+// 	schemaValidOrders := []*zeroex.SignedOrderV4{}
+// 	for _, signedOrderRaw := range signedOrdersRaw {
+// 		signedOrderBytes := []byte(*signedOrderRaw)
+// 		result, err := app.orderFilter.ValidateOrderJSONV4(signedOrderBytes)
+// 		if err != nil {
+// 			signedOrder := &zeroex.SignedOrderV4{}
+// 			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
+// 				signedOrder = nil
+// 			}
+// 			log.WithField("signedOrderRaw", string(signedOrderBytes)).Info("Unexpected error while attempting to validate signedOrderJSON against schema")
+// 			allValidationResults.Rejected = append(allValidationResults.Rejected, &ordervalidator.RejectedOrderInfo{
+// 				SignedOrder: signedOrder,
+// 				Kind:        ordervalidator.MeshValidation,
+// 				Status: ordervalidator.RejectedOrderStatus{
+// 					Code:    ordervalidator.ROInvalidSchemaCode,
+// 					Message: "order did not pass JSON-schema validation: Malformed JSON or empty payload",
+// 				},
+// 			})
+// 			continue
+// 		}
+// 		if !result.Valid() {
+// 			log.WithField("signedOrderRaw", string(signedOrderBytes)).Info("Order failed schema validation")
+// 			status := ordervalidator.RejectedOrderStatus{
+// 				Code:    ordervalidator.ROInvalidSchemaCode,
+// 				Message: fmt.Sprintf("order did not pass JSON-schema validation: %s", result.Errors()),
+// 			}
+// 			signedOrder := &zeroex.SignedOrder{}
+// 			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
+// 				signedOrder = nil
+// 			}
+// 			allValidationResults.Rejected = append(allValidationResults.Rejected, &ordervalidator.RejectedOrderInfo{
+// 				SignedOrder: signedOrder,
+// 				Kind:        ordervalidator.MeshValidation,
+// 				Status:      status,
+// 			})
+// 			continue
+// 		}
+
+// 		signedOrder := &zeroex.SignedOrder{}
+// 		if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
+// 			// This error should never happen since the signedOrder already passed the JSON schema validation above
+// 			log.WithField("signedOrderRaw", string(signedOrderBytes)).Error("Failed to unmarshal SignedOrder")
+// 			return nil, err
+// 		}
+
+// 		orderHash, err := signedOrder.ComputeOrderHash()
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		if _, alreadySeen := orderHashesSeen[orderHash]; alreadySeen {
+// 			continue
+// 		}
+
+// 		schemaValidOrders = append(schemaValidOrders, signedOrder)
+// 		orderHashesSeen[orderHash] = struct{}{}
+// 	}
+
+// 	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrders(ctx, schemaValidOrders, app.chainID, pinned, opts)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	allValidationResults.Accepted = append(allValidationResults.Accepted, validationResults.Accepted...)
+// 	allValidationResults.Rejected = append(allValidationResults.Rejected, validationResults.Rejected...)
+
+// 	for _, acceptedOrderInfo := range allValidationResults.Accepted {
+// 		// If the order isn't new, we don't add to OrderWatcher, log it's receipt
+// 		// or share the order with peers.
+// 		if !acceptedOrderInfo.IsNew {
+// 			continue
+// 		}
+
+// 		log.WithFields(log.Fields{
+// 			"orderHash": acceptedOrderInfo.OrderHash.String(),
+// 		}).Debug("added new valid order via GraphQL or browser callback")
+
+// 		// Share the order with our peers.
+// 		if err := app.shareOrder(acceptedOrderInfo.SignedOrder); err != nil {
+// 			return nil, err
+// 		}
+// 	}
+
+// 	return allValidationResults, nil
+// }
 
 // shareOrder immediately shares the given order on the GossipSub network.
 func (app *App) shareOrder(order *zeroex.SignedOrder) error {
