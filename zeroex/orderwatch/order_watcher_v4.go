@@ -188,7 +188,7 @@ func (w *Watcher) meshSpecificOrderValidationV4(orders []*zeroex.SignedOrderV4, 
 		// Only check the ExchangeAddress if we know the expected address for the
 		// given chainID/networkID. If we don't know it, the order could still be
 		// valid.
-		expectedExchangeAddress := w.contractAddresses.Exchange
+		expectedExchangeAddress := w.contractAddresses.ExchangeProxy
 		if order.ExchangeAddress != expectedExchangeAddress {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:     orderHash,
