@@ -33,8 +33,8 @@ const concurrencyLimit = 5
 // machines with a `Code`
 type RejectedOrderInfo struct {
 	OrderHash     common.Hash           `json:"orderHash"`
-	SignedOrder   *zeroex.SignedOrder   `json:"signedOrder"`
-	SignedOrderV4 *zeroex.SignedOrderV4 `json:"signedOrderV4"`
+	SignedOrder   *zeroex.SignedOrder   `json:"signedOrder,omitempty"`
+	SignedOrderV4 *zeroex.SignedOrderV4 `json:"signedOrderV4,omitempty"`
 	Kind          RejectedOrderKind     `json:"kind"`
 	Status        RejectedOrderStatus   `json:"status"`
 }

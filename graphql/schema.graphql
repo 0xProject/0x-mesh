@@ -122,6 +122,101 @@ input OrderSort {
 }
 
 """
+A sort ordering for v4 orders. Can be used in queries to control the order in which results are returned.
+"""
+input OrderSortV4 {
+    field: OrderFieldV4!
+    direction: SortDirection!
+}
+
+
+"""
+A signed 0x v4 order according to the [protocol specification](https://0xprotocol.readthedocs.io/en/latest/basics/orders.html)
+"""
+type OrderV4 {
+    chainId: String!
+    exchangeAddress: String!
+    makerToken: String!
+    takerToken: String!
+    makerAmount: String!
+    takerAmount: String!
+    takerTokenFeeAmount: String!
+    maker: String!
+    taker: String!
+    sender: String!
+    feeRecipient: String!
+    pool: String!
+    expiry: String!
+    salt: String!
+    signature: String!
+}
+
+"""
+A signed 0x v4 order along with some additional metadata about the order which is not part of the 0x protocol specification.
+"""
+type OrderV4WithMetadata {
+    chainId: String!
+    exchangeAddress: String!
+    makerToken: String!
+    takerToken: String!
+    makerAmount: String!
+    takerAmount: String!
+    takerTokenFeeAmount: String!
+    maker: String!
+    taker: String!
+    sender: String!
+    feeRecipient: String!
+    pool: String!
+    expiry: String!
+    salt: String!
+    signature: String!
+    """
+    The hash, which can be used to uniquely identify an order. Encoded as a hexadecimal string.
+    """
+    hash: String!
+    """
+    The remaining amount of the maker asset which has not yet been filled. Encoded as a numerical string.
+    """
+    fillableTakerAssetAmount: String!
+}
+
+"""
+An enum containing all the order fields for which filters and/or sorting is supported.
+"""
+enum OrderFieldV4 {
+    hash
+    chainId
+    exchangeAddress
+    makerToken
+    takerToken
+    makerAmount
+    takerAmount
+    takerTokenFeeAmount
+    maker
+    taker
+    sender
+    feeRecipient
+    pool
+    expiry
+    salt
+    signature
+    fillableTakerAssetAmount
+}
+
+"""
+A filter on v4 orders. Can be used in queries to only return orders that meet certain criteria.
+"""
+input OrderFilterV4 {
+    field: OrderFieldV4!
+    kind: FilterKind!
+    """
+    value must match the type of the filter field.
+    """
+    value: Any!
+}
+
+
+"""
 The block number and block hash for the latest block that has been processed by Mesh.
 """
 type LatestBlock {
@@ -165,6 +260,10 @@ type Query {
     """
     order(hash: String!): OrderWithMetadata
     """
+    Returns the v4 order with the specified hash, or null if no order is found with that hash.
+    """
+    orderv4(hash: String!): OrderV4WithMetadata
+    """
     Returns an array of orders that satisfy certain criteria.
     """
     orders(
@@ -183,6 +282,26 @@ type Query {
         """
         limit: Int = 20
     ): [OrderWithMetadata!]!
+    """
+    Returns an array of v4 orders that satisfy certain criteria.
+    """
+    ordersv4(
+        """
+        Determines the order of the results. If more than one sort option is provided, results we be sorted by the
+        first option first, then by any subsequent options. By default, orders are sorted by hash in ascending order.
+        """
+        sort: [OrderSortV4!] = [{ field: hash, direction: ASC }]
+        """
+        A set of filters. Only the orders that match all filters will be included in the results. By default no
+        filters are used.
+        """
+        filters: [OrderFilterV4!] = []
+        """
+        The maximum number of orders to be included in the results. Defaults to 20.
+        """
+        limit: Int = 20
+    ): [OrderV4WithMetadata!]!
+
     """
     Returns the current stats.
     """
@@ -211,6 +330,31 @@ input NewOrder {
     salt: String!
     signature: String!
 }
+
+"""
+A signed v4 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format).
+"""
+input NewOrderV4 {
+    chainId: String!
+    exchangeAddress: String!
+    makerToken: String!
+    takerToken: String!
+    makerAmount: String!
+    takerAmount: String!
+    takerTokenFeeAmount: String!
+    maker: String!
+    taker: String!
+    sender: String!
+    feeRecipient: String!
+    pool: String!
+    expiry: String!
+    salt: String!
+    signatureType: String!
+    signatureV: String!
+    signatureR: String!
+    signatureS: String!
+}
+
 
 """
 The results of the addOrders mutation. Includes which orders were accepted and which orders where rejected.
@@ -293,6 +437,16 @@ type Mutation {
     """
     addOrders(
         orders: [NewOrder!]!,
+        pinned: Boolean = true,
+        opts: AddOrdersOpts = {
+            keepCancelled: false,
+            keepExpired: false,
+            keepFullyFilled: false,
+            keepUnfunded: false,
+        },
+    ): AddOrdersResults!
+    addOrdersV4(
+        orders: [NewOrderV4!]!,
         pinned: Boolean = true,
         opts: AddOrdersOpts = {
             keepCancelled: false,

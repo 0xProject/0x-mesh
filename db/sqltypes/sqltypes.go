@@ -256,6 +256,13 @@ type Order struct {
 	KeepUnfunded             bool             `db:"keepUnfunded"`
 }
 
+type OrderSignatureV4 struct {
+	SignatureType zeroex.SignatureTypeV4 `db:"signatureType"`
+	V             uint8                  `db:"signatureV"`
+	R             zeroex.Bytes32         `db:"signatureR"`
+	S             zeroex.Bytes32         `db:"signatureS"`
+}
+
 // OrderV4 is the SQL database representation of V4 0x order along with some relevant metadata.
 type OrderV4 struct {
 	// Common with the zeroex type
@@ -275,8 +282,15 @@ type OrderV4 struct {
 	Pool                []byte         `db:"pool"`   // bytes32
 	Expiry              *SortedBigInt  `db:"expiry"` // uint64
 	Salt                *SortedBigInt  `db:"salt"`   // uint256
+	// TODO(oskar) - It seems that the sqlz couldn't scan for the fields if
+	// we nested the following struct here:
+	// Signature                *OrderSignatureV4 `db:"signature"`
+	// That's why we use these instead:
+	SignatureType zeroex.SignatureTypeV4 `db:"signatureType"`
+	SignatureV    uint8                  `db:"signatureV"`
+	SignatureR    string                 `db:"signatureR"`
+	SignatureS    string                 `db:"signatureS"`
 	// metadata
-	Signature                []byte        `db:"signature"`
 	LastUpdated              time.Time     `db:"lastUpdated"`
 	FillableTakerAssetAmount *SortedBigInt `db:"fillableTakerAssetAmount"`
 	IsRemoved                bool          `db:"isRemoved"`
@@ -349,7 +363,7 @@ func OrderToCommonType(order *Order) *types.OrderWithMetadata {
 	}
 	return &types.OrderWithMetadata{
 		Hash: order.Hash,
-		OrderV3: zeroex.Order{
+		OrderV3: &zeroex.Order{
 			ChainID:               order.ChainID.Int,
 			ExchangeAddress:       order.ExchangeAddress,
 			MakerAddress:          order.MakerAddress,
@@ -391,7 +405,7 @@ func OrderToCommonTypeV4(order *OrderV4) *types.OrderWithMetadata {
 	}
 	return &types.OrderWithMetadata{
 		Hash: order.Hash,
-		OrderV4: zeroex.OrderV4{
+		OrderV4: &zeroex.OrderV4{
 			ChainID:             order.ChainID.Int,
 			ExchangeAddress:     order.ExchangeAddress,
 			MakerToken:          order.MakerToken,
@@ -407,7 +421,12 @@ func OrderToCommonTypeV4(order *OrderV4) *types.OrderWithMetadata {
 			Expiry:              order.Expiry.Int,
 			Salt:                order.Salt.Int,
 		},
-		Signature:                order.Signature,
+		SignatureV4: zeroex.SignatureFieldV4{
+			SignatureType: order.SignatureType,
+			V:             order.SignatureV,
+			R:             zeroex.HexToBytes32(order.SignatureR),
+			S:             zeroex.HexToBytes32(order.SignatureS),
+		},
 		FillableTakerAssetAmount: order.FillableTakerAssetAmount.Int,
 		LastUpdated:              order.LastUpdated,
 		IsRemoved:                order.IsRemoved,
@@ -483,7 +502,10 @@ func OrderFromCommonTypeV4(order *types.OrderWithMetadata) *OrderV4 {
 		Pool:                     order.OrderV4.Pool.Bytes(),
 		Expiry:                   NewSortedBigInt(order.OrderV4.Expiry),
 		Salt:                     NewSortedBigInt(order.OrderV4.Salt),
-		Signature:                order.Signature,
+		SignatureType:            order.SignatureV4.SignatureType,
+		SignatureV:               order.SignatureV4.V,
+		SignatureR:               order.SignatureV4.R.Hex(),
+		SignatureS:               order.SignatureV4.S.Hex(),
 		LastUpdated:              order.LastUpdated,
 		FillableTakerAssetAmount: NewSortedBigInt(order.FillableTakerAssetAmount),
 		IsRemoved:                order.IsRemoved,

@@ -110,13 +110,14 @@ func (o *OrderInfo) UnmarshalJSON(data []byte) error {
 }
 
 type OrderWithMetadata struct {
-	OrderV3 zeroex.Order
-	OrderV4 zeroex.OrderV4
+	OrderV3 *zeroex.Order
+	OrderV4 *zeroex.OrderV4
 
-	Hash                     common.Hash `json:"hash"`
-	Signature                []byte      `json:"signature"`
-	FillableTakerAssetAmount *big.Int    `json:"fillableTakerAssetAmount"`
-	LastUpdated              time.Time   `json:"lastUpdated"`
+	Hash                     common.Hash             `json:"hash"`
+	Signature                []byte                  `json:"signature"`
+	SignatureV4              zeroex.SignatureFieldV4 `json:"signaturev4"`
+	FillableTakerAssetAmount *big.Int                `json:"fillableTakerAssetAmount"`
+	LastUpdated              time.Time               `json:"lastUpdated"`
 	// Was this order flagged for removal? Due to the possibility of block-reorgs, instead
 	// of immediately removing an order when FillableTakerAssetAmount becomes 0, we instead
 	// flag it for removal. After this order isn't updated for X time and has IsRemoved = true,

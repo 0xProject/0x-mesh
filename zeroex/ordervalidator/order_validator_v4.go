@@ -104,7 +104,7 @@ func (o *OrderValidator) BatchOffchainValidationV4(signedOrders []*zeroex.Signed
 			continue
 		}
 
-		isSupportedSignature := signedOrder.SignatureTypeV4 == zeroex.EIP712SignatureV4 || signedOrder.SignatureTypeV4 == zeroex.EthSignSignatureV4
+		isSupportedSignature := signedOrder.Signature.SignatureType == zeroex.EIP712SignatureV4 || signedOrder.Signature.SignatureType == zeroex.EthSignSignatureV4
 		if !isSupportedSignature {
 			rejectedOrderInfos = append(rejectedOrderInfos, &RejectedOrderInfo{
 				OrderHash:     orderHash,

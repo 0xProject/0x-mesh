@@ -1131,7 +1131,7 @@ func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.Accepte
 	}
 	return &types.OrderWithMetadata{
 		Hash: orderInfo.OrderHash,
-		OrderV3: zeroex.Order{
+		OrderV3: &zeroex.Order{
 			ChainID:               orderInfo.SignedOrder.ChainID,
 			ExchangeAddress:       orderInfo.SignedOrder.ExchangeAddress,
 			MakerAddress:          orderInfo.SignedOrder.MakerAddress,
@@ -1821,6 +1821,17 @@ func (w *Watcher) meshSpecificOrderValidation(orders []*zeroex.SignedOrder, chai
 }
 
 func validateOrderSize(order *zeroex.SignedOrder) error {
+	encoded, err := json.Marshal(order)
+	if err != nil {
+		return err
+	}
+	if len(encoded) > constants.MaxOrderSizeInBytes {
+		return constants.ErrMaxOrderSize
+	}
+	return nil
+}
+
+func validateOrderSizeV4(order *zeroex.SignedOrderV4) error {
 	encoded, err := json.Marshal(order)
 	if err != nil {
 		return err

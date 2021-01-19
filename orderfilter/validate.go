@@ -11,6 +11,10 @@ func (f *Filter) ValidateOrderJSON(orderJSON []byte) (*jsonschema.Result, error)
 	return f.orderSchema.Validate(jsonschema.NewBytesLoader(orderJSON))
 }
 
+func (f *Filter) ValidateOrderJSONV4(orderJSON []byte) (*jsonschema.Result, error) {
+	return f.orderV4Schema.Validate(jsonschema.NewBytesLoader(orderJSON))
+}
+
 func (f *Filter) MatchOrderMessageJSON(messageJSON []byte) (bool, error) {
 	result, err := f.messageSchema.Validate(jsonschema.NewBytesLoader(messageJSON))
 	if err != nil {

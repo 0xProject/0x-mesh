@@ -68,7 +68,7 @@ func init() {
 
 func TestBatchValidateOffChainCasesV4(t *testing.T) {
 	invalidSignedOrder := scenario.NewSignedTestOrderV4(t)
-	invalidSignedOrder.SignatureTypeV4 = zeroex.InvalidSignatureV4
+	invalidSignedOrder.Signature.SignatureType = zeroex.InvalidSignatureV4
 
 	var testCases = []testCaseV4{
 		{
@@ -365,7 +365,7 @@ func TestBatchValidateSignatureInvalidV4(t *testing.T) {
 	t.Skip("FIME: Invalid signatures cause batchGetLimitOrderRelevantStates to revert.")
 
 	signedOrder := scenario.NewSignedTestOrderV4(t)
-	signedOrder.R = zeroex.HexToBytes32("0000000000000000000000000000000000000000000000000000000000000000")
+	signedOrder.Signature.R = zeroex.HexToBytes32("0000000000000000000000000000000000000000000000000000000000000000")
 
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
