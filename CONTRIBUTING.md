@@ -181,3 +181,38 @@ Prettier configurations for most popular text editors can be found
 
 TSLint configurations for most popular text editors can be found
 [here](https://palantir.github.io/tslint/usage/third-party-tools/).
+
+### Updating the Go contract wrappers
+
+
+**Installing abi-gen:**
+
+See <https://geth.ethereum.org/docs/dapp/native-bindings>
+
+```
+git clone git@github.com:ethereum/go-ethereum.git
+cd go-ethereum
+git checkout v1.9.24
+go install ./cmd/abigen
+```
+
+**Obtain contract ABIs:**
+
+Extract any ABI from [`@0x/contract-artifacts/artifacts/*.json`](https://github.com/0xProject/protocol/tree/development/packages/contract-artifacts/artifacts), taking only the contents of the `abi` key. For example for the V4 DevUtils contract:
+
+```
+git clone git@github.com:0xProject/protocol.git
+jq < protocol/packages/contract-artifacts/artifacts/DevUtils.json .compilerOutput.abi > DevUtilsV4.abi.json
+```
+
+jq < ../protocol/packages/contract-artifacts/artifacts/IZeroEx.json .compilerOutput.abi > IZeroEx.abi.json
+
+The V4 ABI contains some internal functions whose names start with `_`. The next `abigen` command will strip the underscores and fail due to name collisions with non-prefixed versions. The easiest solution is to manually remove these functions from the JSON. (TODO: Come up with a `jq` query to automate this).
+
+**Generate wrapper:**
+
+```
+abigen --abi ./IZeroEx.abi.json --pkg wrappers --type ExchangeV4 --out ethereum/wrappers/exhange_v4.go
+```
+
+Then edit the file and correct the `package` name and remove any commonalities between different wrappers.
