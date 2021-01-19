@@ -43,11 +43,11 @@ func TestOrderWatcherV4TakerWhitelist(t *testing.T) {
 		isTakerAddressWhitelisted bool
 	}{
 		{
-			scenario.NewSignedTestOrder(t, orderopts.SetupMakerState(true)),
+			scenario.NewSignedTestOrderV4(t, orderopts.SetupMakerState(true)),
 			true,
 		},
 		{
-			scenario.NewSignedTestOrder(
+			scenario.NewSignedTestOrderV4(
 				t,
 				orderopts.SetupMakerState(true),
 				orderopts.TakerAddress(ganacheAddresses.ExchangeProxyFlashWallet),
@@ -55,7 +55,7 @@ func TestOrderWatcherV4TakerWhitelist(t *testing.T) {
 			true,
 		},
 		{
-			scenario.NewSignedTestOrder(
+			scenario.NewSignedTestOrderV4(
 				t,
 				orderopts.SetupMakerState(true),
 				orderopts.TakerAddress(common.HexToAddress("0x1")),
@@ -68,7 +68,7 @@ func TestOrderWatcherV4TakerWhitelist(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, testCase := range testCases {
-		results, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{testCase.order}, constants.TestChainID, false, &types.AddOrdersOpts{})
+		results, err := orderWatcher.ValidateAndStoreValidOrdersV4(ctx, []*zeroex.SignedOrderV4{testCase.order}, constants.TestChainID, false, &types.AddOrdersOpts{})
 		require.NoError(t, err)
 		if testCase.isTakerAddressWhitelisted {
 			orderHash, err := testCase.order.ComputeOrderHash()
@@ -99,18 +99,18 @@ func TestOrderWatcherV4DoesntStoreInvalidOrdersWithConfigurations(t *testing.T) 
 	}{
 		{
 			description: "doesn't store cancelled orders when KeepCancelled is disabled",
-			signedOrderGenerator: func() *zeroex.SignedOrder {
-				signedOrder := scenario.NewSignedTestOrder(t,
+			signedOrderGenerator: func() *zeroex.SignedOrderV4 {
+				signedOrder := scenario.NewSignedTestOrderV4(t,
 					orderopts.SetupMakerState(true),
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
 				)
 				// Cancel order
 				opts := &bind.TransactOpts{
-					From:   signedOrder.MakerAddress,
-					Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+					From:   signedOrder.Maker,
+					Signer: scenario.GetTestSignerFn(signedOrder.Maker),
 				}
-				trimmedOrder := signedOrder.Trim()
-				txn, err := exchange.CancelOrder(opts, trimmedOrder)
+				trimmedOrder := signedOrder.EthereumAbiLimitOrder()
+				txn, err := exchangeV4.CancelLimitOrder(opts, trimmedOrder)
 				require.NoError(t, err)
 				waitTxnSuccessfullyMined(t, ethClient, txn)
 				return signedOrder
@@ -124,8 +124,8 @@ func TestOrderWatcherV4DoesntStoreInvalidOrdersWithConfigurations(t *testing.T) 
 		},
 		{
 			description: "doesn't store expired orders when KeepExpired is disabled",
-			signedOrderGenerator: func() *zeroex.SignedOrder {
-				return scenario.NewSignedTestOrder(t,
+			signedOrderGenerator: func() *zeroex.SignedOrderV4 {
+				return scenario.NewSignedTestOrderV4(t,
 					orderopts.SetupMakerState(true),
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
 					orderopts.ExpirationTimeSeconds(big.NewInt(0)),
@@ -140,9 +140,9 @@ func TestOrderWatcherV4DoesntStoreInvalidOrdersWithConfigurations(t *testing.T) 
 		},
 		{
 			description: "doesn't store fully filled orders when KeepFullyFilled is disabled",
-			signedOrderGenerator: func() *zeroex.SignedOrder {
+			signedOrderGenerator: func() *zeroex.SignedOrderV4 {
 				takerAddress := constants.GanacheAccount3
-				signedOrder := scenario.NewSignedTestOrder(t,
+				signedOrder := scenario.NewSignedTestOrderV4(t,
 					orderopts.SetupMakerState(true),
 					orderopts.SetupTakerAddress(takerAddress),
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
@@ -153,8 +153,8 @@ func TestOrderWatcherV4DoesntStoreInvalidOrdersWithConfigurations(t *testing.T) 
 					Signer: scenario.GetTestSignerFn(takerAddress),
 					Value:  big.NewInt(100000000000000000),
 				}
-				trimmedOrder := signedOrder.Trim()
-				txn, err := exchange.FillOrder(opts, trimmedOrder, signedOrder.TakerAssetAmount, signedOrder.Signature)
+				trimmedOrder := signedOrder.EthereumAbiLimitOrder()
+				txn, err := exchangeV4.FillLimitOrder(opts, trimmedOrder, signedOrder.TakerAssetAmount, signedOrder.Signature)
 				require.NoError(t, err)
 				waitTxnSuccessfullyMined(t, ethClient, txn)
 				return signedOrder
@@ -168,8 +168,8 @@ func TestOrderWatcherV4DoesntStoreInvalidOrdersWithConfigurations(t *testing.T) 
 		},
 		{
 			description: "doesn't store unfunded orders when KeepUnfunded is disabled",
-			signedOrderGenerator: func() *zeroex.SignedOrder {
-				return scenario.NewSignedTestOrder(t,
+			signedOrderGenerator: func() *zeroex.SignedOrderV4 {
+				return scenario.NewSignedTestOrderV4(t,
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
 					orderopts.MakerFee(big.NewInt(1)),
 					orderopts.MakerFeeAssetData(scenario.WETHAssetData),
@@ -196,7 +196,7 @@ func TestOrderWatcherV4DoesntStoreInvalidOrdersWithConfigurations(t *testing.T) 
 		err = blockWatcher.SyncToLatestBlock()
 		require.NoError(t, err)
 
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, testCase.addOrdersOpts)
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrderV4{signedOrder}, constants.TestChainID, false, testCase.addOrdersOpts)
 		require.NoError(t, err)
 
 		assert.Len(t, validationResults.Accepted, 0, testCase.description)
@@ -226,8 +226,8 @@ func TestOrderWatcherV4StoresValidOrdersWithConfigurations(t *testing.T) {
 		{
 			description:            "stores valid orders",
 			expectedFillableAmount: big.NewInt(42),
-			signedOrderGenerator: func() *zeroex.SignedOrder {
-				return scenario.NewSignedTestOrder(t,
+			signedOrderGenerator: func() *zeroex.SignedOrderV4 {
+				return scenario.NewSignedTestOrderV4(t,
 					orderopts.SetupMakerState(true),
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
 				)
@@ -237,18 +237,18 @@ func TestOrderWatcherV4StoresValidOrdersWithConfigurations(t *testing.T) {
 		{
 			description:            "stores cancelled orders when KeepCancelled is enabled",
 			expectedFillableAmount: big.NewInt(0),
-			signedOrderGenerator: func() *zeroex.SignedOrder {
-				signedOrder := scenario.NewSignedTestOrder(t,
+			signedOrderGenerator: func() *zeroex.SignedOrderV4 {
+				signedOrder := scenario.NewSignedTestOrderV4(t,
 					orderopts.SetupMakerState(true),
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
 				)
 				// Cancel order
 				opts := &bind.TransactOpts{
-					From:   signedOrder.MakerAddress,
-					Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+					From:   signedOrder.Maker,
+					Signer: scenario.GetTestSignerFn(signedOrder.Maker),
 				}
-				trimmedOrder := signedOrder.Trim()
-				txn, err := exchange.CancelOrder(opts, trimmedOrder)
+				trimmedOrder := signedOrder.EthereumAbiLimitOrder()
+				txn, err := exchangeV4.CancelLimitOrder(opts, trimmedOrder)
 				require.NoError(t, err)
 				waitTxnSuccessfullyMined(t, ethClient, txn)
 				return signedOrder
@@ -258,8 +258,8 @@ func TestOrderWatcherV4StoresValidOrdersWithConfigurations(t *testing.T) {
 		{
 			description:            "stores expired orders when KeepExpired is enabled",
 			expectedFillableAmount: big.NewInt(0),
-			signedOrderGenerator: func() *zeroex.SignedOrder {
-				return scenario.NewSignedTestOrder(t,
+			signedOrderGenerator: func() *zeroex.SignedOrderV4 {
+				return scenario.NewSignedTestOrderV4(t,
 					orderopts.SetupMakerState(true),
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
 					orderopts.ExpirationTimeSeconds(big.NewInt(0)),
@@ -271,9 +271,9 @@ func TestOrderWatcherV4StoresValidOrdersWithConfigurations(t *testing.T) {
 		{
 			description:            "stores fully filled orders when KeepFullyFilled is enabled",
 			expectedFillableAmount: big.NewInt(0),
-			signedOrderGenerator: func() *zeroex.SignedOrder {
+			signedOrderGenerator: func() *zeroex.SignedOrderV4 {
 				takerAddress := constants.GanacheAccount3
-				signedOrder := scenario.NewSignedTestOrder(t,
+				signedOrder := scenario.NewSignedTestOrderV4(t,
 					orderopts.SetupMakerState(true),
 					orderopts.SetupTakerAddress(takerAddress),
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
@@ -284,8 +284,8 @@ func TestOrderWatcherV4StoresValidOrdersWithConfigurations(t *testing.T) {
 					Signer: scenario.GetTestSignerFn(takerAddress),
 					Value:  big.NewInt(100000000000000000),
 				}
-				trimmedOrder := signedOrder.Trim()
-				txn, err := exchange.FillOrder(opts, trimmedOrder, signedOrder.TakerAssetAmount, signedOrder.Signature)
+				trimmedOrder := signedOrder.EthereumAbiLimitOrder()
+				txn, err := exchangeV4.FillLimitOrder(opts, trimmedOrder, signedOrder.TakerAssetAmount, signedOrder.Signature)
 				require.NoError(t, err)
 				waitTxnSuccessfullyMined(t, ethClient, txn)
 				return signedOrder
@@ -295,8 +295,8 @@ func TestOrderWatcherV4StoresValidOrdersWithConfigurations(t *testing.T) {
 		{
 			description:            "stores unfunded orders when KeepUnfunded is enabled",
 			expectedFillableAmount: big.NewInt(0),
-			signedOrderGenerator: func() *zeroex.SignedOrder {
-				return scenario.NewSignedTestOrder(t,
+			signedOrderGenerator: func() *zeroex.SignedOrderV4 {
+				return scenario.NewSignedTestOrderV4(t,
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
 					orderopts.MakerFee(big.NewInt(1)),
 					orderopts.MakerFeeAssetData(scenario.WETHAssetData),
@@ -318,7 +318,7 @@ func TestOrderWatcherV4StoresValidOrdersWithConfigurations(t *testing.T) {
 		err = blockWatcher.SyncToLatestBlock()
 		require.NoError(t, err)
 
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, testCase.addOrdersOpts)
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrderV4{signedOrder}, constants.TestChainID, false, testCase.addOrdersOpts)
 		require.NoError(t, err)
 
 		isUnfillable := testCase.expectedFillableAmount.Cmp(big.NewInt(0)) == 0
@@ -394,10 +394,10 @@ func TestOrderWatcherV4UnfundedInsufficientERC20Balance(t *testing.T) {
 
 		// Transfer makerAsset out of maker address
 		opts := &bind.TransactOpts{
-			From:   signedOrder.MakerAddress,
-			Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+			From:   signedOrder.Maker,
+			Signer: scenario.GetTestSignerFn(signedOrder.Maker),
 		}
-		txn, err := zrx.Transfer(opts, constants.GanacheAccount4, signedOrder.MakerAssetAmount)
+		txn, err := zrx.Transfer(opts, constants.GanacheAccount4, signedOrder.MakerAmount)
 		require.NoError(t, err, testCase.description)
 		waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -472,8 +472,8 @@ func TestOrderWatcherV4UnfundedInsufficientERC20BalanceForMakerFee(t *testing.T)
 
 		// Transfer makerAsset out of maker address
 		opts := &bind.TransactOpts{
-			From:   signedOrder.MakerAddress,
-			Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+			From:   signedOrder.Maker,
+			Signer: scenario.GetTestSignerFn(signedOrder.Maker),
 		}
 		txn, err := weth.Transfer(opts, constants.GanacheAccount4, wethFeeAmount)
 		require.NoError(t, err, testCase.description)
@@ -534,7 +534,7 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 		database, err := db.New(ctx, db.TestOptions())
 		require.NoError(t, err, testCase.description)
 
-		signedOrder := scenario.NewSignedTestOrder(t,
+		signedOrder := scenario.NewSignedTestOrderV4(t,
 			orderopts.SetupMakerState(true),
 			orderopts.MakerAssetData(scenario.ZRXAssetData),
 		)
@@ -544,8 +544,8 @@ func TestOrderWatcherUnfundedInsufficientERC20Allowance(t *testing.T) {
 
 		// Remove Maker's ZRX approval to ERC20Proxy
 		opts := &bind.TransactOpts{
-			From:   signedOrder.MakerAddress,
-			Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+			From:   signedOrder.Maker,
+			Signer: scenario.GetTestSignerFn(signedOrder.Maker),
 		}
 		txn, err := zrx.Approve(opts, ganacheAddresses.ERC20Proxy, big.NewInt(0))
 		require.NoError(t, err, testCase.description)
@@ -618,10 +618,10 @@ func TestOrderWatcherV4UnfundedThenFundedAgain(t *testing.T) {
 
 		// Transfer makerAsset out of maker address
 		opts := &bind.TransactOpts{
-			From:   signedOrder.MakerAddress,
-			Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+			From:   signedOrder.Maker,
+			Signer: scenario.GetTestSignerFn(signedOrder.Maker),
 		}
-		txn, err := zrx.Transfer(opts, constants.GanacheAccount4, signedOrder.MakerAssetAmount)
+		txn, err := zrx.Transfer(opts, constants.GanacheAccount4, signedOrder.MakerAmount)
 		require.NoError(t, err, testCase.description)
 		waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -654,7 +654,7 @@ func TestOrderWatcherV4UnfundedThenFundedAgain(t *testing.T) {
 			From:   zrxCoinbase,
 			Signer: scenario.GetTestSignerFn(zrxCoinbase),
 		}
-		txn, err = zrx.Transfer(opts, signedOrder.MakerAddress, signedOrder.MakerAssetAmount)
+		txn, err = zrx.Transfer(opts, signedOrder.Maker, signedOrder.MakerAmount)
 		require.NoError(t, err, testCase.description)
 		waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -753,7 +753,7 @@ func TestOrderWatcherV4NoChange(t *testing.T) {
 			From:   zrxCoinbase,
 			Signer: scenario.GetTestSignerFn(zrxCoinbase),
 		}
-		txn, err := zrx.Transfer(opts, signedOrder.MakerAddress, signedOrder.MakerAssetAmount)
+		txn, err := zrx.Transfer(opts, signedOrder.Maker, signedOrder.MakerAmount)
 		require.NoError(t, err)
 		waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -829,11 +829,11 @@ func TestOrderWatcherV4WETHWithdrawAndDeposit(t *testing.T) {
 		// estimated gas amount
 		gasLimit := uint64(50000)
 		opts := &bind.TransactOpts{
-			From:     signedOrder.MakerAddress,
-			Signer:   scenario.GetTestSignerFn(signedOrder.MakerAddress),
+			From:     signedOrder.Maker,
+			Signer:   scenario.GetTestSignerFn(signedOrder.Maker),
 			GasLimit: gasLimit,
 		}
-		txn, err := weth.Withdraw(opts, signedOrder.MakerAssetAmount)
+		txn, err := weth.Withdraw(opts, signedOrder.MakerAmount)
 		require.NoError(t, err, testCase.description)
 		waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -863,9 +863,9 @@ func TestOrderWatcherV4WETHWithdrawAndDeposit(t *testing.T) {
 
 		// Deposit maker's ETH (i.e. increase WETH balance)
 		opts = &bind.TransactOpts{
-			From:   signedOrder.MakerAddress,
-			Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
-			Value:  signedOrder.MakerAssetAmount,
+			From:   signedOrder.Maker,
+			Signer: scenario.GetTestSignerFn(signedOrder.Maker),
+			Value:  signedOrder.MakerAmount,
 		}
 		txn, err = weth.Deposit(opts)
 		require.NoError(t, err, testCase.description)
@@ -934,11 +934,11 @@ func TestOrderWatcherV4Canceled(t *testing.T) {
 
 		// Cancel order
 		opts := &bind.TransactOpts{
-			From:   signedOrder.MakerAddress,
-			Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+			From:   signedOrder.Maker,
+			Signer: scenario.GetTestSignerFn(signedOrder.Maker),
 		}
-		trimmedOrder := signedOrder.Trim()
-		txn, err := exchange.CancelOrder(opts, trimmedOrder)
+		trimmedOrder := signedOrder.EthereumAbiLimitOrder()
+		txn, err := exchangeV4.CancelLimitOrder(opts, trimmedOrder)
 		require.NoError(t, err, testCase.description)
 		waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -1005,11 +1005,11 @@ func TestOrderWatcherV4CancelUpTo(t *testing.T) {
 
 		// Cancel order with epoch
 		opts := &bind.TransactOpts{
-			From:   signedOrder.MakerAddress,
-			Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+			From:   signedOrder.Maker,
+			Signer: scenario.GetTestSignerFn(signedOrder.Maker),
 		}
 		targetOrderEpoch := signedOrder.Salt
-		txn, err := exchange.CancelOrdersUpTo(opts, targetOrderEpoch)
+		txn, err := exchangeV4.CancelOrdersUpTo(opts, targetOrderEpoch)
 		require.NoError(t, err, testCase.description)
 		waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -1084,8 +1084,8 @@ func TestOrderWatcherV4ERC20Filled(t *testing.T) {
 			Signer: scenario.GetTestSignerFn(takerAddress),
 			Value:  big.NewInt(100000000000000000),
 		}
-		trimmedOrder := signedOrder.Trim()
-		txn, err := exchange.FillOrder(opts, trimmedOrder, signedOrder.TakerAssetAmount, signedOrder.Signature)
+		trimmedOrder := signedOrder.EthereumAbiLimitOrder()
+		txn, err := exchangeV4.FillLimitOrder(opts, trimmedOrder, signedOrder.TakerAssetAmount, signedOrder.Signature)
 		require.NoError(t, err, testCase.description)
 		waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -1157,9 +1157,9 @@ func TestOrderWatcherV4ERC20PartiallyFilled(t *testing.T) {
 			Signer: scenario.GetTestSignerFn(takerAddress),
 			Value:  big.NewInt(100000000000000000),
 		}
-		trimmedOrder := signedOrder.Trim()
+		trimmedOrder := signedOrder.EthereumAbiLimitOrder()
 		halfAmount := new(big.Int).Div(signedOrder.TakerAssetAmount, big.NewInt(2))
-		txn, err := exchange.FillOrder(opts, trimmedOrder, halfAmount, signedOrder.Signature)
+		txn, err := exchangeV4.FillLimitOrder(opts, trimmedOrder, halfAmount, signedOrder.Signature)
 		require.NoError(t, err, testCase.description)
 		waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -1359,7 +1359,7 @@ func TestOrderWatcherOrderV4ExpiredWhenAddedThenUnexpired(t *testing.T) {
 	// Add the order to Mesh
 	err = blockwatcher.SyncToLatestBlock()
 	require.NoError(t, err)
-	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{KeepExpired: true})
+	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrderV4{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{KeepExpired: true})
 	require.NoError(t, err)
 
 	assert.Len(t, validationResults.Accepted, 0)
@@ -1521,7 +1521,7 @@ func TestOrderWatcherV4DecreaseExpirationTime(t *testing.T) {
 
 	// Confirm that a pinned order will be accepted even if its expiration
 	// is greater than the current max.
-	pinnedOrder := scenario.NewSignedTestOrder(t,
+	pinnedOrder := scenario.NewSignedTestOrderV4(t,
 		orderopts.SetupMakerState(true),
 		orderopts.ExpirationTimeSeconds(big.NewInt(0).Add(storedMaxExpirationTime, big.NewInt(10))),
 	)
@@ -1944,11 +1944,11 @@ func TestRevalidateOrdersV4ForMissingEvents(t *testing.T) {
 
 	// Cancel the order
 	opts := &bind.TransactOpts{
-		From:   signedOrder.MakerAddress,
-		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+		From:   signedOrder.Maker,
+		Signer: scenario.GetTestSignerFn(signedOrder.Maker),
 	}
-	trimmedOrder := signedOrder.Trim()
-	txn, err := exchange.CancelOrder(opts, trimmedOrder)
+	trimmedOrder := signedOrder.EthereumAbiLimitOrder()
+	txn, err := exchangeV4.CancelLimitOrder(opts, trimmedOrder)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -1962,7 +1962,7 @@ func TestRevalidateOrdersV4ForMissingEvents(t *testing.T) {
 		return err
 	})
 	g.Go(func() error {
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{})
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrderV4{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{})
 		if err != nil {
 			return err
 		}
@@ -2032,11 +2032,11 @@ func TestMissingOrderV4Events(t *testing.T) {
 
 	// Cancel the order
 	opts := &bind.TransactOpts{
-		From:   signedOrder.MakerAddress,
-		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+		From:   signedOrder.Maker,
+		Signer: scenario.GetTestSignerFn(signedOrder.Maker),
 	}
-	trimmedOrder := signedOrder.Trim()
-	txn, err := exchange.CancelOrder(opts, trimmedOrder)
+	trimmedOrder := signedOrder.EthereumAbiLimitOrder()
+	txn, err := exchangeV4.CancelLimitOrder(opts, trimmedOrder)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -2050,7 +2050,7 @@ func TestMissingOrderV4Events(t *testing.T) {
 		return err
 	})
 	g.Go(func() error {
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{})
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrderV4{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{})
 		if err != nil {
 			return err
 		}
@@ -2138,22 +2138,22 @@ func TestMissingOrderV4EventsWithMissingBlocks(t *testing.T) {
 
 	// Cancel the order
 	opts := &bind.TransactOpts{
-		From:   signedOrder.MakerAddress,
-		Signer: scenario.GetTestSignerFn(signedOrder.MakerAddress),
+		From:   signedOrder.Maker,
+		Signer: scenario.GetTestSignerFn(signedOrder.Maker),
 	}
-	trimmedOrder := signedOrder.Trim()
-	txn, err := exchange.CancelOrder(opts, trimmedOrder)
+	trimmedOrder := signedOrder.EthereumAbiLimitOrder()
+	txn, err := exchangeV4.CancelLimitOrder(opts, trimmedOrder)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
 	// Cancel a new order to remove old miniheaders from the database.
 	dummyOrder := scenario.NewSignedTestOrderV4(t, orderopts.SetupMakerState(true))
 	opts = &bind.TransactOpts{
-		From:   dummyOrder.MakerAddress,
-		Signer: scenario.GetTestSignerFn(dummyOrder.MakerAddress),
+		From:   dummyOrder.Maker,
+		Signer: scenario.GetTestSignerFn(dummyOrder.Maker),
 	}
-	trimmedOrder = dummyOrder.Trim()
-	txn, err = exchange.CancelOrder(opts, trimmedOrder)
+	trimmedOrder = dummyOrder.EthereumAbiLimitOrder()
+	txn, err = exchangeV4.CancelLimitOrder(opts, trimmedOrder)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, ethClient, txn)
 
@@ -2167,7 +2167,7 @@ func TestMissingOrderV4EventsWithMissingBlocks(t *testing.T) {
 		return err
 	})
 	g.Go(func() error {
-		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{})
+		validationResults, err := orderWatcher.ValidateAndStoreValidOrders(innerCtx, []*zeroex.SignedOrderV4{signedOrder}, constants.TestChainID, false, &types.AddOrdersOpts{})
 		if err != nil {
 			return err
 		}
@@ -2228,7 +2228,7 @@ func watchOrderV4(ctx context.Context, t *testing.T, orderWatcher *Watcher, bloc
 	err := blockWatcher.SyncToLatestBlock()
 	require.NoError(t, err)
 
-	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrder{signedOrder}, constants.TestChainID, pinned, opts)
+	validationResults, err := orderWatcher.ValidateAndStoreValidOrders(ctx, []*zeroex.SignedOrderV4{signedOrder}, constants.TestChainID, pinned, opts)
 	require.NoError(t, err)
 	if len(validationResults.Rejected) != 0 {
 		spew.Dump(validationResults.Rejected)

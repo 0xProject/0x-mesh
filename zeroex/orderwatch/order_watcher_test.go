@@ -59,7 +59,7 @@ var (
 	dummyERC721Token    *wrappers.DummyERC721Token
 	erc1155Mintable     *wrappers.ERC1155Mintable
 	exchange            *wrappers.Exchange
-	exchangeProxy       *wrappers.ExchangeProxy
+	exchangeV4          *wrappers.ExchangeV4
 	weth                *wrappers.WETH9
 	blockchainLifecycle *ethereum.BlockchainLifecycle
 )
@@ -110,7 +110,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	exchangeProxy, err = wrappers.NewExchangeProxy(ganacheAddresses.ExchangeProxy, ethClient)
+	exchangeV4, err = wrappers.NewExchangeV4(ganacheAddresses.ExchangeProxy, ethClient)
 	if err != nil {
 		panic(err)
 	}
