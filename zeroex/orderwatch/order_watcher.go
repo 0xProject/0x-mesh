@@ -1191,20 +1191,26 @@ func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.Accepte
 
 // TODO(albrow): All in-memory state can be removed.
 func (w *Watcher) setupInMemoryOrderState(order *types.OrderWithMetadata) error {
-	w.eventDecoder.AddKnownExchange(order.OrderV3.ExchangeAddress)
-
-	// Add MakerAssetData and MakerFeeAssetData to EventDecoder
-	err := w.addAssetDataAddressToEventDecoder(order.OrderV3.MakerAssetData)
-	if err != nil {
-		return err
-	}
-	if order.OrderV3.MakerFee.Cmp(big.NewInt(0)) == 1 {
-		err = w.addAssetDataAddressToEventDecoder(order.OrderV3.MakerFeeAssetData)
+	if order.OrderV3 != nil {
+		w.eventDecoder.AddKnownExchange(order.OrderV3.ExchangeAddress)
+		// Add MakerAssetData and MakerFeeAssetData to EventDecoder
+		err := w.addAssetDataAddressToEventDecoder(order.OrderV3.MakerAssetData)
 		if err != nil {
 			return err
 		}
+		if order.OrderV3.MakerFee.Cmp(big.NewInt(0)) == 1 {
+			err = w.addAssetDataAddressToEventDecoder(order.OrderV3.MakerFeeAssetData)
+			if err != nil {
+				return err
+			}
+		}
 	}
-
+	if order.OrderV4 != nil {
+		w.eventDecoder.AddKnownExchange(order.OrderV4.ExchangeAddress)
+		// Add MakerToken to EventDecoder
+		w.eventDecoder.AddKnownERC20(order.OrderV4.MakerToken)
+		w.contractAddressToSeenCount.Inc(order.OrderV4.MakerToken)
+	}
 	return nil
 }
 
