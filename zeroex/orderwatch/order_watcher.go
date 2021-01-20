@@ -1226,19 +1226,32 @@ func (w *Watcher) Subscribe(sink chan<- []*zeroex.OrderEvent) event.Subscription
 }
 
 func (w *Watcher) findOrder(orderHash common.Hash) *types.OrderWithMetadata {
+	// V3
 	order, err := w.db.GetOrder(orderHash)
-	if err != nil {
-		if err == db.ErrNotFound {
-			// short-circuit. We expect to receive events from orders we aren't actively tracking
-			return nil
+	if err == nil {
+		return order
 		}
+	if err != db.ErrNotFound {
 		logger.WithFields(logger.Fields{
 			"error":     err.Error(),
 			"orderHash": orderHash,
 		}).Warning("Unexpected error from db.GetOrder")
 		return nil
 	}
-	return order
+
+	// V4
+	orderV4, err := w.db.GetOrderV4(orderHash)
+	if err == nil {
+		return orderV4
+}
+	if err == db.ErrNotFound {
+		return nil
+	}
+	logger.WithFields(logger.Fields{
+		"error":     err.Error(),
+		"orderHash": orderHash,
+	}).Warning("Unexpected error from db.GetOrderV4")
+	return nil
 }
 
 // findOrdersByTokenAddressAndTokenID finds and returns all orders that have
@@ -1281,6 +1294,8 @@ func (w *Watcher) findOrdersByTokenAddressAndTokenID(makerAddress, tokenAddress 
 		}).Error("unexpected query error encountered")
 		return nil, err
 	}
+
+	// V4 does not support NFTs so has no orders with tokenIds
 
 	return append(ordersWithAffectedMakerAsset, ordersWithAffectedMakerFeeAsset...), nil
 }
@@ -1354,7 +1369,7 @@ func (w *Watcher) findOrdersByTokenAddress(makerAddress, tokenAddress common.Add
 // findOrdersToExpire returns all orders with an expiration time less than or equal to the latest
 // block timestamp that have not already been removed.
 func (w *Watcher) findOrdersToExpire(latestBlockTimestamp time.Time) ([]*types.OrderWithMetadata, error) {
-	return w.db.FindOrders(&db.OrderQuery{
+	ordersV3, err := w.db.FindOrders(&db.OrderQuery{
 		Filters: []db.OrderFilter{
 			{
 				Field: db.OFExpirationTimeSeconds,
@@ -1368,6 +1383,27 @@ func (w *Watcher) findOrdersToExpire(latestBlockTimestamp time.Time) ([]*types.O
 			},
 		},
 	})
+	if err != nil {
+		return nil, err
+	}
+	ordersV4, err := w.db.FindOrdersV4(&db.OrderQueryV4{
+		Filters: []db.OrderFilterV4{
+			{
+				Field: db.OV4FExpiry,
+				Kind:  db.LessOrEqual,
+				Value: big.NewInt(latestBlockTimestamp.Unix()),
+			},
+			{
+				Field: db.OV4FIsUnfillable,
+				Kind:  db.Equal,
+				Value: false,
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+}
+	return append(ordersV3, ordersV4...), nil
 }
 
 // findOrdersToUnexpire returns all orders that:
@@ -1377,7 +1413,7 @@ func (w *Watcher) findOrdersToExpire(latestBlockTimestamp time.Time) ([]*types.O
 //     3. have a non-zero FillableTakerAssetAmount
 //
 func (w *Watcher) findOrdersToUnexpire(latestBlockTimestamp time.Time) ([]*types.OrderWithMetadata, error) {
-	return w.db.FindOrders(&db.OrderQuery{
+	ordersV3, err := w.db.FindOrders(&db.OrderQuery{
 		Filters: []db.OrderFilter{
 			{
 				Field: db.OFExpirationTimeSeconds,
@@ -1396,6 +1432,32 @@ func (w *Watcher) findOrdersToUnexpire(latestBlockTimestamp time.Time) ([]*types
 			},
 		},
 	})
+	if err != nil {
+		return nil, err
+}
+	ordersV4, err := w.db.FindOrdersV4(&db.OrderQueryV4{
+		Filters: []db.OrderFilterV4{
+			{
+				Field: db.OV4FExpiry,
+				Kind:  db.Greater,
+				Value: big.NewInt(latestBlockTimestamp.Unix()),
+			},
+			{
+				Field: db.OV4FIsUnfillable,
+				Kind:  db.Equal,
+				Value: true,
+			},
+			{
+				Field: db.OV4FFillableTakerAssetAmount,
+				Kind:  db.NotEqual,
+				Value: big.NewInt(0),
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return append(ordersV3, ordersV4...), nil
 }
 
 // findOrdersToPossiblyUnexpire returns all orders that:
@@ -1406,7 +1468,7 @@ func (w *Watcher) findOrdersToUnexpire(latestBlockTimestamp time.Time) ([]*types
 //     4. have a zero FillableTakerAssetAmount
 //
 func (w *Watcher) findOrdersToPossiblyUnexpire(latestBlockTimestamp time.Time) ([]*types.OrderWithMetadata, error) {
-	return w.db.FindOrders(&db.OrderQuery{
+	ordersV3, err := w.db.FindOrders(&db.OrderQuery{
 		Filters: []db.OrderFilter{
 			{
 				Field: db.OFExpirationTimeSeconds,
@@ -1430,6 +1492,37 @@ func (w *Watcher) findOrdersToPossiblyUnexpire(latestBlockTimestamp time.Time) (
 			},
 		},
 	})
+	if err != nil {
+		return nil, err
+	}
+	ordersV4, err := w.db.FindOrdersV4(&db.OrderQueryV4{
+		Filters: []db.OrderFilterV4{
+			{
+				Field: db.OV4FExpiry,
+				Kind:  db.Greater,
+				Value: big.NewInt(latestBlockTimestamp.Unix()),
+			},
+			{
+				Field: db.OV4FIsUnfillable,
+				Kind:  db.Equal,
+				Value: true,
+			},
+			{
+				Field: db.OV4FIsExpired,
+				Kind:  db.Equal,
+				Value: true,
+			},
+			{
+				Field: db.OV4FFillableTakerAssetAmount,
+				Kind:  db.Equal,
+				Value: big.NewInt(0),
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return append(ordersV3, ordersV4...), nil
 }
 
 func (w *Watcher) convertValidationResultsIntoOrderEvents(
