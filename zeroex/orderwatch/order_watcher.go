@@ -1556,6 +1556,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 				Timestamp:                validationBlock.Timestamp,
 				OrderHash:                acceptedOrderInfo.OrderHash,
 				SignedOrder:              order.SignedOrder(),
+				SignedOrderV4:            order.SignedOrderV4(),
 				FillableTakerAssetAmount: newFillableAmount,
 				EndState:                 zeroex.ESOrderAdded,
 				ContractEvents:           orderHashToEvents[order.Hash],
@@ -1578,6 +1579,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 					Timestamp:                validationBlock.Timestamp,
 					OrderHash:                order.Hash,
 					SignedOrder:              order.SignedOrder(),
+					SignedOrderV4:            order.SignedOrderV4(),
 					FillableTakerAssetAmount: order.FillableTakerAssetAmount,
 					EndState:                 zeroex.ESOrderUnexpired,
 				}
@@ -1603,6 +1605,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 					Timestamp:                validationBlock.Timestamp,
 					OrderHash:                acceptedOrderInfo.OrderHash,
 					SignedOrder:              order.SignedOrder(),
+					SignedOrderV4:            order.SignedOrderV4(),
 					EndState:                 endState,
 					FillableTakerAssetAmount: newFillableAmount,
 					ContractEvents:           orderHashToEvents[order.Hash],
