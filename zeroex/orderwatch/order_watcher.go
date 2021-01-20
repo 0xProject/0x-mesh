@@ -2041,8 +2041,15 @@ func (w *Watcher) rewatchOrder(order *types.OrderWithMetadata, newFillableTakerA
 func (w *Watcher) markOrderUnfillable(order *types.OrderWithMetadata, newFillableAmount *big.Int, validationBlock *types.MiniHeader) {
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.IsUnfillable = true
+		if orderToUpdate.OrderV3 != nil {
 		if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.OrderV3.ExpirationTimeSeconds) >= 0 {
 			orderToUpdate.IsExpired = true
+		}
+		}
+		if orderToUpdate.OrderV4 != nil {
+			if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.OrderV4.Expiry) >= 0 {
+				orderToUpdate.IsExpired = true
+			}
 		}
 		orderToUpdate.LastUpdated = time.Now().UTC()
 		orderToUpdate.LastValidatedBlockNumber = validationBlock.Number
@@ -2064,8 +2071,15 @@ func (w *Watcher) unwatchOrder(order *types.OrderWithMetadata, newFillableAmount
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.IsRemoved = true
 		orderToUpdate.IsUnfillable = true
+		if orderToUpdate.OrderV3 != nil {
 		if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.OrderV3.ExpirationTimeSeconds) >= 0 {
 			orderToUpdate.IsExpired = true
+		}
+		}
+		if orderToUpdate.OrderV4 != nil {
+			if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.OrderV4.Expiry) >= 0 {
+				orderToUpdate.IsExpired = true
+			}
 		}
 		orderToUpdate.LastUpdated = time.Now().UTC()
 		orderToUpdate.LastValidatedBlockNumber = validationBlock.Number
@@ -2085,8 +2099,15 @@ func (w *Watcher) unwatchOrder(order *types.OrderWithMetadata, newFillableAmount
 
 func (w *Watcher) updateOrderExpirationState(order *types.OrderWithMetadata, validationBlock *types.MiniHeader) {
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
+		if orderToUpdate.OrderV3 != nil {
 		if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.OrderV3.ExpirationTimeSeconds) >= 0 {
 			orderToUpdate.IsExpired = true
+		}
+		}
+		if orderToUpdate.OrderV4 != nil {
+			if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.OrderV4.Expiry) >= 0 {
+				orderToUpdate.IsExpired = true
+			}
 		}
 		orderToUpdate.LastUpdated = time.Now().UTC()
 		orderToUpdate.LastValidatedBlockNumber = validationBlock.Number
