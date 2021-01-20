@@ -1326,7 +1326,29 @@ func (w *Watcher) findOrdersByTokenAddress(makerAddress, tokenAddress common.Add
 		return nil, err
 	}
 
-	return append(ordersWithAffectedMakerAsset, ordersWithAffectedMakerFeeAsset...), nil
+	// V4 Orders
+	ordersV4, err := w.db.FindOrdersV4(&db.OrderQueryV4{
+		Filters: []db.OrderFilterV4{
+			{
+				Field: db.OV4FMaker,
+				Kind:  db.Equal,
+				Value: makerAddress,
+			},
+			{
+				Field: db.OV4FMakerToken,
+				Kind:  db.Equal,
+				Value: tokenAddress,
+			},
+		},
+	})
+	if err != nil {
+		logger.WithFields(logger.Fields{
+			"error": err.Error(),
+		}).Error("unexpected query error encountered")
+		return nil, err
+	}
+
+	return append(append(ordersWithAffectedMakerAsset, ordersWithAffectedMakerFeeAsset...), ordersV4...), nil
 }
 
 // findOrdersToExpire returns all orders with an expiration time less than or equal to the latest
