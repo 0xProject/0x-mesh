@@ -1121,6 +1121,28 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 }
 
 func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.AcceptedOrderInfo, pinned bool, now time.Time, validationBlock *types.MiniHeader, opts *types.AddOrdersOpts) (*types.OrderWithMetadata, error) {
+	// V4 Orders
+	if orderInfo.SignedOrder == nil && orderInfo.SignedOrderV4 != nil {
+		return &types.OrderWithMetadata{
+			Hash:                     orderInfo.OrderHash,
+			OrderV4:                  &orderInfo.SignedOrderV4.OrderV4,
+			SignatureV4:              orderInfo.SignedOrderV4.Signature,
+			IsRemoved:                false,
+			IsUnfillable:             orderInfo.FillableTakerAssetAmount.Cmp(big.NewInt(0)) == 0,
+			IsPinned:                 pinned,
+			IsExpired:                big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderInfo.SignedOrderV4.OrderV4.Expiry) >= 0,
+			LastUpdated:              now,
+			FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
+			LastValidatedBlockNumber: validationBlock.Number,
+			LastValidatedBlockHash:   validationBlock.Hash,
+			KeepCancelled:            opts.KeepCancelled,
+			KeepExpired:              opts.KeepExpired,
+			KeepFullyFilled:          opts.KeepFullyFilled,
+			KeepUnfunded:             opts.KeepUnfunded,
+		}, nil
+	}
+
+	// V3 Orders
 	parsedMakerAssetData, err := db.ParseContractAddressesAndTokenIdsFromAssetData(w.assetDataDecoder, orderInfo.SignedOrder.MakerAssetData, w.contractAddresses)
 	if err != nil {
 		return nil, err
