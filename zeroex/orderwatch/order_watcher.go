@@ -1141,6 +1141,9 @@ func (w *Watcher) orderInfoToOrderWithMetadata(orderInfo *ordervalidator.Accepte
 			KeepUnfunded:             opts.KeepUnfunded,
 		}, nil
 	}
+	if orderInfo.SignedOrder == nil {
+		return nil, errors.New("OrderInfo contains neither V3 nor V4 order")
+	}
 
 	// V3 Orders
 	parsedMakerAssetData, err := db.ParseContractAddressesAndTokenIdsFromAssetData(w.assetDataDecoder, orderInfo.SignedOrder.MakerAssetData, w.contractAddresses)
