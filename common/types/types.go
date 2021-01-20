@@ -180,6 +180,13 @@ func (order OrderWithMetadata) SignedOrder() *zeroex.SignedOrder {
 	}
 }
 
+func (order OrderWithMetadata) SignedOrderV4() *zeroex.SignedOrderV4 {
+	return &zeroex.SignedOrderV4{
+		OrderV4:   *order.OrderV4, // QUESTION: Is there a reason we would explicitly copy every field like above instead of doing this?
+		Signature: order.SignatureV4,
+	}
+}
+
 type SingleAssetData struct {
 	Address common.Address `json:"address"`
 	TokenID *big.Int       `json:"tokenID"`

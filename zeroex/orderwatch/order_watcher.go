@@ -1680,6 +1680,7 @@ func (w *Watcher) generateOrderEventsIfChanged(
 	validationBlock *types.MiniHeader,
 ) ([]*zeroex.OrderEvent, error) {
 	signedOrders := []*zeroex.SignedOrder{}
+	signedOrdersV4 := []*zeroex.SignedOrderV4{}
 	for _, order := range orderHashToDBOrder {
 		if order.IsRemoved && time.Since(order.LastUpdated) > permanentlyDeleteAfter {
 			if err := w.permanentlyDeleteOrder(order); err != nil {
@@ -1687,13 +1688,22 @@ func (w *Watcher) generateOrderEventsIfChanged(
 			}
 			continue
 		}
+		if order.OrderV3 != nil {
 		signedOrders = append(signedOrders, order.SignedOrder())
+		} else if order.OrderV4 != nil {
+			signedOrdersV4 = append(signedOrdersV4, order.SignedOrderV4())
 	}
-	if len(signedOrders) == 0 {
+	}
+	if len(signedOrders) == 0 && len(signedOrdersV4) == 0 {
 		return nil, nil
 	}
 	areNewOrders := false
-	validationResults := w.orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, validationBlock)
+	validationResultsV3 := w.orderValidator.BatchValidate(ctx, signedOrders, areNewOrders, validationBlock)
+	validationResultsV4 := w.orderValidator.BatchValidateV4(ctx, signedOrdersV4, areNewOrders, validationBlock)
+	validationResults := &ordervalidator.ValidationResults{
+		Accepted: append(validationResultsV3.Accepted, validationResultsV4.Accepted...),
+		Rejected: append(validationResultsV3.Rejected, validationResultsV4.Rejected...),
+	}
 
 	return w.convertValidationResultsIntoOrderEvents(
 		validationResults, orderHashToDBOrder, orderHashToEvents, orderHashToPossiblyUnexpiredOrder, validationBlock,
