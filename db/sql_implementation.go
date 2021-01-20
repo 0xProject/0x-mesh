@@ -163,6 +163,21 @@ func (db *DB) ReadWriteTransactionalContext(ctx context.Context, opts *sql.TxOpt
 }
 
 func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []common.Hash, added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error) {
+	alreadyStoredV3, addedV3, removedV3, err := db.AddOrdersV3(orders)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	alreadyStoredV4, addedV4, removedV4, err := db.AddOrdersV4(orders)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	alreadyStored = append(alreadyStoredV3, alreadyStoredV4...)
+	added = append(addedV3, addedV4...)
+	removed = append(removedV3, removedV4...)
+	return alreadyStored, added, removed, nil
+}
+
+func (db *DB) AddOrdersV3(orders []*types.OrderWithMetadata) (alreadyStored []common.Hash, added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
