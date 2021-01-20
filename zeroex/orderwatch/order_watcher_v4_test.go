@@ -202,7 +202,7 @@ func TestOrderWatcherV4DoesntStoreInvalidOrdersWithConfigurations(t *testing.T) 
 		assert.Len(t, validationResults.Accepted, 0, testCase.description)
 		assert.Len(t, validationResults.Rejected, 1, testCase.description)
 
-		orders, err := database.FindOrders(nil)
+		orders, err := database.FindOrdersV4(nil)
 		require.NoError(t, err, testCase.description)
 		require.Len(t, orders, 0)
 
@@ -338,7 +338,7 @@ func TestOrderWatcherV4StoresValidOrdersWithConfigurations(t *testing.T) {
 		latestStoredBlock, err := database.GetLatestMiniHeader()
 		require.NoError(t, err, testCase.description)
 
-		orders, err := database.FindOrders(nil)
+		orders, err := database.FindOrdersV4(nil)
 		require.NoError(t, err, testCase.description)
 		require.Len(t, orders, 1)
 		expectedOrderState := orderState{
@@ -412,7 +412,7 @@ func TestOrderWatcherV4UnfundedInsufficientERC20Balance(t *testing.T) {
 
 		latestStoredBlock, err := database.GetLatestMiniHeader()
 		require.NoError(t, err, testCase.description)
-		orders, err := database.FindOrders(nil)
+		orders, err := database.FindOrdersV4(nil)
 		require.NoError(t, err, testCase.description)
 		require.Len(t, orders, 1, testCase.description)
 		expectedOrderState := orderState{
@@ -490,7 +490,7 @@ func TestOrderWatcherV4UnfundedInsufficientERC20BalanceForMakerFee(t *testing.T)
 
 		latestStoredBlock, err := database.GetLatestMiniHeader()
 		require.NoError(t, err, testCase.description)
-		orders, err := database.FindOrders(nil)
+		orders, err := database.FindOrdersV4(nil)
 		require.NoError(t, err, testCase.description)
 		require.Len(t, orders, 1, testCase.description)
 		expectedOrderState := orderState{
@@ -562,7 +562,7 @@ func TestOrderWatcherV4UnfundedInsufficientERC20Allowance(t *testing.T) {
 
 		latestStoredBlock, err := database.GetLatestMiniHeader()
 		require.NoError(t, err, testCase.description)
-		orders, err := database.FindOrders(nil)
+		orders, err := database.FindOrdersV4(nil)
 		require.NoError(t, err, testCase.description)
 		require.Len(t, orders, 1, testCase.description)
 		expectedOrderState := orderState{
@@ -636,7 +636,7 @@ func TestOrderWatcherV4UnfundedThenFundedAgain(t *testing.T) {
 
 		latestStoredBlock, err := database.GetLatestMiniHeader()
 		require.NoError(t, err, testCase.description)
-		orders, err := database.FindOrders(nil)
+		orders, err := database.FindOrdersV4(nil)
 		require.NoError(t, err, testCase.description)
 		require.Len(t, orders, 1, testCase.description)
 		expectedOrderState := orderState{
@@ -669,7 +669,7 @@ func TestOrderWatcherV4UnfundedThenFundedAgain(t *testing.T) {
 
 		latestStoredBlock, err = database.GetLatestMiniHeader()
 		require.NoError(t, err, testCase.description)
-		newOrders, err := database.FindOrders(nil)
+		newOrders, err := database.FindOrdersV4(nil)
 		require.NoError(t, err, testCase.description)
 		require.Len(t, newOrders, 1, testCase.description)
 		expectedOrderState = orderState{
@@ -735,7 +735,7 @@ func TestOrderWatcherV4NoChange(t *testing.T) {
 
 		latestStoredBlock, err := database.GetLatestMiniHeader()
 		require.NoError(t, err)
-		orders, err := database.FindOrders(nil)
+		orders, err := database.FindOrdersV4(nil)
 		require.NoError(t, err)
 		require.Len(t, orders, 1)
 		expectedOrderState := orderState{
@@ -769,7 +769,7 @@ func TestOrderWatcherV4NoChange(t *testing.T) {
 
 		latestStoredBlock, err = database.GetLatestMiniHeader()
 		require.NoError(t, err)
-		newOrders, err := database.FindOrders(nil)
+		newOrders, err := database.FindOrdersV4(nil)
 		require.NoError(t, err)
 		require.Len(t, newOrders, 1)
 		expectedOrderState = orderState{
@@ -848,7 +848,7 @@ func TestOrderWatcherV4WETHWithdrawAndDeposit(t *testing.T) {
 
 		latestStoredBlock, err := database.GetLatestMiniHeader()
 		require.NoError(t, err, testCase.description)
-		orders, err := database.FindOrders(nil)
+		orders, err := database.FindOrdersV4(nil)
 		require.NoError(t, err, testCase.description)
 		require.Len(t, orders, 1, testCase.description)
 		assert.Equal(t, orderEvent.OrderHash, orders[0].Hash, testCase.description)
@@ -882,7 +882,7 @@ func TestOrderWatcherV4WETHWithdrawAndDeposit(t *testing.T) {
 
 		latestStoredBlock, err = database.GetLatestMiniHeader()
 		require.NoError(t, err, testCase.description)
-		newOrders, err := database.FindOrders(nil)
+		newOrders, err := database.FindOrdersV4(nil)
 		require.NoError(t, err, testCase.description)
 		require.Len(t, newOrders, 1, testCase.description)
 		expectedOrderState = orderState{
@@ -953,7 +953,7 @@ func TestOrderWatcherV4Canceled(t *testing.T) {
 
 		latestStoredBlock, err := database.GetLatestMiniHeader()
 		require.NoError(t, err, testCase.description)
-		orders, err := database.FindOrders(nil)
+		orders, err := database.FindOrdersV4(nil)
 		require.NoError(t, err, testCase.description)
 		require.Len(t, orders, 1, testCase.description)
 		expectedOrderState := orderState{
@@ -1027,7 +1027,7 @@ func TestOrderWatcherV4CancelUpTo(t *testing.T) {
 
 		latestStoredBlock, err := database.GetLatestMiniHeader()
 		require.NoError(t, err, testCase.description)
-		orders, err := database.FindOrders(nil)
+		orders, err := database.FindOrdersV4(nil)
 		require.NoError(t, err, testCase.description)
 		require.Len(t, orders, 1, testCase.description)
 		expectedOrderState := orderState{
@@ -1104,7 +1104,7 @@ func TestOrderWatcherV4ERC20Filled(t *testing.T) {
 
 		latestStoredBlock, err := database.GetLatestMiniHeader()
 		require.NoError(t, err, testCase.description)
-		orders, err := database.FindOrders(nil)
+		orders, err := database.FindOrdersV4(nil)
 		require.NoError(t, err, testCase.description)
 		require.Len(t, orders, 1, testCase.description)
 		expectedOrderState := orderState{
@@ -1179,7 +1179,7 @@ func TestOrderWatcherV4ERC20PartiallyFilled(t *testing.T) {
 
 		latestStoredBlock, err := database.GetLatestMiniHeader()
 		require.NoError(t, err, testCase.description)
-		orders, err := database.FindOrders(nil)
+		orders, err := database.FindOrdersV4(nil)
 		require.NoError(t, err, testCase.description)
 		require.Len(t, orders, 1, testCase.description)
 		expectedOrderState := orderState{
@@ -1265,7 +1265,7 @@ func TestOrderWatcherOrderV4ExpiredThenUnexpired(t *testing.T) {
 		orderEvent := orderEvents[0]
 		assert.Equal(t, zeroex.ESOrderExpired, orderEvent.EndState, testCase.description)
 
-		orders, err := database.FindOrders(nil)
+		orders, err := database.FindOrdersV4(nil)
 		require.NoError(t, err, testCase.description)
 		require.Len(t, orders, 1, testCase.description)
 		expectedOrderState := orderState{
@@ -1315,7 +1315,7 @@ func TestOrderWatcherOrderV4ExpiredThenUnexpired(t *testing.T) {
 		orderEvent = orderEvents[0]
 		assert.Equal(t, zeroex.ESOrderUnexpired, orderEvent.EndState, testCase.description)
 
-		newOrders, err := database.FindOrders(nil)
+		newOrders, err := database.FindOrdersV4(nil)
 		require.NoError(t, err, testCase.description)
 		require.Len(t, newOrders, 1, testCase.description)
 		expectedOrderState = orderState{
@@ -1372,7 +1372,7 @@ func TestOrderWatcherOrderV4ExpiredWhenAddedThenUnexpired(t *testing.T) {
 	assert.Len(t, validationResults.Rejected, 1)
 	assert.Equal(t, ordervalidator.ROExpired, validationResults.Rejected[0].Status)
 
-	orders, err := database.FindOrders(nil)
+	orders, err := database.FindOrdersV4(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
 	expectedValidationBlock, err := database.GetLatestMiniHeader()
@@ -1518,7 +1518,7 @@ func TestOrderWatcherV4DecreaseExpirationTime(t *testing.T) {
 	// Now we check that the correct number of orders remain and that all
 	// remaining orders have an expiration time less than the current max.
 	expectedRemainingOrders := orderWatcher.maxOrders
-	remainingOrders, err := database.FindOrders(nil)
+	remainingOrders, err := database.FindOrdersV4(nil)
 	require.NoError(t, err)
 	require.Len(t, remainingOrders, expectedRemainingOrders)
 	for _, order := range remainingOrders {
@@ -1595,7 +1595,7 @@ func TestOrderWatcherV4BatchEmitsAddedEvents(t *testing.T) {
 		assert.Equal(t, zeroex.ESOrderAdded, orderEvent.EndState)
 	}
 
-	orders, err := database.FindOrders(nil)
+	orders, err := database.FindOrdersV4(nil)
 	require.NoError(t, err)
 	require.Len(t, orders, numOrders)
 }
