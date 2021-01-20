@@ -50,7 +50,17 @@ type ComplexityRoot struct {
 		Order func(childComplexity int) int
 	}
 
+	AcceptedOrderResultV4 struct {
+		IsNew func(childComplexity int) int
+		Order func(childComplexity int) int
+	}
+
 	AddOrdersResults struct {
+		Accepted func(childComplexity int) int
+		Rejected func(childComplexity int) int
+	}
+
+	AddOrdersResultsV4 struct {
 		Accepted func(childComplexity int) int
 		Rejected func(childComplexity int) int
 	}
@@ -114,7 +124,10 @@ type ComplexityRoot struct {
 		Pool                func(childComplexity int) int
 		Salt                func(childComplexity int) int
 		Sender              func(childComplexity int) int
-		Signature           func(childComplexity int) int
+		SignatureR          func(childComplexity int) int
+		SignatureS          func(childComplexity int) int
+		SignatureType       func(childComplexity int) int
+		SignatureV          func(childComplexity int) int
 		Taker               func(childComplexity int) int
 		TakerAmount         func(childComplexity int) int
 		TakerToken          func(childComplexity int) int
@@ -134,7 +147,10 @@ type ComplexityRoot struct {
 		Pool                     func(childComplexity int) int
 		Salt                     func(childComplexity int) int
 		Sender                   func(childComplexity int) int
-		Signature                func(childComplexity int) int
+		SignatureR               func(childComplexity int) int
+		SignatureS               func(childComplexity int) int
+		SignatureType            func(childComplexity int) int
+		SignatureV               func(childComplexity int) int
 		Taker                    func(childComplexity int) int
 		TakerAmount              func(childComplexity int) int
 		TakerToken               func(childComplexity int) int
@@ -178,6 +194,13 @@ type ComplexityRoot struct {
 		Order   func(childComplexity int) int
 	}
 
+	RejectedOrderResultV4 struct {
+		Code    func(childComplexity int) int
+		Hash    func(childComplexity int) int
+		Message func(childComplexity int) int
+		Order   func(childComplexity int) int
+	}
+
 	Stats struct {
 		EthRPCRateLimitExpiredRequests    func(childComplexity int) int
 		EthRPCRequestsSentInCurrentUTCDay func(childComplexity int) int
@@ -202,7 +225,7 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, pinned *bool, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error)
-	AddOrdersV4(ctx context.Context, orders []*gqltypes.NewOrderV4, pinned *bool, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error)
+	AddOrdersV4(ctx context.Context, orders []*gqltypes.NewOrderV4, pinned *bool, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResultsV4, error)
 }
 type QueryResolver interface {
 	Order(ctx context.Context, hash string) (*gqltypes.OrderWithMetadata, error)
@@ -244,6 +267,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.AcceptedOrderResult.Order(childComplexity), true
 
+	case "AcceptedOrderResultV4.isNew":
+		if e.complexity.AcceptedOrderResultV4.IsNew == nil {
+			break
+		}
+
+		return e.complexity.AcceptedOrderResultV4.IsNew(childComplexity), true
+
+	case "AcceptedOrderResultV4.order":
+		if e.complexity.AcceptedOrderResultV4.Order == nil {
+			break
+		}
+
+		return e.complexity.AcceptedOrderResultV4.Order(childComplexity), true
+
 	case "AddOrdersResults.accepted":
 		if e.complexity.AddOrdersResults.Accepted == nil {
 			break
@@ -257,6 +294,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.AddOrdersResults.Rejected(childComplexity), true
+
+	case "AddOrdersResultsV4.accepted":
+		if e.complexity.AddOrdersResultsV4.Accepted == nil {
+			break
+		}
+
+		return e.complexity.AddOrdersResultsV4.Accepted(childComplexity), true
+
+	case "AddOrdersResultsV4.rejected":
+		if e.complexity.AddOrdersResultsV4.Rejected == nil {
+			break
+		}
+
+		return e.complexity.AddOrdersResultsV4.Rejected(childComplexity), true
 
 	case "ContractEvent.address":
 		if e.complexity.ContractEvent.Address == nil {
@@ -569,12 +620,33 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.OrderV4.Sender(childComplexity), true
 
-	case "OrderV4.signature":
-		if e.complexity.OrderV4.Signature == nil {
+	case "OrderV4.signatureR":
+		if e.complexity.OrderV4.SignatureR == nil {
 			break
 		}
 
-		return e.complexity.OrderV4.Signature(childComplexity), true
+		return e.complexity.OrderV4.SignatureR(childComplexity), true
+
+	case "OrderV4.signatureS":
+		if e.complexity.OrderV4.SignatureS == nil {
+			break
+		}
+
+		return e.complexity.OrderV4.SignatureS(childComplexity), true
+
+	case "OrderV4.signatureType":
+		if e.complexity.OrderV4.SignatureType == nil {
+			break
+		}
+
+		return e.complexity.OrderV4.SignatureType(childComplexity), true
+
+	case "OrderV4.signatureV":
+		if e.complexity.OrderV4.SignatureV == nil {
+			break
+		}
+
+		return e.complexity.OrderV4.SignatureV(childComplexity), true
 
 	case "OrderV4.taker":
 		if e.complexity.OrderV4.Taker == nil {
@@ -688,12 +760,33 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.OrderV4WithMetadata.Sender(childComplexity), true
 
-	case "OrderV4WithMetadata.signature":
-		if e.complexity.OrderV4WithMetadata.Signature == nil {
+	case "OrderV4WithMetadata.signatureR":
+		if e.complexity.OrderV4WithMetadata.SignatureR == nil {
 			break
 		}
 
-		return e.complexity.OrderV4WithMetadata.Signature(childComplexity), true
+		return e.complexity.OrderV4WithMetadata.SignatureR(childComplexity), true
+
+	case "OrderV4WithMetadata.signatureS":
+		if e.complexity.OrderV4WithMetadata.SignatureS == nil {
+			break
+		}
+
+		return e.complexity.OrderV4WithMetadata.SignatureS(childComplexity), true
+
+	case "OrderV4WithMetadata.signatureType":
+		if e.complexity.OrderV4WithMetadata.SignatureType == nil {
+			break
+		}
+
+		return e.complexity.OrderV4WithMetadata.SignatureType(childComplexity), true
+
+	case "OrderV4WithMetadata.signatureV":
+		if e.complexity.OrderV4WithMetadata.SignatureV == nil {
+			break
+		}
+
+		return e.complexity.OrderV4WithMetadata.SignatureV(childComplexity), true
 
 	case "OrderV4WithMetadata.taker":
 		if e.complexity.OrderV4WithMetadata.Taker == nil {
@@ -938,6 +1031,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RejectedOrderResult.Order(childComplexity), true
+
+	case "RejectedOrderResultV4.code":
+		if e.complexity.RejectedOrderResultV4.Code == nil {
+			break
+		}
+
+		return e.complexity.RejectedOrderResultV4.Code(childComplexity), true
+
+	case "RejectedOrderResultV4.hash":
+		if e.complexity.RejectedOrderResultV4.Hash == nil {
+			break
+		}
+
+		return e.complexity.RejectedOrderResultV4.Hash(childComplexity), true
+
+	case "RejectedOrderResultV4.message":
+		if e.complexity.RejectedOrderResultV4.Message == nil {
+			break
+		}
+
+		return e.complexity.RejectedOrderResultV4.Message(childComplexity), true
+
+	case "RejectedOrderResultV4.order":
+		if e.complexity.RejectedOrderResultV4.Order == nil {
+			break
+		}
+
+		return e.complexity.RejectedOrderResultV4.Order(childComplexity), true
 
 	case "Stats.ethRPCRateLimitExpiredRequests":
 		if e.complexity.Stats.EthRPCRateLimitExpiredRequests == nil {
@@ -1275,7 +1396,10 @@ type OrderV4 {
     pool: String!
     expiry: String!
     salt: String!
-    signature: String!
+    signatureType: String!
+    signatureV: String!
+    signatureR: String!
+    signatureS: String!
 }
 
 """
@@ -1296,7 +1420,10 @@ type OrderV4WithMetadata {
     pool: String!
     expiry: String!
     salt: String!
-    signature: String!
+    signatureType: String!
+    signatureV: String!
+    signatureR: String!
+    signatureS: String!
     """
     The hash, which can be used to uniquely identify an order. Encoded as a hexadecimal string.
     """
@@ -1499,6 +1626,23 @@ type AddOrdersResults {
     rejected: [RejectedOrderResult!]!
 }
 
+"""
+The results of the addOrdersV4 mutation. Includes which orders were accepted and which orders where rejected.
+"""
+type AddOrdersResultsV4 {
+    """
+    The set of orders that were accepted. Accepted orders will be watched and order events will be emitted if
+    their status changes.
+    """
+    accepted: [AcceptedOrderResultV4!]!
+    """
+    The set of orders that were rejected, including the reason they were rejected. Rejected orders will not be
+    watched.
+    """
+    rejected: [RejectedOrderResultV4!]!
+}
+
+
 type AcceptedOrderResult {
     """
     The order that was accepted, including metadata.
@@ -1531,6 +1675,40 @@ type RejectedOrderResult {
     """
     message: String!
 }
+
+type AcceptedOrderResultV4 {
+    """
+    The v4 order that was accepted, including metadata.
+    """
+    order: OrderV4WithMetadata!
+    """
+    Whether or not the order is new. Set to true if this is the first time this Mesh node has accepted the order
+    and false otherwise.
+    """
+    isNew: Boolean!
+}
+
+type RejectedOrderResultV4 {
+    """
+    The hash of the order. May be null if the hash could not be computed.
+    """
+    hash: String
+    """
+    The v4 order that was rejected.
+    """
+    order: OrderV4!
+    """
+    A machine-readable code indicating why the order was rejected. This code is designed to
+    be used by programs and applications and will never change without breaking backwards-compatibility.
+    """
+    code: RejectedOrderCode!
+    """
+    A human-readable message indicating why the order was rejected. This message may change
+    in future releases and is not covered by backwards-compatibility guarantees.
+    """
+    message: String!
+}
+
 
 """
 A set of all possible codes included in RejectedOrderResult.
@@ -1581,7 +1759,7 @@ type Mutation {
             keepFullyFilled: false,
             keepUnfunded: false,
         },
-    ): AddOrdersResults!
+    ): AddOrdersResultsV4!
 }
 
 input AddOrdersOpts {
@@ -1997,6 +2175,74 @@ func (ec *executionContext) _AcceptedOrderResult_isNew(ctx context.Context, fiel
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _AcceptedOrderResultV4_order(ctx context.Context, field graphql.CollectedField, obj *gqltypes.AcceptedOrderResultV4) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "AcceptedOrderResultV4",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Order, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqltypes.OrderV4WithMetadata)
+	fc.Result = res
+	return ec.marshalNOrderV4WithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderV4WithMetadata(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _AcceptedOrderResultV4_isNew(ctx context.Context, field graphql.CollectedField, obj *gqltypes.AcceptedOrderResultV4) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "AcceptedOrderResultV4",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsNew, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _AddOrdersResults_accepted(ctx context.Context, field graphql.CollectedField, obj *gqltypes.AddOrdersResults) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -2063,6 +2309,74 @@ func (ec *executionContext) _AddOrdersResults_rejected(ctx context.Context, fiel
 	res := resTmp.([]*gqltypes.RejectedOrderResult)
 	fc.Result = res
 	return ec.marshalNRejectedOrderResult2ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐRejectedOrderResultᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _AddOrdersResultsV4_accepted(ctx context.Context, field graphql.CollectedField, obj *gqltypes.AddOrdersResultsV4) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "AddOrdersResultsV4",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Accepted, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*gqltypes.AcceptedOrderResultV4)
+	fc.Result = res
+	return ec.marshalNAcceptedOrderResultV42ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAcceptedOrderResultV4ᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _AddOrdersResultsV4_rejected(ctx context.Context, field graphql.CollectedField, obj *gqltypes.AddOrdersResultsV4) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "AddOrdersResultsV4",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Rejected, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*gqltypes.RejectedOrderResultV4)
+	fc.Result = res
+	return ec.marshalNRejectedOrderResultV42ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐRejectedOrderResultV4ᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ContractEvent_blockHash(ctx context.Context, field graphql.CollectedField, obj *gqltypes.ContractEvent) (ret graphql.Marshaler) {
@@ -2482,9 +2796,9 @@ func (ec *executionContext) _Mutation_addOrdersV4(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*gqltypes.AddOrdersResults)
+	res := resTmp.(*gqltypes.AddOrdersResultsV4)
 	fc.Result = res
-	return ec.marshalNAddOrdersResults2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddOrdersResults(ctx, field.Selections, res)
+	return ec.marshalNAddOrdersResultsV42ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddOrdersResultsV4(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Order_chainId(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Order) (ret graphql.Marshaler) {
@@ -3677,7 +3991,7 @@ func (ec *executionContext) _OrderV4_salt(ctx context.Context, field graphql.Col
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderV4_signature(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV4) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV4_signatureType(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV4) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3694,7 +4008,109 @@ func (ec *executionContext) _OrderV4_signature(ctx context.Context, field graphq
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Signature, nil
+		return obj.SignatureType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderV4_signatureV(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV4) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderV4",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SignatureV, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderV4_signatureR(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV4) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderV4",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SignatureR, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderV4_signatureS(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV4) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderV4",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SignatureS, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4187,7 +4603,7 @@ func (ec *executionContext) _OrderV4WithMetadata_salt(ctx context.Context, field
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderV4WithMetadata_signature(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV4WithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV4WithMetadata_signatureType(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV4WithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -4204,7 +4620,109 @@ func (ec *executionContext) _OrderV4WithMetadata_signature(ctx context.Context, 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Signature, nil
+		return obj.SignatureType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderV4WithMetadata_signatureV(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV4WithMetadata) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderV4WithMetadata",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SignatureV, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderV4WithMetadata_signatureR(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV4WithMetadata) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderV4WithMetadata",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SignatureR, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _OrderV4WithMetadata_signatureS(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV4WithMetadata) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "OrderV4WithMetadata",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SignatureS, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5304,6 +5822,139 @@ func (ec *executionContext) _RejectedOrderResult_message(ctx context.Context, fi
 	}()
 	fc := &graphql.FieldContext{
 		Object:   "RejectedOrderResult",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Message, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RejectedOrderResultV4_hash(ctx context.Context, field graphql.CollectedField, obj *gqltypes.RejectedOrderResultV4) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "RejectedOrderResultV4",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Hash, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RejectedOrderResultV4_order(ctx context.Context, field graphql.CollectedField, obj *gqltypes.RejectedOrderResultV4) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "RejectedOrderResultV4",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Order, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqltypes.OrderV4)
+	fc.Result = res
+	return ec.marshalNOrderV42ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderV4(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RejectedOrderResultV4_code(ctx context.Context, field graphql.CollectedField, obj *gqltypes.RejectedOrderResultV4) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "RejectedOrderResultV4",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Code, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqltypes.RejectedOrderCode)
+	fc.Result = res
+	return ec.marshalNRejectedOrderCode2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐRejectedOrderCode(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _RejectedOrderResultV4_message(ctx context.Context, field graphql.CollectedField, obj *gqltypes.RejectedOrderResultV4) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "RejectedOrderResultV4",
 		Field:    field,
 		Args:     nil,
 		IsMethod: false,
@@ -7319,6 +7970,38 @@ func (ec *executionContext) _AcceptedOrderResult(ctx context.Context, sel ast.Se
 	return out
 }
 
+var acceptedOrderResultV4Implementors = []string{"AcceptedOrderResultV4"}
+
+func (ec *executionContext) _AcceptedOrderResultV4(ctx context.Context, sel ast.SelectionSet, obj *gqltypes.AcceptedOrderResultV4) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, acceptedOrderResultV4Implementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AcceptedOrderResultV4")
+		case "order":
+			out.Values[i] = ec._AcceptedOrderResultV4_order(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "isNew":
+			out.Values[i] = ec._AcceptedOrderResultV4_isNew(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var addOrdersResultsImplementors = []string{"AddOrdersResults"}
 
 func (ec *executionContext) _AddOrdersResults(ctx context.Context, sel ast.SelectionSet, obj *gqltypes.AddOrdersResults) graphql.Marshaler {
@@ -7337,6 +8020,38 @@ func (ec *executionContext) _AddOrdersResults(ctx context.Context, sel ast.Selec
 			}
 		case "rejected":
 			out.Values[i] = ec._AddOrdersResults_rejected(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var addOrdersResultsV4Implementors = []string{"AddOrdersResultsV4"}
+
+func (ec *executionContext) _AddOrdersResultsV4(ctx context.Context, sel ast.SelectionSet, obj *gqltypes.AddOrdersResultsV4) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, addOrdersResultsV4Implementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AddOrdersResultsV4")
+		case "accepted":
+			out.Values[i] = ec._AddOrdersResultsV4_accepted(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "rejected":
+			out.Values[i] = ec._AddOrdersResultsV4_rejected(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -7711,8 +8426,23 @@ func (ec *executionContext) _OrderV4(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "signature":
-			out.Values[i] = ec._OrderV4_signature(ctx, field, obj)
+		case "signatureType":
+			out.Values[i] = ec._OrderV4_signatureType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "signatureV":
+			out.Values[i] = ec._OrderV4_signatureV(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "signatureR":
+			out.Values[i] = ec._OrderV4_signatureR(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "signatureS":
+			out.Values[i] = ec._OrderV4_signatureS(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -7808,8 +8538,23 @@ func (ec *executionContext) _OrderV4WithMetadata(ctx context.Context, sel ast.Se
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "signature":
-			out.Values[i] = ec._OrderV4WithMetadata_signature(ctx, field, obj)
+		case "signatureType":
+			out.Values[i] = ec._OrderV4WithMetadata_signatureType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "signatureV":
+			out.Values[i] = ec._OrderV4WithMetadata_signatureV(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "signatureR":
+			out.Values[i] = ec._OrderV4WithMetadata_signatureR(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "signatureS":
+			out.Values[i] = ec._OrderV4WithMetadata_signatureS(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -8070,6 +8815,45 @@ func (ec *executionContext) _RejectedOrderResult(ctx context.Context, sel ast.Se
 			}
 		case "message":
 			out.Values[i] = ec._RejectedOrderResult_message(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var rejectedOrderResultV4Implementors = []string{"RejectedOrderResultV4"}
+
+func (ec *executionContext) _RejectedOrderResultV4(ctx context.Context, sel ast.SelectionSet, obj *gqltypes.RejectedOrderResultV4) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, rejectedOrderResultV4Implementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RejectedOrderResultV4")
+		case "hash":
+			out.Values[i] = ec._RejectedOrderResultV4_hash(ctx, field, obj)
+		case "order":
+			out.Values[i] = ec._RejectedOrderResultV4_order(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "code":
+			out.Values[i] = ec._RejectedOrderResultV4_code(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "message":
+			out.Values[i] = ec._RejectedOrderResultV4_message(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -8489,6 +9273,57 @@ func (ec *executionContext) marshalNAcceptedOrderResult2ᚖgithubᚗcomᚋ0xProj
 	return ec._AcceptedOrderResult(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNAcceptedOrderResultV42githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAcceptedOrderResultV4(ctx context.Context, sel ast.SelectionSet, v gqltypes.AcceptedOrderResultV4) graphql.Marshaler {
+	return ec._AcceptedOrderResultV4(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAcceptedOrderResultV42ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAcceptedOrderResultV4ᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqltypes.AcceptedOrderResultV4) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAcceptedOrderResultV42ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAcceptedOrderResultV4(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNAcceptedOrderResultV42ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAcceptedOrderResultV4(ctx context.Context, sel ast.SelectionSet, v *gqltypes.AcceptedOrderResultV4) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._AcceptedOrderResultV4(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNAddOrdersResults2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddOrdersResults(ctx context.Context, sel ast.SelectionSet, v gqltypes.AddOrdersResults) graphql.Marshaler {
 	return ec._AddOrdersResults(ctx, sel, &v)
 }
@@ -8501,6 +9336,20 @@ func (ec *executionContext) marshalNAddOrdersResults2ᚖgithubᚗcomᚋ0xProject
 		return graphql.Null
 	}
 	return ec._AddOrdersResults(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNAddOrdersResultsV42githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddOrdersResultsV4(ctx context.Context, sel ast.SelectionSet, v gqltypes.AddOrdersResultsV4) graphql.Marshaler {
+	return ec._AddOrdersResultsV4(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAddOrdersResultsV42ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐAddOrdersResultsV4(ctx context.Context, sel ast.SelectionSet, v *gqltypes.AddOrdersResultsV4) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._AddOrdersResultsV4(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNAny2interface(ctx context.Context, v interface{}) (interface{}, error) {
@@ -8818,6 +9667,20 @@ func (ec *executionContext) unmarshalNOrderSortV42ᚖgithubᚗcomᚋ0xProjectᚋ
 	return &res, err
 }
 
+func (ec *executionContext) marshalNOrderV42githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderV4(ctx context.Context, sel ast.SelectionSet, v gqltypes.OrderV4) graphql.Marshaler {
+	return ec._OrderV4(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNOrderV42ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderV4(ctx context.Context, sel ast.SelectionSet, v *gqltypes.OrderV4) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._OrderV4(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNOrderV4WithMetadata2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderV4WithMetadata(ctx context.Context, sel ast.SelectionSet, v gqltypes.OrderV4WithMetadata) graphql.Marshaler {
 	return ec._OrderV4WithMetadata(ctx, sel, &v)
 }
@@ -8978,6 +9841,57 @@ func (ec *executionContext) marshalNRejectedOrderResult2ᚖgithubᚗcomᚋ0xProj
 		return graphql.Null
 	}
 	return ec._RejectedOrderResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRejectedOrderResultV42githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐRejectedOrderResultV4(ctx context.Context, sel ast.SelectionSet, v gqltypes.RejectedOrderResultV4) graphql.Marshaler {
+	return ec._RejectedOrderResultV4(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNRejectedOrderResultV42ᚕᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐRejectedOrderResultV4ᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqltypes.RejectedOrderResultV4) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRejectedOrderResultV42ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐRejectedOrderResultV4(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalNRejectedOrderResultV42ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐRejectedOrderResultV4(ctx context.Context, sel ast.SelectionSet, v *gqltypes.RejectedOrderResultV4) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._RejectedOrderResultV4(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNSortDirection2githubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐSortDirection(ctx context.Context, v interface{}) (gqltypes.SortDirection, error) {

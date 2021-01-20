@@ -148,7 +148,10 @@ type OrderV4 {
     pool: String!
     expiry: String!
     salt: String!
-    signature: String!
+    signatureType: String!
+    signatureV: String!
+    signatureR: String!
+    signatureS: String!
 }
 
 """
@@ -169,7 +172,10 @@ type OrderV4WithMetadata {
     pool: String!
     expiry: String!
     salt: String!
-    signature: String!
+    signatureType: String!
+    signatureV: String!
+    signatureR: String!
+    signatureS: String!
     """
     The hash, which can be used to uniquely identify an order. Encoded as a hexadecimal string.
     """
@@ -372,6 +378,23 @@ type AddOrdersResults {
     rejected: [RejectedOrderResult!]!
 }
 
+"""
+The results of the addOrdersV4 mutation. Includes which orders were accepted and which orders where rejected.
+"""
+type AddOrdersResultsV4 {
+    """
+    The set of orders that were accepted. Accepted orders will be watched and order events will be emitted if
+    their status changes.
+    """
+    accepted: [AcceptedOrderResultV4!]!
+    """
+    The set of orders that were rejected, including the reason they were rejected. Rejected orders will not be
+    watched.
+    """
+    rejected: [RejectedOrderResultV4!]!
+}
+
+
 type AcceptedOrderResult {
     """
     The order that was accepted, including metadata.
@@ -404,6 +427,40 @@ type RejectedOrderResult {
     """
     message: String!
 }
+
+type AcceptedOrderResultV4 {
+    """
+    The v4 order that was accepted, including metadata.
+    """
+    order: OrderV4WithMetadata!
+    """
+    Whether or not the order is new. Set to true if this is the first time this Mesh node has accepted the order
+    and false otherwise.
+    """
+    isNew: Boolean!
+}
+
+type RejectedOrderResultV4 {
+    """
+    The hash of the order. May be null if the hash could not be computed.
+    """
+    hash: String
+    """
+    The v4 order that was rejected.
+    """
+    order: OrderV4!
+    """
+    A machine-readable code indicating why the order was rejected. This code is designed to
+    be used by programs and applications and will never change without breaking backwards-compatibility.
+    """
+    code: RejectedOrderCode!
+    """
+    A human-readable message indicating why the order was rejected. This message may change
+    in future releases and is not covered by backwards-compatibility guarantees.
+    """
+    message: String!
+}
+
 
 """
 A set of all possible codes included in RejectedOrderResult.
@@ -454,7 +511,7 @@ type Mutation {
             keepFullyFilled: false,
             keepUnfunded: false,
         },
-    ): AddOrdersResults!
+    ): AddOrdersResultsV4!
 }
 
 input AddOrdersOpts {

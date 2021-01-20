@@ -85,11 +85,7 @@ func NewOrderToSignedOrder(newOrder *NewOrder) *zeroex.SignedOrder {
 }
 
 func NewOrderToSignedOrderV4(newOrder *NewOrderV4) *zeroex.SignedOrderV4 {
-	signatureType, err := strconv.ParseUint(newOrder.SignatureType, 10, 8)
-	if err != nil {
-		panic(err)
-	}
-	signatureV, err := strconv.ParseUint(newOrder.SignatureV, 10, 8)
+	signatureType, err := zeroex.SignatureTypeV4FromString(newOrder.SignatureType)
 	if err != nil {
 		panic(err)
 	}
@@ -111,8 +107,8 @@ func NewOrderToSignedOrderV4(newOrder *NewOrderV4) *zeroex.SignedOrderV4 {
 			Pool:                zeroex.BigToBytes32(math.MustParseBig256(newOrder.Pool)),
 		},
 		Signature: zeroex.SignatureFieldV4{
-			SignatureType: zeroex.SignatureTypeV4(signatureType),
-			V:             uint8(signatureV),
+			SignatureType: signatureType,
+			V:             parseUint8FromStringOrPanic(newOrder.SignatureV),
 			R:             zeroex.BigToBytes32(math.MustParseBig256(newOrder.SignatureR)),
 			S:             zeroex.BigToBytes32(math.MustParseBig256(newOrder.SignatureS)),
 		},
@@ -157,10 +153,41 @@ func NewOrderFromSignedOrder(signedOrder *zeroex.SignedOrder) *NewOrder {
 	}
 }
 
+func NewOrderFromSignedOrderV4(signedOrder *zeroex.SignedOrderV4) *NewOrderV4 {
+	return &NewOrderV4{
+		ChainID:             signedOrder.ChainID.String(),
+		ExchangeAddress:     strings.ToLower(signedOrder.ExchangeAddress.Hex()),
+		MakerToken:          strings.ToLower(signedOrder.MakerToken.Hex()),
+		TakerToken:          strings.ToLower(signedOrder.TakerToken.Hex()),
+		MakerAmount:         signedOrder.MakerAmount.String(),
+		TakerAmount:         signedOrder.TakerAmount.String(),
+		TakerTokenFeeAmount: signedOrder.TakerTokenFeeAmount.String(),
+		Maker:               strings.ToLower(signedOrder.Maker.Hex()),
+		Taker:               strings.ToLower(signedOrder.Taker.Hex()),
+		Sender:              strings.ToLower(signedOrder.Sender.Hex()),
+		FeeRecipient:        strings.ToLower(signedOrder.FeeRecipient.Hex()),
+		Pool:                signedOrder.Pool.String(),
+		Expiry:              signedOrder.Expiry.String(),
+		Salt:                signedOrder.Salt.String(),
+		SignatureType:       signedOrder.Signature.SignatureType.String(),
+		SignatureV:          strconv.FormatUint(uint64(signedOrder.Signature.V), 10),
+		SignatureR:          signedOrder.Signature.R.String(),
+		SignatureS:          signedOrder.Signature.S.String(),
+	}
+}
+
 func NewOrdersFromSignedOrders(signedOrders []*zeroex.SignedOrder) []*NewOrder {
 	result := make([]*NewOrder, len(signedOrders))
 	for i, order := range signedOrders {
 		result[i] = NewOrderFromSignedOrder(order)
+	}
+	return result
+}
+
+func NewOrdersFromSignedOrdersV4(signedOrders []*zeroex.SignedOrderV4) []*NewOrderV4 {
+	result := make([]*NewOrderV4, len(signedOrders))
+	for i, order := range signedOrders {
+		result[i] = NewOrderFromSignedOrderV4(order)
 	}
 	return result
 }
@@ -205,7 +232,10 @@ func OrderWithMetadataFromCommonTypeV4(order *types.OrderWithMetadata) *OrderV4W
 		Pool:                     order.OrderV4.Pool.String(),
 		Expiry:                   order.OrderV4.Expiry.String(),
 		Salt:                     order.OrderV4.Salt.String(),
-		Signature:                types.BytesToHex(order.Signature),
+		SignatureType:            order.SignatureV4.SignatureType.String(),
+		SignatureV:               strconv.FormatUint(uint64(order.SignatureV4.V), 10),
+		SignatureR:               order.SignatureV4.R.String(),
+		SignatureS:               order.SignatureV4.S.String(),
 		FillableTakerAssetAmount: order.FillableTakerAssetAmount.String(),
 	}
 }

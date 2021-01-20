@@ -16,6 +16,14 @@ type AcceptedOrderResult struct {
 	IsNew bool `json:"isNew"`
 }
 
+type AcceptedOrderResultV4 struct {
+	// The v4 order that was accepted, including metadata.
+	Order *OrderV4WithMetadata `json:"order"`
+	// Whether or not the order is new. Set to true if this is the first time this Mesh node has accepted the order
+	// and false otherwise.
+	IsNew bool `json:"isNew"`
+}
+
 type AddOrdersOpts struct {
 	// Indicates that the orders being added should be kept by the database after
 	// cancellation.
@@ -39,6 +47,16 @@ type AddOrdersResults struct {
 	// The set of orders that were rejected, including the reason they were rejected. Rejected orders will not be
 	// watched.
 	Rejected []*RejectedOrderResult `json:"rejected"`
+}
+
+// The results of the addOrdersV4 mutation. Includes which orders were accepted and which orders where rejected.
+type AddOrdersResultsV4 struct {
+	// The set of orders that were accepted. Accepted orders will be watched and order events will be emitted if
+	// their status changes.
+	Accepted []*AcceptedOrderResultV4 `json:"accepted"`
+	// The set of orders that were rejected, including the reason they were rejected. Rejected orders will not be
+	// watched.
+	Rejected []*RejectedOrderResultV4 `json:"rejected"`
 }
 
 // An on-chain contract event.
@@ -197,7 +215,10 @@ type OrderV4 struct {
 	Pool                string `json:"pool"`
 	Expiry              string `json:"expiry"`
 	Salt                string `json:"salt"`
-	Signature           string `json:"signature"`
+	SignatureType       string `json:"signatureType"`
+	SignatureV          string `json:"signatureV"`
+	SignatureR          string `json:"signatureR"`
+	SignatureS          string `json:"signatureS"`
 }
 
 // A signed 0x v4 order along with some additional metadata about the order which is not part of the 0x protocol specification.
@@ -216,7 +237,10 @@ type OrderV4WithMetadata struct {
 	Pool                string `json:"pool"`
 	Expiry              string `json:"expiry"`
 	Salt                string `json:"salt"`
-	Signature           string `json:"signature"`
+	SignatureType       string `json:"signatureType"`
+	SignatureV          string `json:"signatureV"`
+	SignatureR          string `json:"signatureR"`
+	SignatureS          string `json:"signatureS"`
 	// The hash, which can be used to uniquely identify an order. Encoded as a hexadecimal string.
 	Hash string `json:"hash"`
 	// The remaining amount of the maker asset which has not yet been filled. Encoded as a numerical string.
@@ -253,6 +277,19 @@ type RejectedOrderResult struct {
 	Hash *string `json:"hash"`
 	// The order that was rejected.
 	Order *Order `json:"order"`
+	// A machine-readable code indicating why the order was rejected. This code is designed to
+	// be used by programs and applications and will never change without breaking backwards-compatibility.
+	Code RejectedOrderCode `json:"code"`
+	// A human-readable message indicating why the order was rejected. This message may change
+	// in future releases and is not covered by backwards-compatibility guarantees.
+	Message string `json:"message"`
+}
+
+type RejectedOrderResultV4 struct {
+	// The hash of the order. May be null if the hash could not be computed.
+	Hash *string `json:"hash"`
+	// The v4 order that was rejected.
+	Order *OrderV4 `json:"order"`
 	// A machine-readable code indicating why the order was rejected. This code is designed to
 	// be used by programs and applications and will never change without breaking backwards-compatibility.
 	Code RejectedOrderCode `json:"code"`

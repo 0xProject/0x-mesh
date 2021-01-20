@@ -59,6 +59,19 @@ type SignatureFieldV4 struct {
 // SignatureTypeV4 represents the type of 0x signature encountered
 type SignatureTypeV4 uint8
 
+func (s SignatureTypeV4) String() string {
+	return strconv.FormatUint(uint64(s), 10)
+}
+
+func SignatureTypeV4FromString(s string) (SignatureTypeV4, error) {
+	sigType, err := strconv.ParseUint(s, 10, 8)
+	if err != nil {
+		return 0, err
+	}
+
+	return SignatureTypeV4(sigType), nil
+}
+
 // SignedOrderV4 represents a signed 0x order
 // See <https://0xprotocol.readthedocs.io/en/latest/basics/orders.html#how-to-sign>
 type SignedOrderV4 struct {

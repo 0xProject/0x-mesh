@@ -28,7 +28,6 @@ const (
 		addOrders(orders: $orders, pinned: $pinned, opts: $opts) {
 			accepted {
 				order {
-					hash
 					chainId
 					exchangeAddress
 					makerAddress
@@ -51,7 +50,6 @@ const (
 				isNew
 			}
 			rejected {
-				hash
 				code
 				message
 				order {
@@ -72,6 +70,67 @@ const (
 					expirationTimeSeconds
 					salt
 					signature
+				}
+			}
+		}
+	}`
+
+	addOrdersMutationV4 = `mutation AddOrdersV4(
+	$orders: [NewOrderV4!]!,
+	$pinned: Boolean = true,
+	$opts: AddOrdersOpts = {
+		keepCancelled: false,
+		keepExpired: false,
+		keepFullyFilled: false,
+		keepUnfunded: false,
+	},
+) {
+		addOrdersV4(orders: $orders, pinned: $pinned, opts: $opts) {
+			accepted {
+				order {
+					chainId
+					exchangeAddress
+					makerToken
+					takerToken
+					makerAmount
+					takerAmount
+					takerTokenFeeAmount
+					maker
+					taker
+					sender
+					feeRecipient
+					pool
+					expiry
+					salt
+					signatureType
+					signatureV
+					signatureR
+					signatureS
+				}
+				isNew
+			}
+			rejected {
+				code
+				message
+				order {
+					chainId
+					exchangeAddress
+					makerToken
+					takerToken
+					makerAmount
+					takerAmount
+					takerTokenFeeAmount
+					maker
+					taker
+					sender
+					feeRecipient
+					pool
+					expiry
+					salt
+					signatureType
+					signatureV
+					signatureR
+					signatureS
 				}
 			}
 		}
