@@ -449,6 +449,18 @@ func (db *DB) DeleteOrders(query *OrderQuery) (deleted []*types.OrderWithMetadat
 }
 
 func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) (err error) {
+	err = db.UpdateOrderV3(hash, updateFunc)
+	if err != nil && err != ErrNotFound {
+		return err
+	}
+	err = db.UpdateOrderV4(hash, updateFunc)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *DB) UpdateOrderV3(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) (err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
