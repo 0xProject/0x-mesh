@@ -75,7 +75,8 @@ const (
 		}
 	}`
 
-	addOrdersMutationV4 = `mutation AddOrdersV4(
+	addOrdersMutationV4 = `
+mutation AddOrdersV4(
 	$orders: [NewOrderV4!]!,
 	$pinned: Boolean = true,
 	$opts: AddOrdersOpts = {
@@ -112,6 +113,7 @@ const (
 			rejected {
 				code
 				message
+                                hash
 				order {
 					chainId
 					exchangeAddress

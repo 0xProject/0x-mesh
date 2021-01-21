@@ -5,12 +5,21 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/graphql/gqltypes"
+	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 )
 
 type AcceptedOrderResult struct {
 	// The order that was accepted, including metadata.
 	Order *OrderWithMetadata `json:"order"`
+	// Whether or not the order is new. Set to true if this is the first time this Mesh node has accepted the order
+	// and false otherwise.
+	IsNew bool `json:"isNew"`
+}
+
+type AcceptedOrderResultV4 struct {
+	// The order that was accepted, including metadata.
+	Order *OrderWithMetadataV4 `json:"order"`
 	// Whether or not the order is new. Set to true if this is the first time this Mesh node has accepted the order
 	// and false otherwise.
 	IsNew bool `json:"isNew"`
@@ -24,6 +33,16 @@ type AddOrdersResults struct {
 	// The set of orders that were rejected, including the reason they were rejected. Rejected orders will not be
 	// watched.
 	Rejected []*RejectedOrderResult `json:"rejected"`
+}
+
+// The results of the addOrders mutation. Includes which orders were accepted and which orders where rejected.
+type AddOrdersResultsV4 struct {
+	// The set of orders that were accepted. Accepted orders will be watched and order events will be emitted if
+	// their status changes.
+	Accepted []*AcceptedOrderResultV4 `json:"accepted"`
+	// The set of orders that were rejected, including the reason they were rejected. Rejected orders will not be
+	// watched.
+	Rejected []*RejectedOrderResultV4 `json:"rejected"`
 }
 
 // An on-chain contract event.
@@ -124,11 +143,49 @@ type OrderWithMetadata struct {
 	FillableTakerAssetAmount *big.Int `json:"fillableTakerAssetAmount"`
 }
 
+// A signed v4 0x order along with some additional metadata about the order which is not part of the 0x protocol specification.
+type OrderWithMetadataV4 struct {
+	ChainID         *big.Int       `json:"chainId"`
+	ExchangeAddress common.Address `json:"exchangeAddress"`
+
+	// Limit order values
+	MakerToken          common.Address          `json:"makerToken"`
+	TakerToken          common.Address          `json:"takerToken"`
+	MakerAmount         *big.Int                `json:"makerAmount"`         // uint128
+	TakerAmount         *big.Int                `json:"takerAmount"`         // uint128
+	TakerTokenFeeAmount *big.Int                `json:"takerTokenFeeAmount"` // uint128
+	Maker               common.Address          `json:"makerAddress"`
+	Taker               common.Address          `json:"takerAddress"`
+	Sender              common.Address          `json:"sender"`
+	FeeRecipient        common.Address          `json:"feeRecipient"`
+	Pool                zeroex.Bytes32          `json:"pool"`   // bytes32
+	Expiry              *big.Int                `json:"expiry"` // uint64
+	Salt                *big.Int                `json:"salt"`   // uint256
+	Signature           zeroex.SignatureFieldV4 `json:"signature"`
+	// The hash, which can be used to uniquely identify an order.
+	Hash common.Hash `json:"hash"`
+	// The remaining amount of the maker asset which has not yet been filled.
+	FillableTakerAssetAmount *big.Int `json:"fillableTakerAssetAmount"`
+}
+
 type RejectedOrderResult struct {
 	// The hash of the order. May be null if the hash could not be computed.
 	Hash *common.Hash `json:"hash"`
 	// The order that was rejected.
 	Order *Order `json:"order"`
+	// A machine-readable code indicating why the order was rejected. This code is designed to
+	// be used by programs and applications and will never change without breaking backwards-compatibility.
+	Code RejectedOrderCode `json:"code"`
+	// A human-readable message indicating why the order was rejected. This message may change
+	// in future releases and is not covered by backwards-compatibility guarantees.
+	Message string `json:"message"`
+}
+
+type RejectedOrderResultV4 struct {
+	// The hash of the order. May be null if the hash could not be computed.
+	Hash *common.Hash `json:"hash"`
+	// The order that was rejected.
+	Order *OrderWithMetadataV4 `json:"order"`
 	// A machine-readable code indicating why the order was rejected. This code is designed to
 	// be used by programs and applications and will never change without breaking backwards-compatibility.
 	Code RejectedOrderCode `json:"code"`

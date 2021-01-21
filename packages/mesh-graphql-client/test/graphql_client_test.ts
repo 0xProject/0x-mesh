@@ -1,7 +1,16 @@
 import { getContractAddressesForChainOrThrow } from '@0x/contract-addresses';
 import { DummyERC20TokenContract } from '@0x/contracts-erc20';
 import { ExchangeContract } from '@0x/contracts-exchange';
-import { blockchainTests, constants, expect, OrderFactory, orderHashUtils } from '@0x/contracts-test-utils';
+import {
+    blockchainTests,
+    constants,
+    expect,
+    OrderFactory,
+    orderHashUtils,
+    randomAddress,
+    getRandomInteger,
+} from '@0x/contracts-test-utils';
+import { LimitOrder, LimitOrderFields } from '@0x/protocol-utils';
 import { BlockchainLifecycle, Web3Config, web3Factory } from '@0x/dev-utils';
 import { assetDataUtils } from '@0x/order-utils';
 import { Web3ProviderEngine } from '@0x/subproviders';
@@ -20,7 +29,26 @@ import {
     SortDirection,
 } from '../src/index';
 
+function getRandomLimitOrder(fields: Partial<LimitOrderFields> = {}): LimitOrder {
+    return new LimitOrder({
+        makerToken: randomAddress(),
+        takerToken: randomAddress(),
+        makerAmount: getRandomInteger('1e18', '100e18'),
+        takerAmount: getRandomInteger('1e6', '100e6'),
+        takerTokenFeeAmount: getRandomInteger('0.01e18', '1e18'),
+        maker: randomAddress(),
+        taker: randomAddress(),
+        sender: randomAddress(),
+        feeRecipient: randomAddress(),
+        pool: hexUtils.random(),
+        expiry: new BigNumber(Math.floor(Date.now() / 1000 + 60)),
+        salt: new BigNumber(hexUtils.random()),
+        ...fields,
+    });
+}
+
 import { MeshDeployment, startServerAndClientAsync } from './utils/graphql_server';
+import { SignedOrderV4 } from '../src/types';
 
 blockchainTests.resets('GraphQLClient', (env) => {
     describe('integration tests', () => {
@@ -93,6 +121,74 @@ blockchainTests.resets('GraphQLClient', (env) => {
             });
         });
 
+        describe('#addOrdersV4Async', async () => {});
+        describe('#findOrdersV4Async', async () => {
+            it('returns all orders when no options are provided', async () => {
+                const ordersLength = 10;
+                const orders = [];
+
+                for (let i = 0; i < ordersLength; i++) {
+                    const order = getRandomLimitOrder().clone({ maker: makerAddress });
+                    const signature = await order.getSignatureWithProviderAsync(provider);
+                    const signedOrder: SignedOrderV4 = {
+                        ...order,
+                        ...{
+                            exchangeAddress: '',
+                            signatureType: signature.signatureType,
+                            signatureV: signature.v,
+                            signatureR: signature.r,
+                            signatureS: signature.s,
+                        },
+                    };
+                    orders[i] = signedOrder;
+                }
+                console.log('adding orders');
+                const validationResults = await deployment.client.addOrdersV4Async(orders);
+                expect(validationResults.accepted.length).to.be.eq(ordersLength);
+
+                // Verify that all of the orders that were added to the mesh node
+                // were returned in the response.
+                console.log('checking orders');
+                const gotOrders = await deployment.client.findOrdersV4Async();
+                console.log(gotOrders);
+                // const expectedOrders = orders.map((order) => ({
+                //     ...order,
+                //     hash: orderHashUtils.getOrderHashHex(order),
+                //     fillableTakerAssetAmount: order.takerAssetAmount,
+                // }));
+                // expectContainsOrders(gotOrders, expectedOrders);
+            });
+            it('returns orders that match a given query', async () => {
+                const ordersLength = 10;
+                const orders = [];
+                // Create some orders with makerAssetAmount = 1, 2, 3, etc.
+                for (let i = 0; i < ordersLength; i++) {
+                    orders[i] = await orderFactory.newSignedOrderAsync({
+                        makerAssetAmount: new BigNumber(i + 1),
+                    });
+                }
+                const validationResults = await deployment.client.addOrdersAsync(orders);
+                expect(validationResults.accepted.length).to.be.eq(ordersLength);
+
+                // Verify that all of the orders that were added to the mesh node
+                // were returned in the response.
+                const gotOrders = await deployment.client.findOrdersAsync({
+                    filters: [{ field: 'makerAssetAmount', kind: FilterKind.LessOrEqual, value: new BigNumber(7) }],
+                    sort: [{ field: 'makerAssetAmount', direction: SortDirection.Desc }],
+                    limit: 5,
+                });
+                // We expect 5 orders sorted in descending order by makerAssetAmount starting at 7.
+                // I.e. orders with makerAmounts of 7, 6, 5, 4, and 3.
+                const expectedOrders = orders.map((order) => ({
+                    ...order,
+                    hash: orderHashUtils.getOrderHashHex(order),
+                    fillableTakerAssetAmount: order.takerAssetAmount,
+                }));
+                const sortedExpectedOrders = sortOrdersByMakerAssetAmount(expectedOrders).reverse();
+                // tslint:disable-next-line: custom-no-magic-numbers
+                expect(gotOrders).to.be.deep.eq(sortedExpectedOrders.slice(3, 8));
+            });
+        });
         describe('#addOrdersAsync', async () => {
             it('accepts valid order', async () => {
                 const order = await orderFactory.newSignedOrderAsync({});

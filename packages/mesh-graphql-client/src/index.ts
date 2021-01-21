@@ -1,4 +1,5 @@
 import { Mesh } from '@0x/mesh-browser-lite';
+import { StringifiedSignedOrder } from '@0x/mesh-browser-lite/lib/types';
 import { SignedOrder } from '@0x/types';
 import { from, HttpLink, split } from '@apollo/client';
 import {
@@ -26,18 +27,27 @@ import {
     AddOrdersResults,
     convertFilterValue,
     fromStringifiedAddOrdersResults,
+    fromStringifiedAddOrdersResultsV4,
     fromStringifiedOrderEvent,
     fromStringifiedOrderWithMetadata,
+    fromStringifiedOrderWithMetadataV4,
     fromStringifiedStats,
     OrderEvent,
     OrderEventResponse,
     OrderQuery,
     OrderResponse,
     OrdersResponse,
+    OrdersResponseV4,
     OrderWithMetadata,
+    OrderWithMetadataV4,
+    SignedOrderV4,
     Stats,
     StatsResponse,
+    StringifiedOrderWithMetadata,
+    StringifiedOrderWithMetadataV4,
+    StringifiedSignedOrderV4,
     toStringifiedSignedOrder,
+    toStringifiedSignedOrderV4,
 } from './types';
 
 export {
@@ -142,6 +152,66 @@ const addOrdersMutation = gql`
     }
 `;
 
+const addOrdersMutationV4 = gql`
+    mutation AddOrdersV4(
+        $orders: [NewOrderV4!]!
+        $pinned: Boolean = true
+        $opts: AddOrdersOpts = { keepCancelled: false, keepExpired: false, keepFullyFilled: false, keepUnfunded: false }
+    ) {
+        addOrdersV4(orders: $orders, pinned: $pinned, opts: $opts) {
+            accepted {
+                order {
+                    hash
+                    chainId
+                    exchangeAddress
+                    makerToken
+                    takerToken
+                    makerAmount
+                    takerAmount
+                    takerTokenFeeAmount
+                    maker
+                    taker
+                    sender
+                    feeRecipient
+                    pool
+                    expiry
+                    salt
+                    signatureType
+                    signatureV
+                    signatureR
+                    signatureS
+                }
+                isNew
+            }
+            rejected {
+                hash
+                code
+                message
+                order {
+                    chainId
+                    exchangeAddress
+                    makerToken
+                    takerToken
+                    makerAmount
+                    takerAmount
+                    takerTokenFeeAmount
+                    maker
+                    taker
+                    sender
+                    feeRecipient
+                    pool
+                    expiry
+                    salt
+                    signatureType
+                    signatureV
+                    signatureR
+                    signatureS
+                }
+            }
+        }
+    }
+`;
+
 const orderQuery = gql`
     query Order($hash: String!) {
         order(hash: $hash) {
@@ -194,6 +264,36 @@ const ordersQuery = gql`
             salt
             signature
             fillableTakerAssetAmount
+        }
+    }
+`;
+
+const ordersQueryV4 = gql`
+    query Orders(
+        $filters: [OrderFilterV4!] = []
+        $sort: [OrderSortV4!] = [{ field: hash, direction: ASC }]
+        $limit: Int = 100
+    ) {
+        ordersv4(filters: $filters, sort: $sort, limit: $limit) {
+            hash
+            chainId
+            exchangeAddress
+            makerToken
+            takerToken
+            makerAmount
+            takerAmount
+            takerTokenFeeAmount
+            maker
+            taker
+            sender
+            feeRecipient
+            pool
+            expiry
+            salt
+            signatureType
+            signatureV
+            signatureR
+            signatureS
         }
     }
 `;
@@ -349,8 +449,11 @@ export class MeshGraphQLClient {
         orders: SignedOrder[],
         pinned: boolean = true,
         opts?: AddOrdersOpts,
-    ): Promise<AddOrdersResults> {
-        const resp: FetchResult<AddOrdersResponse> = await this._client.mutate({
+    ): Promise<AddOrdersResults<OrderWithMetadata, SignedOrder>> {
+        const resp: FetchResult<AddOrdersResponse<
+            StringifiedOrderWithMetadata,
+            StringifiedSignedOrder
+        >> = await this._client.mutate({
             mutation: addOrdersMutation,
             variables: {
                 orders: orders.map(toStringifiedSignedOrder),
@@ -369,6 +472,37 @@ export class MeshGraphQLClient {
         }
         const results = resp.data.addOrders;
         return fromStringifiedAddOrdersResults(results);
+    }
+
+    public async addOrdersV4Async(
+        orders: SignedOrderV4[],
+        pinned: boolean = true,
+        opts?: AddOrdersOpts,
+    ): Promise<AddOrdersResults<OrderWithMetadataV4, SignedOrderV4>> {
+        const resp: FetchResult<AddOrdersResponse<
+            StringifiedOrderWithMetadataV4,
+            StringifiedSignedOrderV4
+        >> = await this._client.mutate({
+            mutation: addOrdersMutationV4,
+            variables: {
+                orders: orders.map(toStringifiedSignedOrderV4),
+                pinned,
+                opts: {
+                    keepCancelled: false,
+                    keepExpired: false,
+                    keepFullyFilled: false,
+                    keepUnfunded: false,
+                    ...opts,
+                },
+            },
+        });
+        if (resp.data == null) {
+            throw new Error('received no data');
+        }
+
+        const results = resp.data.addOrders;
+
+        return fromStringifiedAddOrdersResultsV4(results);
     }
 
     public async getOrderAsync(hash: string): Promise<OrderWithMetadata | null> {
@@ -402,6 +536,23 @@ export class MeshGraphQLClient {
             throw new Error('received no data');
         }
         return resp.data.orders.map(fromStringifiedOrderWithMetadata);
+    }
+
+    public async findOrdersV4Async(
+        query: OrderQuery = { sort: [], filters: [], limit: defaultOrderQueryLimit },
+    ): Promise<OrderWithMetadataV4[]> {
+        const resp: ApolloQueryResult<OrdersResponseV4> = await this._client.query({
+            query: ordersQuery,
+            variables: {
+                sort: query.sort || [],
+                filters: query.filters?.map(convertFilterValue) || [],
+                limit: query.limit || defaultOrderQueryLimit,
+            },
+        });
+        if (resp.data == null) {
+            throw new Error('received no data');
+        }
+        return resp.data.orders.map(fromStringifiedOrderWithMetadataV4);
     }
 
     public onReconnected(cb: () => void): void {

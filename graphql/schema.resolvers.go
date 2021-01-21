@@ -41,7 +41,11 @@ func (r *mutationResolver) AddOrdersV4(ctx context.Context, orders []*gqltypes.N
 		return nil, err
 	}
 
-	return gqltypes.AddOrdersResultsFromValidationResultsV4(results)
+	returnResult, err := gqltypes.AddOrdersResultsFromValidationResultsV4(results)
+
+	log.Infof("results are: %+v", returnResult.Accepted[0].Order)
+
+	return returnResult, err
 }
 
 func (r *queryResolver) Order(ctx context.Context, hash string) (*gqltypes.OrderWithMetadata, error) {

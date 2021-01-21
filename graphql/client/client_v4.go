@@ -6,10 +6,12 @@ import (
 	"github.com/0xProject/0x-mesh/graphql/gqltypes"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/machinebox/graphql"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // AddOrders adds v4 orders to 0x Mesh and broadcasts them throughout the 0x Mesh network.
-func (c *Client) AddOrdersV4(ctx context.Context, orders []*zeroex.SignedOrderV4, opts ...AddOrdersOpts) (*gqltypes.AddOrdersResultsV4, error) {
+func (c *Client) AddOrdersV4(ctx context.Context, orders []*zeroex.SignedOrderV4, opts ...AddOrdersOpts) (*AddOrdersResultsV4, error) {
 	req := graphql.NewRequest(addOrdersMutationV4)
 
 	// Set up args
@@ -31,5 +33,8 @@ func (c *Client) AddOrdersV4(ctx context.Context, orders []*zeroex.SignedOrderV4
 	if err := c.Run(ctx, req, &resp); err != nil {
 		return nil, err
 	}
-	return &resp.AddOrders, nil
+
+	log.Infof("client results are: %+v", resp.AddOrders)
+	returnResult := addOrdersResultsFromGQLTypeV4(&resp.AddOrders)
+	return returnResult, nil
 }

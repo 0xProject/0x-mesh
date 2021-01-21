@@ -37,7 +37,7 @@ func TestAddOrdersSuccessV4(t *testing.T) {
 	// Send the "AddOrders" request to the GraphQL server.
 	validationResponse, err := client.AddOrdersV4(ctx, []*zeroex.SignedOrderV4{signedTestOrder})
 	require.NoError(t, err)
-	fmt.Printf("%+v\n", validationResponse)
+	fmt.Printf("validation response: %+v\n", validationResponse)
 
 	fmt.Println(validationResponse.Rejected)
 	fmt.Println(validationResponse.Accepted)

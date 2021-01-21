@@ -162,3 +162,32 @@ func TestFindOrdersV4(t *testing.T) {
 	require.NoError(t, err)
 	assertOrderSlicesAreUnsortedEqual(t, originalOrders, foundOrders)
 }
+
+func TestFindOrdersFilterSortLimitAndOffsetV4(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	db := newTestDB(t, ctx)
+	storedOrders := createAndStoreOrdersForFilterTestsV4(t, db)
+
+	query := &OrderQueryV4{
+		Filters: []OrderFilterV4{
+			{
+				Field: OV4FMakerAmount,
+				Kind:  GreaterOrEqual,
+				Value: big.NewInt(3),
+			},
+		},
+		Sort: []OrderSortV4{
+			{
+				Field:     OV4FMakerAmount,
+				Direction: Ascending,
+			},
+		},
+		Limit:  3,
+		Offset: 2,
+	}
+	expectedOrders := storedOrders[5:8]
+	actualOrders, err := db.FindOrdersV4(query)
+	require.NoError(t, err)
+	assertOrderSlicesAreEqual(t, expectedOrders, actualOrders)
+}
