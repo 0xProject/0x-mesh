@@ -931,7 +931,7 @@ func TestOrderWatcherV4CancelUpTo(t *testing.T) {
 			From:   signedOrder.Maker,
 			Signer: scenario.GetTestSignerFn(signedOrder.Maker),
 		}
-		targetOrderEpoch := signedOrder.Salt
+		targetOrderEpoch := big.NewInt(0).Add(signedOrder.Salt, big.NewInt(1))
 		txn, err := exchangeV4.CancelPairLimitOrders(opts,
 			signedOrder.MakerToken,
 			signedOrder.TakerToken,
@@ -1424,11 +1424,21 @@ func TestOrderWatcherV4DecreaseExpirationTime(t *testing.T) {
 		switch orderEvent.EndState {
 		case zeroex.ESOrderAdded:
 			numAdded += 1
-			orderExpirationTime := orderEvent.SignedOrder.ExpirationTimeSeconds
+			var orderExpirationTime *big.Int
+			if orderEvent.SignedOrder != nil {
+				orderExpirationTime = orderEvent.SignedOrder.ExpirationTimeSeconds
+			} else {
+				orderExpirationTime = orderEvent.SignedOrderV4.Expiry
+			}
 			assert.True(t, orderExpirationTime.Cmp(storedMaxExpirationTime) == -1, "ADDED order has an expiration time of %s which is *greater than* the maximum of %s", orderExpirationTime, storedMaxExpirationTime)
 		case zeroex.ESStoppedWatching:
 			numStoppedWatching += 1
-			orderExpirationTime := orderEvent.SignedOrder.ExpirationTimeSeconds
+			var orderExpirationTime *big.Int
+			if orderEvent.SignedOrder != nil {
+				orderExpirationTime = orderEvent.SignedOrder.ExpirationTimeSeconds
+			} else {
+				orderExpirationTime = orderEvent.SignedOrderV4.Expiry
+			}
 			assert.True(t, orderExpirationTime.Cmp(storedMaxExpirationTime) != -1, "STOPPED_WATCHING order has an expiration time of %s which is *less than* the maximum of %s", orderExpirationTime, storedMaxExpirationTime)
 		default:
 			t.Errorf("unexpected order event type: %s", orderEvent.EndState)
@@ -1444,7 +1454,14 @@ func TestOrderWatcherV4DecreaseExpirationTime(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, remainingOrders, expectedRemainingOrders)
 	for _, order := range remainingOrders {
-		assert.True(t, order.OrderV3.ExpirationTimeSeconds.Cmp(storedMaxExpirationTime) != 1, "remaining order has an expiration time of %s which is *greater than* the maximum of %s", order.OrderV3.ExpirationTimeSeconds, storedMaxExpirationTime)
+		var expiry *big.Int
+		if order.OrderV3 != nil {
+			expiry = order.OrderV3.ExpirationTimeSeconds
+		}
+		if order.OrderV4 != nil {
+			expiry = order.OrderV4.Expiry
+		}
+		assert.True(t, expiry.Cmp(storedMaxExpirationTime) != 1, "remaining order has an expiration time of %s which is *greater than* the maximum of %s", expiry, storedMaxExpirationTime)
 	}
 
 	// Confirm that a pinned order will be accepted even if its expiration
