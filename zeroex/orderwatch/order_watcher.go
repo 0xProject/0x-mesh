@@ -1566,7 +1566,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 			// The order expiration time is valid if it is greater than the latest block timestamp
 			// of the validation block.
 			validationBlockTimestampSeconds := big.NewInt(validationBlock.Timestamp.Unix())
-			expirationTimeIsValid := order.OrderV3.ExpirationTimeSeconds.Cmp(validationBlockTimestampSeconds) == 1
+			expirationTimeIsValid := (order.OrderV3 != nil && order.OrderV3.ExpirationTimeSeconds.Cmp(validationBlockTimestampSeconds) == 1) || (order.OrderV4 != nil && order.OrderV4.Expiry.Cmp(validationBlockTimestampSeconds) == 1)
 			isOrderUnexpired := order.IsExpired && order.IsUnfillable && expirationTimeIsValid
 
 			// We can tell that an order was previously expired if it was marked as removed with a
