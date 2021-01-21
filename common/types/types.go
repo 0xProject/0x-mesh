@@ -157,6 +157,9 @@ type OrderWithMetadata struct {
 }
 
 func (order OrderWithMetadata) SignedOrder() *zeroex.SignedOrder {
+	if order.OrderV3 == nil {
+		return nil
+	}
 	return &zeroex.SignedOrder{
 		Order: zeroex.Order{
 			ChainID:               order.OrderV3.ChainID,
@@ -181,6 +184,9 @@ func (order OrderWithMetadata) SignedOrder() *zeroex.SignedOrder {
 }
 
 func (order OrderWithMetadata) SignedOrderV4() *zeroex.SignedOrderV4 {
+	if order.OrderV4 == nil {
+		return nil
+	}
 	return &zeroex.SignedOrderV4{
 		OrderV4:   *order.OrderV4, // QUESTION: Is there a reason we would explicitly copy every field like above instead of doing this?
 		Signature: order.SignatureV4,
