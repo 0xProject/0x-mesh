@@ -171,7 +171,7 @@ func TestOrderWatcherV4DoesntStoreInvalidOrdersWithConfigurations(t *testing.T) 
 			signedOrderGenerator: func() *zeroex.SignedOrderV4 {
 				return scenario.NewSignedTestOrderV4(t,
 					orderopts.MakerAssetData(scenario.ZRXAssetData),
-					orderopts.MakerFee(big.NewInt(1)),
+					orderopts.MakerAssetAmount(big.NewInt(1)),
 					orderopts.MakerFeeAssetData(scenario.WETHAssetData),
 				)
 			},
@@ -465,12 +465,12 @@ func TestOrderWatcherV4UnfundedInsufficientERC20Allowance(t *testing.T) {
 		require.NoError(t, err, testCase.description)
 		blockWatcher, orderEventsChan := setupOrderWatcherScenarioV4(ctx, t, database, signedOrder, testCase.addOrdersOpts)
 
-		// Remove Maker's ZRX approval to ERC20Proxy
+		// Remove Maker's ZRX approval to ExchangeProxy
 		opts := &bind.TransactOpts{
 			From:   signedOrder.Maker,
 			Signer: scenario.GetTestSignerFn(signedOrder.Maker),
 		}
-		txn, err := zrx.Approve(opts, ganacheAddresses.ERC20Proxy, big.NewInt(0))
+		txn, err := zrx.Approve(opts, ganacheAddresses.ExchangeProxy, big.NewInt(0))
 		require.NoError(t, err, testCase.description)
 		waitTxnSuccessfullyMined(t, ethClient, txn)
 
