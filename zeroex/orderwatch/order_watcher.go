@@ -298,6 +298,7 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 			Timestamp:                validationBlock.Timestamp,
 			OrderHash:                order.Hash,
 			SignedOrder:              order.SignedOrder(),
+			SignedOrderV4:            order.SignedOrderV4(),
 			FillableTakerAssetAmount: big.NewInt(0),
 			EndState:                 zeroex.ESOrderExpired,
 		}
@@ -324,6 +325,7 @@ func (w *Watcher) handleOrderExpirations(validationBlock *types.MiniHeader, orde
 			Timestamp:                validationBlock.Timestamp,
 			OrderHash:                order.Hash,
 			SignedOrder:              order.SignedOrder(),
+			SignedOrderV4:            order.SignedOrderV4(),
 			FillableTakerAssetAmount: order.FillableTakerAssetAmount,
 			EndState:                 zeroex.ESOrderUnexpired,
 		}
@@ -1079,6 +1081,7 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 			Timestamp:                now,
 			OrderHash:                orderInfo.OrderHash,
 			SignedOrder:              orderInfo.SignedOrder,
+			SignedOrderV4:            orderInfo.SignedOrderV4,
 			FillableTakerAssetAmount: orderInfo.FillableTakerAssetAmount,
 			EndState:                 zeroex.ESOrderAdded,
 		}
@@ -1111,12 +1114,14 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 			Timestamp:                now,
 			OrderHash:                order.Hash,
 			SignedOrder:              order.SignedOrder(),
+			SignedOrderV4:            order.SignedOrderV4(),
 			FillableTakerAssetAmount: order.FillableTakerAssetAmount,
 			EndState:                 zeroex.ESStoppedWatching,
 		}
 		orderEvents = append(orderEvents, stoppedWatchingEvent)
 
 		// Remove in-memory state
+		if order.OrderV3 != nil {
 		err = w.removeAssetDataAddressFromEventDecoder(order.OrderV3.MakerAssetData)
 		if err != nil {
 			// This should never happen since the same error would have happened when adding
@@ -1126,6 +1131,19 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 				"signedOrder": order.SignedOrder(),
 			}).Error("Unexpected error when trying to remove an assetData from decoder")
 			return nil, err
+		}
+	}
+		if order.OrderV4 != nil {
+			err = w.removeTokenAddressFromEventDecoder(order.OrderV4.MakerToken)
+			if err != nil {
+				// This should never happen since the same error would have happened when adding
+				// the assetData to the EventDecoder.
+				logger.WithFields(logger.Fields{
+					"error":       err.Error(),
+					"signedOrder": order.SignedOrder(),
+				}).Error("Unexpected error when trying to remove an make token from decoder")
+				return nil, err
+			}
 		}
 	}
 
@@ -1158,6 +1176,7 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 				Timestamp:                now,
 				OrderHash:                orderToAdd.OrderHash,
 				SignedOrder:              orderToAdd.SignedOrder,
+				SignedOrderV4:            orderToAdd.SignedOrderV4,
 				FillableTakerAssetAmount: orderToAdd.FillableTakerAssetAmount,
 				EndState:                 zeroex.ESStoppedWatching,
 			}
@@ -1718,6 +1737,7 @@ func (w *Watcher) convertValidationResultsIntoOrderEvents(
 					Timestamp:                validationBlock.Timestamp,
 					OrderHash:                rejectedOrderInfo.OrderHash,
 					SignedOrder:              rejectedOrderInfo.SignedOrder,
+					SignedOrderV4:            rejectedOrderInfo.SignedOrderV4,
 					FillableTakerAssetAmount: big.NewInt(0),
 					EndState:                 endState,
 					ContractEvents:           orderHashToEvents[order.Hash],
@@ -1813,8 +1833,9 @@ func (w *Watcher) ValidateAndStoreValidOrders(ctx context.Context, orders []*zer
 				(opts.KeepFullyFilled && rejectedOrderInfo.Status.Code == ordervalidator.ROFullyFilled.Code) ||
 				(opts.KeepUnfunded && rejectedOrderInfo.Status.Code == ordervalidator.ROUnfunded.Code) {
 				newOrderInfos = append(newOrderInfos, &ordervalidator.AcceptedOrderInfo{
-					OrderHash:   rejectedOrderInfo.OrderHash,
-					SignedOrder: rejectedOrderInfo.SignedOrder,
+					OrderHash:     rejectedOrderInfo.OrderHash,
+					SignedOrder:   rejectedOrderInfo.SignedOrder,
+					SignedOrderV4: rejectedOrderInfo.SignedOrderV4,
 					// TODO(jalextowle): Verify that this is consistent with the OrderWatcher
 					FillableTakerAssetAmount: big.NewInt(0),
 					IsNew:                    true,
@@ -2357,6 +2378,14 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 		}
 	default:
 		return fmt.Errorf("unrecognized assetData type name found: %s", assetDataName)
+	}
+	return nil
+}
+
+func (w *Watcher) removeTokenAddressFromEventDecoder(address common.Address) error {
+	count := w.contractAddressToSeenCount.Dec(address)
+	if count == 0 {
+		w.eventDecoder.RemoveKnownERC20(address)
 	}
 	return nil
 }
