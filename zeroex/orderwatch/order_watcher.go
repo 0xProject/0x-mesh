@@ -882,6 +882,50 @@ func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log, filter db
 		}
 		orders = append(orders, cancelledOrders...)
 
+	case "ExchangePairCancelledLimitOrdersEventV4":
+		var exchangeCancelUpToEvent decoder.ExchangePairCancelledLimitOrdersEventV4
+		err = w.eventDecoder.Decode(log, &exchangeCancelUpToEvent)
+		fmt.Printf("exchangeCancelUpToEvent = %+v\n", exchangeCancelUpToEvent)
+		if err != nil {
+			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+				return nil, nil, nil
+			}
+			return nil, nil, err
+		}
+		contractEvent.Parameters = exchangeCancelUpToEvent
+		cancelledOrders, err := w.db.FindOrdersV4(&db.OrderQueryV4{
+			Filters: []db.OrderFilterV4{
+				{
+					Field: db.OV4FMaker,
+					Kind:  db.Equal,
+					Value: exchangeCancelUpToEvent.Maker,
+				},
+				{
+					Field: db.OV4FMakerToken,
+					Kind:  db.Equal,
+					Value: exchangeCancelUpToEvent.MakerToken,
+				},
+				{
+					Field: db.OV4FTakerToken,
+					Kind:  db.Equal,
+					Value: exchangeCancelUpToEvent.TakerToken,
+				},
+				{
+					Field: db.OV4FSalt,
+					Kind:  db.LessOrEqual,
+					Value: exchangeCancelUpToEvent.MinValidSalt,
+				},
+			},
+		})
+		fmt.Printf("cancelledOrders = %+v\n", cancelledOrders)
+		if err != nil {
+			logger.WithFields(logger.Fields{
+				"error": err.Error(),
+			}).Error("unexpected query error encountered")
+			return nil, nil, err
+		}
+		orders = append(orders, cancelledOrders...)
+
 	default:
 		logger.WithFields(logger.Fields{
 			"eventType": eventType,
