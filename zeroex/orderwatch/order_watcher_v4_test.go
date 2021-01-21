@@ -1632,7 +1632,7 @@ func TestOrderWatcherV4HandleOrderExpirationsExpired(t *testing.T) {
 
 		signedOrderOneHash, err := signedOrderOne.ComputeOrderHash()
 		require.NoError(t, err, testCase.description)
-		orderOne, err := database.GetOrder(signedOrderOneHash)
+		orderOne, err := database.GetOrderV4(signedOrderOneHash)
 		require.NoError(t, err, testCase.description)
 		// Since we flag SignedOrderOne for revalidation, we expect `handleOrderExpirations` not to return an
 		// expiry event for it.
@@ -1656,7 +1656,7 @@ func TestOrderWatcherV4HandleOrderExpirationsExpired(t *testing.T) {
 		assert.Equal(t, big.NewInt(0), orderEvent.FillableTakerAssetAmount, testCase.description)
 		assert.Len(t, orderEvent.ContractEvents, 0, testCase.description)
 
-		orderTwo, err := database.GetOrder(signedOrderTwoHash)
+		orderTwo, err := database.GetOrderV4(signedOrderTwoHash)
 		require.NoError(t, err, testCase.description)
 		assert.Equal(t, testCase.shouldBeRemoved, orderTwo.IsRemoved, testCase.description)
 		assert.Equal(t, true, orderTwo.IsUnfillable, testCase.description)
