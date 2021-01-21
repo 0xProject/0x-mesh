@@ -835,6 +835,21 @@ func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log, filter db
 			orders = append(orders, order)
 		}
 
+	case "ExchangeOrderCancelledEventV4":
+		var exchangeCancelEvent decoder.ExchangeCancelEventV4
+		err = w.eventDecoder.Decode(log, &exchangeCancelEvent)
+		if err != nil {
+			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+				return nil, nil, nil
+			}
+			return nil, nil, err
+		}
+		contractEvent.Parameters = exchangeCancelEvent
+		order := w.findOrder(exchangeCancelEvent.OrderHash)
+		if order != nil {
+			orders = append(orders, order)
+		}
+
 	case "ExchangeCancelUpToEvent":
 		var exchangeCancelUpToEvent decoder.ExchangeCancelUpToEvent
 		err = w.eventDecoder.Decode(log, &exchangeCancelUpToEvent)

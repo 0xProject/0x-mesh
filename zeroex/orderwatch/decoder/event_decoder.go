@@ -22,11 +22,17 @@ var EVENT_SIGNATURES = [...]string{
 	"Deposit(address,uint256)",                                   // WETH9
 	"Withdrawal(address,uint256)",                                // WETH9
 
-	// Events are the same between Exchange V3 and V4.
+	// Exchange V3
 	// See <https://github.com/0xProject/protocol/blob/75dcd687e2999fbb489a55d069c6699dac8023f3/contracts/exchange/contracts/src/interfaces/IExchangeCore.sol#L28>
 	"Fill(address,address,bytes,bytes,bytes,bytes,bytes32,address,address,uint256,uint256,uint256,uint256,uint256)",
 	"Cancel(address,address,bytes,bytes,address,bytes32)",
 	"CancelUpTo(address,address,uint256)",
+
+	// Exchange V4
+	// See <https://github.com/0xProject/protocol/blob/50068750f5b8b3144e3b218d40201aa274390c94/contracts/zero-ex/contracts/src/features/INativeOrdersFeature.sol#L31>
+	"LimitOrderFilled(bytes32,address,address,address,address,address,uint128,uint128,uint128,uint256,bytes32)",
+	"OrderCancelled(bytes32,address)",
+	"PairCancelledLimitOrders(address,address,address,uint256)",
 }
 
 // Includes ERC20 `Transfer` & `Approval` events as well as WETH `Deposit` & `Withdraw` events
@@ -43,6 +49,63 @@ const erc1155EventsAbi = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"
 
 // Includes Exchange `Fill`, `Cancel`, `CancelUpTo` events
 const exchangeEventsAbi = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"transactionHash\",\"type\":\"bytes32\"}],\"name\":\"TransactionExecution\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"signerAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"validatorAddress\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"isApproved\",\"type\":\"bool\"}],\"name\":\"SignatureValidatorApproval\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes4\",\"name\":\"id\",\"type\":\"bytes4\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"assetProxy\",\"type\":\"address\"}],\"name\":\"AssetProxyRegistered\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"oldProtocolFeeMultiplier\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"updatedProtocolFeeMultiplier\",\"type\":\"uint256\"}],\"name\":\"ProtocolFeeMultiplier\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"oldProtocolFeeCollector\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"updatedProtocolFeeCollector\",\"type\":\"address\"}],\"name\":\"ProtocolFeeCollectorAddress\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"makerAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"takerAssetData\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"makerFeeAssetData\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"takerFeeAssetData\",\"type\":\"bytes\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"takerAddress\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"senderAddress\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"makerAssetFilledAmount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"takerAssetFilledAmount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"makerFeePaid\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"takerFeePaid\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"protocolFeePaid\",\"type\":\"uint256\"}],\"name\":\"Fill\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"makerAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"feeRecipientAddress\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"makerAssetData\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"takerAssetData\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"senderAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"orderHash\",\"type\":\"bytes32\"}],\"name\":\"Cancel\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"makerAddress\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"orderSenderAddress\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"orderEpoch\",\"type\":\"uint256\"}],\"name\":\"CancelUpTo\",\"type\":\"event\"}]"
+
+// See <https://github.com/0xProject/protocol/blob/50068750f5b8b3144e3b218d40201aa274390c94/packages/contract-artifacts/artifacts/IZeroEx.json#L5>
+const exchangeEventsAbiV4 = `[
+	{
+		"anonymous": false,
+		"inputs": [
+			{ "indexed": false, "internalType": "bytes32", "name": "orderHash", "type": "bytes32" },
+			{ "indexed": false, "internalType": "address", "name": "maker", "type": "address" },
+			{ "indexed": false, "internalType": "address", "name": "taker", "type": "address" },
+			{ "indexed": false, "internalType": "address", "name": "feeRecipient", "type": "address" },
+			{ "indexed": false, "internalType": "address", "name": "makerToken", "type": "address" },
+			{ "indexed": false, "internalType": "address", "name": "takerToken", "type": "address" },
+			{
+				"indexed": false,
+				"internalType": "uint128",
+				"name": "takerTokenFilledAmount",
+				"type": "uint128"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint128",
+				"name": "makerTokenFilledAmount",
+				"type": "uint128"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint128",
+				"name": "takerTokenFeeFilledAmount",
+				"type": "uint128"
+			},
+			{ "indexed": false, "internalType": "uint256", "name": "protocolFeePaid", "type": "uint256" },
+			{ "indexed": false, "internalType": "bytes32", "name": "pool", "type": "bytes32" }
+		],
+		"name": "LimitOrderFilled",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{ "indexed": false, "internalType": "bytes32", "name": "orderHash", "type": "bytes32" },
+			{ "indexed": false, "internalType": "address", "name": "maker", "type": "address" }
+		],
+		"name": "OrderCancelled",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{ "indexed": false, "internalType": "address", "name": "maker", "type": "address" },
+			{ "indexed": false, "internalType": "address", "name": "makerToken", "type": "address" },
+			{ "indexed": false, "internalType": "address", "name": "takerToken", "type": "address" },
+			{ "indexed": false, "internalType": "uint256", "name": "minValidSalt", "type": "uint256" }
+		],
+		"name": "PairCancelledLimitOrders",
+		"type": "event"
+	}
+]`
 
 // ERC20TransferEvent represents an ERC20 Transfer event
 type ERC20TransferEvent struct {
@@ -644,10 +707,12 @@ type Decoder struct {
 	erc721EventsAbiWithoutTokenIDIndex abi.ABI
 	erc1155ABI                         abi.ABI
 	exchangeABI                        abi.ABI
+	exchangeABIV4                      abi.ABI
 	erc20TopicToEventName              map[common.Hash]string
 	erc721TopicToEventName             map[common.Hash]string
 	erc1155TopicToEventName            map[common.Hash]string
 	exchangeTopicToEventName           map[common.Hash]string
+	exchangeTopicToEventNameV4         map[common.Hash]string
 }
 
 // New instantiates a new 0x order-relevant events decoder
@@ -677,6 +742,11 @@ func New() (*Decoder, error) {
 		return nil, err
 	}
 
+	exchangeABIV4, err := abi.JSON(strings.NewReader(exchangeEventsAbiV4))
+	if err != nil {
+		return nil, err
+	}
+
 	erc20TopicToEventName := map[common.Hash]string{}
 	for _, event := range erc20ABI.Events {
 		erc20TopicToEventName[event.ID] = event.Name
@@ -693,6 +763,10 @@ func New() (*Decoder, error) {
 	for _, event := range exchangeABI.Events {
 		exchangeTopicToEventName[event.ID] = event.Name
 	}
+	exchangeTopicToEventNameV4 := map[common.Hash]string{}
+	for _, event := range exchangeABIV4.Events {
+		exchangeTopicToEventNameV4[event.ID] = event.Name
+	}
 
 	return &Decoder{
 		knownERC20Addresses:                make(map[common.Address]bool),
@@ -704,10 +778,12 @@ func New() (*Decoder, error) {
 		erc721EventsAbiWithoutTokenIDIndex: erc721EventsAbiWithoutTokenIDIndex,
 		erc1155ABI:                         erc1155ABI,
 		exchangeABI:                        exchangeABI,
+		exchangeABIV4:                      exchangeABIV4,
 		erc20TopicToEventName:              erc20TopicToEventName,
 		erc721TopicToEventName:             erc721TopicToEventName,
 		erc1155TopicToEventName:            erc1155TopicToEventName,
 		exchangeTopicToEventName:           exchangeTopicToEventName,
+		exchangeTopicToEventNameV4:         exchangeTopicToEventNameV4,
 	}, nil
 }
 
@@ -841,11 +917,15 @@ func (d *Decoder) FindEventType(log types.Log) (string, error) {
 	}
 	if isKnown := d.isKnownExchange(log.Address); isKnown {
 		eventName, ok := d.exchangeTopicToEventName[firstTopic]
-		if !ok {
+		if ok {
+			return fmt.Sprintf("Exchange%sEvent", eventName), nil
+		}
+		eventNameV4, ok := d.exchangeTopicToEventNameV4[firstTopic]
+		if ok {
+			return fmt.Sprintf("Exchange%sEventV4", eventNameV4), nil
+		}
 			return "", UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
 		}
-		return fmt.Sprintf("Exchange%sEvent", eventName), nil
-	}
 
 	return "", UntrackedTokenError{Topic: firstTopic, TokenAddress: log.Address}
 }
@@ -915,15 +995,23 @@ func (d *Decoder) decodeERC1155(log types.Log, decodedLog interface{}) error {
 
 func (d *Decoder) decodeExchange(log types.Log, decodedLog interface{}) error {
 	eventName, ok := d.exchangeTopicToEventName[log.Topics[0]]
-	if !ok {
-		return UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
-	}
-
+	if ok {
 	err := unpackLog(decodedLog, eventName, log, d.exchangeABI)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	eventNameV4, ok := d.exchangeTopicToEventNameV4[log.Topics[0]]
+	if ok {
+		err := unpackLog(decodedLog, eventNameV4, log, d.exchangeABIV4)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+	return UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
 }
 
 // unpackLog unpacks a retrieved log into the provided output structure.
