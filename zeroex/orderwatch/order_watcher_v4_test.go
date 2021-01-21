@@ -1726,7 +1726,7 @@ func TestOrderWatcherV4HandleOrderExpirationsUnexpired(t *testing.T) {
 
 	signedOrderOneHash, err := signedOrderOne.ComputeOrderHash()
 	require.NoError(t, err)
-	orderOne, err := database.GetOrder(signedOrderOneHash)
+	orderOne, err := database.GetOrderV4(signedOrderOneHash)
 	require.NoError(t, err)
 	// Since we flag SignedOrderOne for revalidation, we expect `handleOrderExpirations` not to return an
 	// unexpiry event for it.
@@ -1751,7 +1751,7 @@ func TestOrderWatcherV4HandleOrderExpirationsUnexpired(t *testing.T) {
 	assert.Equal(t, signedOrderTwo.TakerAmount, orderEvent.FillableTakerAssetAmount)
 	assert.Len(t, orderEvent.ContractEvents, 0)
 
-	orderTwo, err := database.GetOrder(signedOrderTwoHash)
+	orderTwo, err := database.GetOrderV4(signedOrderTwoHash)
 	require.NoError(t, err)
 	assert.Equal(t, false, orderTwo.IsRemoved)
 	assert.Equal(t, false, orderTwo.IsUnfillable)
@@ -1812,7 +1812,7 @@ func TestConvertValidationResultsIntoOrderV4EventsUnexpired(t *testing.T) {
 
 	orderHash, err := signedOrder.ComputeOrderHash()
 	require.NoError(t, err)
-	orderOne, err := database.GetOrder(orderHash)
+	orderOne, err := database.GetOrderV4(orderHash)
 	require.NoError(t, err)
 
 	validationResults := ordervalidator.ValidationResults{
@@ -1856,7 +1856,7 @@ func TestConvertValidationResultsIntoOrderV4EventsUnexpired(t *testing.T) {
 	assert.Len(t, orderEventOne.ContractEvents, 1)
 	assert.Equal(t, orderEventOne.ContractEvents[0].Kind, exchangeFillEvent)
 
-	existingOrder, err := database.GetOrder(orderHash)
+	existingOrder, err := database.GetOrderV4(orderHash)
 	require.NoError(t, err)
 	assert.Equal(t, false, existingOrder.IsRemoved)
 	assert.Equal(t, false, existingOrder.IsUnfillable)
