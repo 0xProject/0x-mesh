@@ -641,8 +641,8 @@ func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log, filter db
 			}
 			return nil, nil, err
 		}
-		// Ignores approvals set to anyone except the AssetProxy
-		if approvalEvent.Spender != w.contractAddresses.ERC20Proxy {
+		// Ignores approvals set to anyone except the AssetProxy and ExchangeProxy
+		if approvalEvent.Spender != w.contractAddresses.ERC20Proxy && approvalEvent.Spender != w.contractAddresses.ExchangeProxy {
 			return nil, nil, nil
 		}
 		contractEvent.Parameters = approvalEvent
