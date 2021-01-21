@@ -822,6 +822,22 @@ func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log, filter db
 			orders = append(orders, order)
 		}
 
+	case "ExchangeLimitOrderFilledEventV4":
+		var exchangeFillEvent decoder.ExchangeFillEventV4
+		err = w.eventDecoder.Decode(log, &exchangeFillEvent)
+		if err != nil {
+			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
+				return nil, nil, nil
+			}
+			return nil, nil, err
+		}
+		contractEvent.Parameters = exchangeFillEvent
+
+		order := w.findOrder(exchangeFillEvent.OrderHash)
+		if order != nil {
+			orders = append(orders, order)
+		}
+
 	case "ExchangeCancelEvent":
 		var exchangeCancelEvent decoder.ExchangeCancelEvent
 		err = w.eventDecoder.Decode(log, &exchangeCancelEvent)
@@ -1122,17 +1138,17 @@ func (w *Watcher) add(orderInfos []*ordervalidator.AcceptedOrderInfo, validation
 
 		// Remove in-memory state
 		if order.OrderV3 != nil {
-		err = w.removeAssetDataAddressFromEventDecoder(order.OrderV3.MakerAssetData)
-		if err != nil {
-			// This should never happen since the same error would have happened when adding
-			// the assetData to the EventDecoder.
-			logger.WithFields(logger.Fields{
-				"error":       err.Error(),
-				"signedOrder": order.SignedOrder(),
-			}).Error("Unexpected error when trying to remove an assetData from decoder")
-			return nil, err
+			err = w.removeAssetDataAddressFromEventDecoder(order.OrderV3.MakerAssetData)
+			if err != nil {
+				// This should never happen since the same error would have happened when adding
+				// the assetData to the EventDecoder.
+				logger.WithFields(logger.Fields{
+					"error":       err.Error(),
+					"signedOrder": order.SignedOrder(),
+				}).Error("Unexpected error when trying to remove an assetData from decoder")
+				return nil, err
+			}
 		}
-	}
 		if order.OrderV4 != nil {
 			err = w.removeTokenAddressFromEventDecoder(order.OrderV4.MakerToken)
 			if err != nil {
@@ -1308,7 +1324,7 @@ func (w *Watcher) findOrder(orderHash common.Hash) *types.OrderWithMetadata {
 	order, err := w.db.GetOrder(orderHash)
 	if err == nil {
 		return order
-		}
+	}
 	if err != db.ErrNotFound {
 		logger.WithFields(logger.Fields{
 			"error":     err.Error(),
@@ -1321,7 +1337,7 @@ func (w *Watcher) findOrder(orderHash common.Hash) *types.OrderWithMetadata {
 	orderV4, err := w.db.GetOrderV4(orderHash)
 	if err == nil {
 		return orderV4
-}
+	}
 	if err == db.ErrNotFound {
 		return nil
 	}
@@ -1480,7 +1496,7 @@ func (w *Watcher) findOrdersToExpire(latestBlockTimestamp time.Time) ([]*types.O
 	})
 	if err != nil {
 		return nil, err
-}
+	}
 	return append(ordersV3, ordersV4...), nil
 }
 
@@ -1512,7 +1528,7 @@ func (w *Watcher) findOrdersToUnexpire(latestBlockTimestamp time.Time) ([]*types
 	})
 	if err != nil {
 		return nil, err
-}
+	}
 	ordersV4, err := w.db.FindOrdersV4(&db.OrderQueryV4{
 		Filters: []db.OrderFilterV4{
 			{
@@ -1771,10 +1787,10 @@ func (w *Watcher) generateOrderEventsIfChanged(
 			continue
 		}
 		if order.OrderV3 != nil {
-		signedOrders = append(signedOrders, order.SignedOrder())
+			signedOrders = append(signedOrders, order.SignedOrder())
 		} else if order.OrderV4 != nil {
 			signedOrdersV4 = append(signedOrdersV4, order.SignedOrderV4())
-	}
+		}
 	}
 	if len(signedOrders) == 0 && len(signedOrdersV4) == 0 {
 		return nil, nil
@@ -2122,9 +2138,9 @@ func (w *Watcher) markOrderUnfillable(order *types.OrderWithMetadata, newFillabl
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		orderToUpdate.IsUnfillable = true
 		if orderToUpdate.OrderV3 != nil {
-		if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.OrderV3.ExpirationTimeSeconds) >= 0 {
-			orderToUpdate.IsExpired = true
-		}
+			if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.OrderV3.ExpirationTimeSeconds) >= 0 {
+				orderToUpdate.IsExpired = true
+			}
 		}
 		if orderToUpdate.OrderV4 != nil {
 			if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.OrderV4.Expiry) >= 0 {
@@ -2152,9 +2168,9 @@ func (w *Watcher) unwatchOrder(order *types.OrderWithMetadata, newFillableAmount
 		orderToUpdate.IsRemoved = true
 		orderToUpdate.IsUnfillable = true
 		if orderToUpdate.OrderV3 != nil {
-		if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.OrderV3.ExpirationTimeSeconds) >= 0 {
-			orderToUpdate.IsExpired = true
-		}
+			if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.OrderV3.ExpirationTimeSeconds) >= 0 {
+				orderToUpdate.IsExpired = true
+			}
 		}
 		if orderToUpdate.OrderV4 != nil {
 			if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.OrderV4.Expiry) >= 0 {
@@ -2180,9 +2196,9 @@ func (w *Watcher) unwatchOrder(order *types.OrderWithMetadata, newFillableAmount
 func (w *Watcher) updateOrderExpirationState(order *types.OrderWithMetadata, validationBlock *types.MiniHeader) {
 	err := w.db.UpdateOrder(order.Hash, func(orderToUpdate *types.OrderWithMetadata) (*types.OrderWithMetadata, error) {
 		if orderToUpdate.OrderV3 != nil {
-		if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.OrderV3.ExpirationTimeSeconds) >= 0 {
-			orderToUpdate.IsExpired = true
-		}
+			if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.OrderV3.ExpirationTimeSeconds) >= 0 {
+				orderToUpdate.IsExpired = true
+			}
 		}
 		if orderToUpdate.OrderV4 != nil {
 			if big.NewInt(validationBlock.Timestamp.Unix()).Cmp(orderToUpdate.OrderV4.Expiry) >= 0 {
