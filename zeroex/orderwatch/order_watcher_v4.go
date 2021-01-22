@@ -55,8 +55,9 @@ func (w *Watcher) ValidateAndStoreValidOrdersV4(ctx context.Context, orders []*z
 				(opts.KeepFullyFilled && rejectedOrderInfo.Status.Code == ordervalidator.ROFullyFilled.Code) ||
 				(opts.KeepUnfunded && rejectedOrderInfo.Status.Code == ordervalidator.ROUnfunded.Code) {
 				newOrderInfos = append(newOrderInfos, &ordervalidator.AcceptedOrderInfo{
-					OrderHash:   rejectedOrderInfo.OrderHash,
-					SignedOrder: rejectedOrderInfo.SignedOrder,
+					OrderHash:     rejectedOrderInfo.OrderHash,
+					SignedOrder:   rejectedOrderInfo.SignedOrder,
+					SignedOrderV4: rejectedOrderInfo.SignedOrderV4,
 					// TODO(jalextowle): Verify that this is consistent with the OrderWatcher
 					FillableTakerAssetAmount: big.NewInt(0),
 					IsNew:                    true,
@@ -188,7 +189,7 @@ func (w *Watcher) meshSpecificOrderValidationV4(orders []*zeroex.SignedOrderV4, 
 		// Only check the ExchangeAddress if we know the expected address for the
 		// given chainID/networkID. If we don't know it, the order could still be
 		// valid.
-		expectedExchangeAddress := w.contractAddresses.Exchange
+		expectedExchangeAddress := w.contractAddresses.ExchangeProxy
 		if order.ExchangeAddress != expectedExchangeAddress {
 			results.Rejected = append(results.Rejected, &ordervalidator.RejectedOrderInfo{
 				OrderHash:     orderHash,
