@@ -1113,12 +1113,9 @@ func (app *App) AddOrdersRawV4(ctx context.Context, signedOrdersRaw []*json.RawM
 			"orderHash": acceptedOrderInfo.OrderHash.String(),
 		}).Debug("added new valid order via GraphQL or browser callback")
 
-		// FIXME(order) - reenable order sharing when P2P routing for v4
-		// orders is implemented.
-		// Share the order with our peers.
-		// if err := app.shareOrder(acceptedOrderInfo.SignedOrder); err != nil {
-		// 	return nil, err
-		// }
+		if err := app.shareOrderV4(acceptedOrderInfo.SignedOrderV4); err != nil {
+			return nil, err
+		}
 	}
 
 	return allValidationResults, nil
@@ -1129,6 +1126,17 @@ func (app *App) shareOrder(order *zeroex.SignedOrder) error {
 	<-app.started
 
 	encoded, err := encoding.OrderToRawMessage(app.orderFilter.Topic(), order)
+	if err != nil {
+		return err
+	}
+	return app.node.Send(encoded)
+}
+
+// shareOrderV4 immediately shares the given order on the GossipSub network.
+func (app *App) shareOrderV4(order *zeroex.SignedOrderV4) error {
+	<-app.started
+
+	encoded, err := json.Marshal(order)
 	if err != nil {
 		return err
 	}

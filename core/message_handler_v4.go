@@ -2,10 +2,9 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/0xProject/0x-mesh/common/types"
-	"github.com/0xProject/0x-mesh/constants"
-	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
@@ -19,19 +18,9 @@ func (app *App) HandleMessagesV4(ctx context.Context, messages []*p2p.Message) e
 	orderHashToMessage := map[common.Hash]*p2p.Message{}
 
 	for _, msg := range messages {
-		if err := validateMessageSize(msg); err != nil {
-			log.WithFields(map[string]interface{}{
-				"error":                 err,
-				"from":                  msg.From,
-				"maxMessageSizeInBytes": constants.MaxMessageSizeInBytes,
-				"actualSizeInBytes":     len(msg.Data),
-			}).Trace("received message that exceeds maximum size")
-			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
-			continue
-		}
-
-		order, err := encoding.RawMessageToOrderV4(msg.Data)
-		if err != nil {
+		// Decode JSON
+		var order zeroex.SignedOrderV4
+		if err := json.Unmarshal(data, &order); err != nil {
 			log.WithFields(map[string]interface{}{
 				"error": err,
 				"from":  msg.From,
@@ -39,6 +28,7 @@ func (app *App) HandleMessagesV4(ctx context.Context, messages []*p2p.Message) e
 			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
 			continue
 		}
+
 		orderHash, err := order.ComputeOrderHash()
 		if err != nil {
 			return err
