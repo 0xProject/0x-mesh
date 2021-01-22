@@ -801,6 +801,18 @@ func (app *App) periodicallyCheckForNewAddrs(ctx context.Context, startingAddrs 
 	}
 }
 
+func (app *App) Node() *p2p.Node {
+	return app.node
+}
+
+func (app *App) OrderWatcher() *orderwatch.Watcher {
+	return app.orderWatcher
+}
+
+func (app *App) ChainID() int {
+	return app.chainID
+}
+
 func (app *App) GetOrder(hash common.Hash) (*types.OrderWithMetadata, error) {
 	<-app.started
 	return app.db.GetOrder(hash)

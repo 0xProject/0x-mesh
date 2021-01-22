@@ -62,7 +62,8 @@ var (
 type App interface {
 	Node() *p2p.Node
 	OrderWatcher() *orderwatch.Watcher
-	DB() *db.DB
+	FindOrdersV4(query *db.OrderQueryV4) ([]*types.OrderWithMetadata, error)
+	ChainID() int
 }
 
 // Request is a V4 ordersync request
@@ -96,6 +97,7 @@ func New(ctx context.Context, app App) *Service {
 		ctx:                ctx,
 		app:                app,
 		requestRateLimiter: rate.NewLimiter(maxRequestsPerSecond, requestsBurst),
+		perPage:            500,
 	}
 	s.app.Node().SetStreamHandler(ID, s.HandleStream)
 	return s
@@ -393,14 +395,34 @@ func (s *Service) handleRequest(request *Request, requesterID peer.ID) *Response
 	}
 
 	// Get the orders for this page.
-	ordersResp, err := s.GetOrdersV4(s.perPage, request.MinOrderHash)
+	ordersWithMeta, err := s.app.FindOrdersV4(&db.OrderQueryV4{
+		Filters: []db.OrderFilterV4{
+			{
+				Field: db.OV4FIsRemoved,
+				Kind:  db.Equal,
+				Value: false,
+			},
+			{
+				Field: db.OV4FHash,
+				Kind:  db.Greater,
+				Value: request.MinOrderHash,
+			},
+		},
+		Sort: []db.OrderSortV4{
+			{
+				Field:     db.OV4FHash,
+				Direction: db.Ascending,
+			},
+		},
+		Limit: uint(s.perPage),
+	})
 	if err != nil {
 		log.WithError(err).Warn("handleRequest v4 error")
 		return nil
 	}
-	orders := []*zeroex.SignedOrderV4{}
-	for _, orderInfo := range ordersResp.OrdersInfos {
-		orders = append(orders, orderInfo.SignedOrderV4)
+	var orders []*zeroex.SignedOrderV4
+	for _, order := range ordersWithMeta {
+		orders = append(orders, order.SignedOrderV4())
 	}
 
 	s.handlePeerScoreEvent(requesterID, psValidMessage)
@@ -411,7 +433,7 @@ func (s *Service) handleRequest(request *Request, requesterID peer.ID) *Response
 
 // Returns the next request if any, or nil, the number of received orders or err.
 func (s *Service) handleOrderSyncResponse(res *Response, peer peer.ID) (*Request, int, error) {
-	validationResults, err := s.app.orderWatcher.ValidateAndStoreValidOrdersV4(s.ctx, res.Orders, s.app.chainID, false, &types.AddOrdersOpts{})
+	validationResults, err := s.app.OrderWatcher().ValidateAndStoreValidOrdersV4(s.ctx, res.Orders, s.app.ChainID(), false, &types.AddOrdersOpts{})
 	if err != nil {
 		return nil, len(res.Orders), err
 	}
@@ -447,7 +469,7 @@ func (s *Service) handleOrderSyncResponse(res *Response, peer peer.ID) (*Request
 }
 
 func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID, nextReq *Request) (*Request, error) {
-	stream, err := s.node.NewStream(ctx, providerID, ID)
+	stream, err := s.app.Node().NewStream(ctx, providerID, ID)
 	if err != nil {
 		s.handlePeerScoreEvent(providerID, psUnexpectedDisconnect)
 		return nil, err
@@ -506,52 +528,4 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID, nex
 		}
 		nextReq = req
 	}
-}
-
-// ErrPerPageZero is the error returned when a GetOrders request specifies perPage to 0
-type ErrPerPageZero struct{}
-
-func (e ErrPerPageZero) Error() string {
-	return "perPage cannot be zero"
-}
-
-func (s *Service) GetOrdersV4(perPage int, minOrderHash common.Hash) ([]*zeroex.SignedOrderV4, error) {
-	if perPage <= 0 {
-		return nil, ErrPerPageZero{}
-	}
-	ordersWithMeta, err := s.app.DB().FindOrdersV4(&db.OrderQueryV4{
-		Filters: []db.OrderFilterV4{
-			{
-				Field: db.OV4FIsRemoved,
-				Kind:  db.Equal,
-				Value: false,
-			},
-			{
-				Field: db.OV4FHash,
-				Kind:  db.Greater,
-				Value: minOrderHash,
-			},
-		},
-		Sort: []db.OrderSortV4{
-			{
-				Field:     db.OV4FHash,
-				Direction: db.Ascending,
-			},
-		},
-		Limit: uint(perPage),
-	})
-	if err != nil {
-		return nil, err
-	}
-	var orders []*zeroex.SignedOrderV4
-	for _, order := range ordersWithMeta {
-		orders = append(orders, &order.SignedOrderV4())
-	}
-
-	getOrdersResponse := &types.GetOrdersResponse{
-		Timestamp:   time.Now(),
-		OrdersInfos: ordersInfos,
-	}
-
-	return getOrdersResponse, nil
 }

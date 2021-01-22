@@ -22,14 +22,14 @@ func (s *Service) handlePeerScoreEvent(id peer.ID, event peerScoreEvent) {
 	// spam the network with valid messages).
 	switch event {
 	case psInvalidMessage:
-		s.node.AddPeerScore(id, "ordersync/invalid-message", -5)
+		s.app.Node().AddPeerScore(id, "ordersync/invalid-message", -5)
 	case psValidMessage:
-		s.node.SetPeerScore(id, "ordersync/valid-message", 5)
+		s.app.Node().SetPeerScore(id, "ordersync/valid-message", 5)
 	case psUnexpectedDisconnect:
-		s.node.AddPeerScore(id, "ordersync/unexpected-disconnect", -1)
+		s.app.Node().AddPeerScore(id, "ordersync/unexpected-disconnect", -1)
 	case receivedOrders:
-		s.node.UnsetPeerScore(id, "ordersync/unexpected-disconnect")
-		s.node.SetPeerScore(id, "ordersync/received-orders", 10)
+		s.app.Node().UnsetPeerScore(id, "ordersync/unexpected-disconnect")
+		s.app.Node().SetPeerScore(id, "ordersync/received-orders", 10)
 	default:
 		log.WithField("event", event).Error("unknown ordersync peerScoreEvent")
 	}
