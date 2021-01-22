@@ -903,7 +903,6 @@ func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log, filter db
 	case "ExchangePairCancelledLimitOrdersEventV4":
 		var exchangeCancelUpToEvent decoder.ExchangePairCancelledLimitOrdersEventV4
 		err = w.eventDecoder.Decode(log, &exchangeCancelUpToEvent)
-		fmt.Printf("exchangeCancelUpToEvent = %+v\n", exchangeCancelUpToEvent)
 		if err != nil {
 			if isNonCritical := w.checkDecodeErr(err, eventType); isNonCritical {
 				return nil, nil, nil
@@ -935,7 +934,6 @@ func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log, filter db
 				},
 			},
 		})
-		fmt.Printf("cancelledOrders = %+v\n", cancelledOrders)
 		if err != nil {
 			logger.WithFields(logger.Fields{
 				"error": err.Error(),
