@@ -20,7 +20,7 @@ func (app *App) HandleMessagesV4(ctx context.Context, messages []*p2p.Message) e
 	for _, msg := range messages {
 		// Decode JSON
 		var order zeroex.SignedOrderV4
-		if err := json.Unmarshal(data, &order); err != nil {
+		if err := json.Unmarshal(msg.Data, &order); err != nil {
 			log.WithFields(map[string]interface{}{
 				"error": err,
 				"from":  msg.From,
@@ -38,7 +38,7 @@ func (app *App) HandleMessagesV4(ctx context.Context, messages []*p2p.Message) e
 		if _, alreadySeen := orderHashToMessage[orderHash]; alreadySeen {
 			continue
 		}
-		orders = append(orders, order)
+		orders = append(orders, &order)
 		orderHashToMessage[orderHash] = msg
 		app.handlePeerScoreEvent(msg.From, psValidMessage)
 	}
