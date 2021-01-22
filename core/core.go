@@ -659,7 +659,7 @@ func (app *App) Start() error {
 
 	// Register and start ordersync V4 service.
 	app.ordersyncServiceV4 = ordersync_v4.New(innerCtx, app)
-	orderSyncErrChan := make(chan error, 1)
+	orderSyncErrChanV4 := make(chan error, 1)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -672,7 +672,7 @@ func (app *App) Start() error {
 		}).Info("starting ordersync V4 service")
 
 		if err := app.ordersyncServiceV4.PeriodicallyGetOrders(innerCtx, ordersyncMinPeers, ordersyncApproxDelay); err != nil {
-			orderSyncErrChan <- err
+			orderSyncErrChanV4 <- err
 		}
 	}()
 
