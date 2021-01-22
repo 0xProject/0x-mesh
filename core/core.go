@@ -17,6 +17,7 @@ import (
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/core/ordersync"
+	"github.com/0xProject/0x-mesh/core/ordersync_v4"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/ethereum"
@@ -196,22 +197,23 @@ type Config struct {
 }
 
 type App struct {
-	ctx               context.Context
-	config            Config
-	privateConfig     privateConfig
-	peerID            peer.ID
-	privKey           p2pcrypto.PrivKey
-	node              *p2p.Node
-	chainID           int
-	blockWatcher      *blockwatch.Watcher
-	orderWatcher      *orderwatch.Watcher
-	orderValidator    *ordervalidator.OrderValidator
-	orderFilter       *orderfilter.Filter
-	ethRPCRateLimiter ratelimit.RateLimiter
-	ethRPCClient      ethrpcclient.Client
-	db                *db.DB
-	ordersyncService  *ordersync.Service
-	contractAddresses *ethereum.ContractAddresses
+	ctx                context.Context
+	config             Config
+	privateConfig      privateConfig
+	peerID             peer.ID
+	privKey            p2pcrypto.PrivKey
+	node               *p2p.Node
+	chainID            int
+	blockWatcher       *blockwatch.Watcher
+	orderWatcher       *orderwatch.Watcher
+	orderValidator     *ordervalidator.OrderValidator
+	orderFilter        *orderfilter.Filter
+	ethRPCRateLimiter  ratelimit.RateLimiter
+	ethRPCClient       ethrpcclient.Client
+	db                 *db.DB
+	ordersyncService   *ordersync.Service
+	ordersyncServiceV4 *ordersync_v4.Service
+	contractAddresses  *ethereum.ContractAddresses
 
 	// started is closed to signal that the App has been started. Some methods
 	// will block until after the App is started.
@@ -651,6 +653,25 @@ func (app *App) Start() error {
 		}).Info("starting ordersync service")
 
 		if err := app.ordersyncService.PeriodicallyGetOrders(innerCtx, ordersyncMinPeers, ordersyncApproxDelay); err != nil {
+			orderSyncErrChan <- err
+		}
+	}()
+
+	// Register and start ordersync V4 service.
+	app.ordersyncServiceV4 = ordersync_v4.New(innerCtx, app)
+	orderSyncErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer func() {
+			log.Debug("closing ordersync V4 service")
+		}()
+		log.WithFields(map[string]interface{}{
+			"approxDelay": ordersyncApproxDelay,
+			"perPage":     app.privateConfig.paginationSubprotocolPerPage,
+		}).Info("starting ordersync V4 service")
+
+		if err := app.ordersyncServiceV4.PeriodicallyGetOrders(innerCtx, ordersyncMinPeers, ordersyncApproxDelay); err != nil {
 			orderSyncErrChan <- err
 		}
 	}()

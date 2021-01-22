@@ -14,9 +14,10 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/common/types"
-	"github.com/0xProject/0x-mesh/core"
+	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
 	"github.com/albrow/stringset"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jpillora/backoff"
@@ -58,6 +59,12 @@ var (
 	ErrNoOrdersFromPeer = errors.New("no orders received from peer")
 )
 
+type App interface {
+	Node() *p2p.Node
+	OrderWatcher() *orderwatch.Watcher
+	DB() *db.DB
+}
+
 // Request is a V4 ordersync request
 type Request struct {
 	MinOrderHash common.Hash `json:"minOrderHash"`
@@ -71,12 +78,11 @@ type Response struct {
 // Service is the main entrypoint for running the ordersync protocol. It handles
 // responding to and sending ordersync requests.
 type Service struct {
-	ctx  context.Context
-	node *p2p.Node
+	ctx context.Context
+	app App
 	// requestRateLimiter is a rate limiter for incoming ordersync requests. It's
 	// shared between all peers.
 	requestRateLimiter *rate.Limiter
-	app                *core.App
 	perPage            int
 }
 
@@ -85,13 +91,13 @@ type Service struct {
 // them. New expects an array of subprotocols which the service will support, in the
 // order of preference. The service will automatically pick the most preferred protocol
 // that is supported by both peers for each request/response.
-func New(ctx context.Context, node *p2p.Node) *Service {
+func New(ctx context.Context, app App) *Service {
 	s := &Service{
 		ctx:                ctx,
-		node:               node,
+		app:                app,
 		requestRateLimiter: rate.NewLimiter(maxRequestsPerSecond, requestsBurst),
 	}
-	s.node.SetStreamHandler(ID, s.HandleStream)
+	s.app.Node().SetStreamHandler(ID, s.HandleStream)
 	return s
 }
 
@@ -186,7 +192,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 		wg := &sync.WaitGroup{}
 		semaphore := make(chan struct{}, minPeers)
 
-		currentNeighbors := s.node.Neighbors()
+		currentNeighbors := s.app.Node().Neighbors()
 		shufflePeers(currentNeighbors)
 		innerCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
@@ -387,7 +393,7 @@ func (s *Service) handleRequest(request *Request, requesterID peer.ID) *Response
 	}
 
 	// Get the orders for this page.
-	ordersResp, err := s.app.GetOrdersV4(s.perPage, request.MinOrderHash)
+	ordersResp, err := s.GetOrdersV4(s.perPage, request.MinOrderHash)
 	if err != nil {
 		log.WithError(err).Warn("handleRequest v4 error")
 		return nil
@@ -500,4 +506,52 @@ func (s *Service) getOrdersFromPeer(ctx context.Context, providerID peer.ID, nex
 		}
 		nextReq = req
 	}
+}
+
+// ErrPerPageZero is the error returned when a GetOrders request specifies perPage to 0
+type ErrPerPageZero struct{}
+
+func (e ErrPerPageZero) Error() string {
+	return "perPage cannot be zero"
+}
+
+func (s *Service) GetOrdersV4(perPage int, minOrderHash common.Hash) ([]*zeroex.SignedOrderV4, error) {
+	if perPage <= 0 {
+		return nil, ErrPerPageZero{}
+	}
+	ordersWithMeta, err := s.app.DB().FindOrdersV4(&db.OrderQueryV4{
+		Filters: []db.OrderFilterV4{
+			{
+				Field: db.OV4FIsRemoved,
+				Kind:  db.Equal,
+				Value: false,
+			},
+			{
+				Field: db.OV4FHash,
+				Kind:  db.Greater,
+				Value: minOrderHash,
+			},
+		},
+		Sort: []db.OrderSortV4{
+			{
+				Field:     db.OV4FHash,
+				Direction: db.Ascending,
+			},
+		},
+		Limit: uint(perPage),
+	})
+	if err != nil {
+		return nil, err
+	}
+	var orders []*zeroex.SignedOrderV4
+	for _, order := range ordersWithMeta {
+		orders = append(orders, &order.SignedOrderV4())
+	}
+
+	getOrdersResponse := &types.GetOrdersResponse{
+		Timestamp:   time.Now(),
+		OrdersInfos: ordersInfos,
+	}
+
+	return getOrdersResponse, nil
 }
