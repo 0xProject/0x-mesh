@@ -56,7 +56,7 @@ func NewSignedTestOrderV4(t *testing.T, opts ...orderopts.Option) *zeroex.Signed
 		requiredMakerBalances := newTokenBalances()
 		requiredMakerBalances.addTokenAmount(t, order.TakerToken, order.TakerAmount)
 		requiredMakerBalances.addTokenAmount(t, order.TakerToken, order.TakerTokenFeeAmount)
-		setupBalanceAndAllowance(t, order.Taker, requiredMakerBalances)
+		setupBalanceAndAllowance(t, cfg.SetupTakerAddress, requiredMakerBalances)
 	}
 
 	return signedOrder

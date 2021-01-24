@@ -443,7 +443,7 @@ func OrderToCommonTypeV4(order *OrderV4) *types.OrderWithMetadata {
 }
 
 func OrderFromCommonType(order *types.OrderWithMetadata) *Order {
-	if order == nil {
+	if order == nil || order.OrderV3 == nil {
 		return nil
 	}
 	return &Order{
@@ -483,7 +483,7 @@ func OrderFromCommonType(order *types.OrderWithMetadata) *Order {
 }
 
 func OrderFromCommonTypeV4(order *types.OrderWithMetadata) *OrderV4 {
-	if order == nil {
+	if order == nil || order.OrderV4 == nil {
 		return nil
 	}
 	return &OrderV4{
@@ -522,17 +522,23 @@ func OrderFromCommonTypeV4(order *types.OrderWithMetadata) *OrderV4 {
 }
 
 func OrdersFromCommonType(orders []*types.OrderWithMetadata) []*Order {
-	result := make([]*Order, len(orders))
-	for i, order := range orders {
-		result[i] = OrderFromCommonType(order)
+	result := []*Order{}
+	for _, orderMeta := range orders {
+		order := OrderFromCommonType(orderMeta)
+		if order != nil {
+			result = append(result, order)
+		}
 	}
 	return result
 }
 
 func OrdersFromCommonTypeV4(orders []*types.OrderWithMetadata) []*OrderV4 {
-	result := make([]*OrderV4, len(orders))
-	for i, order := range orders {
-		result[i] = OrderFromCommonTypeV4(order)
+	result := []*OrderV4{}
+	for _, orderMeta := range orders {
+		order := OrderFromCommonTypeV4(orderMeta)
+		if order != nil {
+			result = append(result, order)
+		}
 	}
 	return result
 }

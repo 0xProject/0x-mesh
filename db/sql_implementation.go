@@ -163,6 +163,21 @@ func (db *DB) ReadWriteTransactionalContext(ctx context.Context, opts *sql.TxOpt
 }
 
 func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []common.Hash, added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error) {
+	alreadyStoredV3, addedV3, removedV3, err := db.AddOrdersV3(orders)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	alreadyStoredV4, addedV4, removedV4, err := db.AddOrdersV4(orders)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	alreadyStored = append(alreadyStoredV3, alreadyStoredV4...)
+	added = append(addedV3, addedV4...)
+	removed = append(removedV3, removedV4...)
+	return alreadyStored, added, removed, nil
+}
+
+func (db *DB) AddOrdersV3(orders []*types.OrderWithMetadata) (alreadyStored []common.Hash, added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
@@ -434,6 +449,21 @@ func (db *DB) DeleteOrders(query *OrderQuery) (deleted []*types.OrderWithMetadat
 }
 
 func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) (err error) {
+	errV3 := db.UpdateOrderV3(hash, updateFunc)
+	if errV3 != nil && errV3 != ErrNotFound {
+		return errV3
+	}
+	errV4 := db.UpdateOrderV4(hash, updateFunc)
+	if errV4 != nil && errV4 != ErrNotFound {
+		return errV4
+	}
+	if errV3 == ErrNotFound && errV4 == ErrNotFound {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (db *DB) UpdateOrderV3(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) (err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
