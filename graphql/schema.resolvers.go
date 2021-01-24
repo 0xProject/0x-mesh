@@ -158,7 +158,7 @@ func (r *queryResolver) Ordersv4(ctx context.Context, sort []*gqltypes.OrderSort
 		})
 	}
 
-	orders, err := r.app.FindOrdersV4(nil)
+	orders, err := r.app.FindOrdersV4(query)
 	if err != nil {
 		return nil, err
 	}

@@ -28,6 +28,7 @@ const (
 		addOrders(orders: $orders, pinned: $pinned, opts: $opts) {
 			accepted {
 				order {
+                                        hash
 					chainId
 					exchangeAddress
 					makerAddress
@@ -50,6 +51,7 @@ const (
 				isNew
 			}
 			rejected {
+                                hash
 				code
 				message
 				order {
