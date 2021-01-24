@@ -150,7 +150,7 @@ func (w *Watcher) ValidateAndStoreValidOrdersV4(ctx context.Context, orders []*z
 		return nil, err
 	}
 
-	_, zeroexResults, err := w.onchainOrderValidationV4(ctx, validMeshOrders)
+	validationBlock, zeroexResults, err := w.onchainOrderValidationV4(ctx, validMeshOrders)
 
 	if err != nil {
 		return nil, err
@@ -192,12 +192,12 @@ func (w *Watcher) ValidateAndStoreValidOrdersV4(ctx context.Context, orders []*z
 
 	// Add the order to the OrderWatcher. This also saves the order in the
 	// database.
-	// allOrderEvents := []*zeroex.OrderEvent{}
-	// orderEvents, err := w.add(newOrderInfos, validationBlock, pinned, opts)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// allOrderEvents = append(allOrderEvents, orderEvents...)
+	allOrderEvents := []*zeroex.OrderEvent{}
+	orderEvents, err := w.add(newOrderInfos, validationBlock, pinned, opts)
+	if err != nil {
+		return nil, err
+	}
+	allOrderEvents = append(allOrderEvents, orderEvents...)
 
 	// TODO(oskar) - reenable
 	// if len(allOrderEvents) > 0 {

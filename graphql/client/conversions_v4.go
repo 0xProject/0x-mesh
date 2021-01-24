@@ -107,3 +107,11 @@ func rejectedOrderResultFromGQLTypeV4(result *gqltypes.RejectedOrderResultV4) *R
 		Message: result.Message,
 	}
 }
+
+func ordersWithMetadataFromGQLTypeV4(orders []*gqltypes.OrderV4WithMetadata) []*OrderWithMetadataV4 {
+	result := make([]*OrderWithMetadataV4, len(orders))
+	for i, r := range orders {
+		result[i] = orderWithMetadataFromGQLTypeV4(r)
+	}
+	return result
+}

@@ -43,8 +43,6 @@ func (r *mutationResolver) AddOrdersV4(ctx context.Context, orders []*gqltypes.N
 
 	returnResult, err := gqltypes.AddOrdersResultsFromValidationResultsV4(results)
 
-	log.Infof("results are: %+v", returnResult.Accepted[0].Order)
-
 	return returnResult, err
 }
 
@@ -160,7 +158,7 @@ func (r *queryResolver) Ordersv4(ctx context.Context, sort []*gqltypes.OrderSort
 		})
 	}
 
-	orders, err := r.app.FindOrdersV4(query)
+	orders, err := r.app.FindOrdersV4(nil)
 	if err != nil {
 		return nil, err
 	}
