@@ -95,6 +95,10 @@ func (*noopMessageHandler) HandleMessages(context.Context, []*p2p.Message) error
 	return nil
 }
 
+func (*noopMessageHandler) HandleMessagesV4(context.Context, []*p2p.Message) error {
+	return nil
+}
+
 var _ Subprotocol = &oneOrderSubprotocol{}
 
 // oneOrderSubprotocol is an ordersync subprotocol that is used for testing

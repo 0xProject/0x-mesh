@@ -1,8 +1,11 @@
 package orderopts
 
 import (
+	"bytes"
 	"math/big"
 
+	"github.com/0xProject/0x-mesh/constants"
+	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -41,7 +44,7 @@ func MakerAddress(address common.Address) Option {
 func MakerAssetData(assetData []byte) Option {
 	return func(cfg *Config) error {
 		cfg.Order.MakerAssetData = assetData
-		// TODO: Could extract maker token and set on V4 order
+		cfg.OrderV4.MakerToken = tokenFromAssetData(assetData)
 		return nil
 	}
 }
@@ -57,7 +60,7 @@ func MakerAssetAmount(amount *big.Int) Option {
 func TakerAssetData(assetData []byte) Option {
 	return func(cfg *Config) error {
 		cfg.Order.TakerAssetData = assetData
-		// TODO: Could extract taker token and set on V4 order
+		cfg.OrderV4.TakerToken = tokenFromAssetData(assetData)
 		return nil
 	}
 }
@@ -129,5 +132,16 @@ func SetupTakerAddress(takerAddress common.Address) Option {
 	return func(cfg *Config) error {
 		cfg.SetupTakerAddress = takerAddress
 		return nil
+	}
+}
+
+func tokenFromAssetData(assetData []byte) common.Address {
+	if bytes.Compare(assetData, constants.ZRXAssetData) == 0 {
+		return ethereum.GanacheAddresses.ZRXToken
+	} else if bytes.Compare(assetData, constants.WETHAssetData) == 0 {
+		return ethereum.GanacheAddresses.WETH9
+	} else {
+		// No other tokens exist in test and only ERC20 is supported
+		return constants.NullAddress
 	}
 }

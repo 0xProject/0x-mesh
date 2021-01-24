@@ -17,6 +17,7 @@ import (
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/core/ordersync"
+	"github.com/0xProject/0x-mesh/core/ordersync_v4"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/ethereum"
@@ -196,22 +197,23 @@ type Config struct {
 }
 
 type App struct {
-	ctx               context.Context
-	config            Config
-	privateConfig     privateConfig
-	peerID            peer.ID
-	privKey           p2pcrypto.PrivKey
-	node              *p2p.Node
-	chainID           int
-	blockWatcher      *blockwatch.Watcher
-	orderWatcher      *orderwatch.Watcher
-	orderValidator    *ordervalidator.OrderValidator
-	orderFilter       *orderfilter.Filter
-	ethRPCRateLimiter ratelimit.RateLimiter
-	ethRPCClient      ethrpcclient.Client
-	db                *db.DB
-	ordersyncService  *ordersync.Service
-	contractAddresses *ethereum.ContractAddresses
+	ctx                context.Context
+	config             Config
+	privateConfig      privateConfig
+	peerID             peer.ID
+	privKey            p2pcrypto.PrivKey
+	node               *p2p.Node
+	chainID            int
+	blockWatcher       *blockwatch.Watcher
+	orderWatcher       *orderwatch.Watcher
+	orderValidator     *ordervalidator.OrderValidator
+	orderFilter        *orderfilter.Filter
+	ethRPCRateLimiter  ratelimit.RateLimiter
+	ethRPCClient       ethrpcclient.Client
+	db                 *db.DB
+	ordersyncService   *ordersync.Service
+	ordersyncServiceV4 *ordersync_v4.Service
+	contractAddresses  *ethereum.ContractAddresses
 
 	// started is closed to signal that the App has been started. Some methods
 	// will block until after the App is started.
@@ -655,6 +657,25 @@ func (app *App) Start() error {
 		}
 	}()
 
+	// Register and start ordersync V4 service.
+	app.ordersyncServiceV4 = ordersync_v4.New(innerCtx, app)
+	orderSyncErrChanV4 := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer func() {
+			log.Debug("closing ordersync V4 service")
+		}()
+		log.WithFields(map[string]interface{}{
+			"approxDelay": ordersyncApproxDelay,
+			"perPage":     app.privateConfig.paginationSubprotocolPerPage,
+		}).Info("starting ordersync V4 service")
+
+		if err := app.ordersyncServiceV4.PeriodicallyGetOrders(innerCtx, ordersyncMinPeers, ordersyncApproxDelay); err != nil {
+			orderSyncErrChanV4 <- err
+		}
+	}()
+
 	// Start the p2p node.
 	p2pErrChan := make(chan error, 1)
 	wg.Add(1)
@@ -778,6 +799,18 @@ func (app *App) periodicallyCheckForNewAddrs(ctx context.Context, startingAddrs 
 			}
 		}
 	}
+}
+
+func (app *App) Node() *p2p.Node {
+	return app.node
+}
+
+func (app *App) OrderWatcher() *orderwatch.Watcher {
+	return app.orderWatcher
+}
+
+func (app *App) ChainID() int {
+	return app.chainID
 }
 
 func (app *App) GetOrder(hash common.Hash) (*types.OrderWithMetadata, error) {
@@ -1080,12 +1113,9 @@ func (app *App) AddOrdersRawV4(ctx context.Context, signedOrdersRaw []*json.RawM
 			"orderHash": acceptedOrderInfo.OrderHash.String(),
 		}).Debug("added new valid order via GraphQL or browser callback")
 
-		// FIXME(order) - reenable order sharing when P2P routing for v4
-		// orders is implemented.
-		// Share the order with our peers.
-		// if err := app.shareOrder(acceptedOrderInfo.SignedOrder); err != nil {
-		// 	return nil, err
-		// }
+		if err := app.shareOrderV4(acceptedOrderInfo.SignedOrderV4); err != nil {
+			return nil, err
+		}
 	}
 
 	return allValidationResults, nil
@@ -1096,6 +1126,17 @@ func (app *App) shareOrder(order *zeroex.SignedOrder) error {
 	<-app.started
 
 	encoded, err := encoding.OrderToRawMessage(app.orderFilter.Topic(), order)
+	if err != nil {
+		return err
+	}
+	return app.node.Send(encoded)
+}
+
+// shareOrderV4 immediately shares the given order on the GossipSub network.
+func (app *App) shareOrderV4(order *zeroex.SignedOrderV4) error {
+	<-app.started
+
+	encoded, err := json.Marshal(order)
 	if err != nil {
 		return err
 	}

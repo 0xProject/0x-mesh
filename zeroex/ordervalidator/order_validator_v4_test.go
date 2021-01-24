@@ -445,7 +445,7 @@ func TestComputeABIEncodedSignedOrderStringByteLengthV4(t *testing.T) {
 
 		encoded, err := abiEncodeV4(signedOrder)
 		require.NoError(t, err)
-		t.Logf("abiEncoded = %s\n", encoded)
+		// t.Logf("abiEncoded = %s\n", encoded)
 		expectedLength := len(encoded) - emptyBatchGetLimitOrderRelevantStatesCallDataStringLength
 
 		assert.Equal(t, expectedLength, signedOrderV4AbiHexLength, label)
