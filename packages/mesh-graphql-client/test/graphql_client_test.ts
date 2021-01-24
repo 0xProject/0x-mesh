@@ -22,6 +22,7 @@ import 'mocha';
 
 import {
     FilterKind,
+    MeshGraphQLClient,
     OrderEvent,
     OrderEventEndState,
     OrderWithMetadata,
@@ -31,24 +32,27 @@ import {
 
 function getRandomLimitOrder(fields: Partial<LimitOrderFields> = {}): LimitOrder {
     return new LimitOrder({
-        makerToken: randomAddress(),
-        takerToken: randomAddress(),
-        makerAmount: getRandomInteger('1e18', '100e18'),
-        takerAmount: getRandomInteger('1e6', '100e6'),
-        takerTokenFeeAmount: getRandomInteger('0.01e18', '1e18'),
-        maker: randomAddress(),
-        taker: randomAddress(),
-        sender: randomAddress(),
-        feeRecipient: randomAddress(),
-        pool: hexUtils.random(),
+        chainId: 1,
+        verifyingContract: '0x5315e44798395d4a952530d131249fe00f554565',
+        makerToken: '0x34d402f14d58e001d8efbe6585051bf9706aa064',
+        takerToken: '0xcdb594a32b1cc3479d8746279712c39d18a07fc0',
+        makerAmount: new BigNumber(100),
+        takerAmount: new BigNumber(42),
+        takerTokenFeeAmount: new BigNumber(0),
+        maker: '0x6ecbe1db9ef729cbe972c83fb886247691fb6beb',
+        taker: '0x0000000000000000000000000000000000000000',
+        sender: '0x0000000000000000000000000000000000000000',
+        feeRecipient: '0x0000000000000000000000000000000000000000',
+        pool: '0x0000000000000000000000000000000000000000',
         expiry: new BigNumber(Math.floor(Date.now() / 1000 + 60)),
-        salt: new BigNumber(hexUtils.random()),
+        salt: getRandomInteger('1e5', '1e6'),
         ...fields,
     });
 }
 
 import { MeshDeployment, startServerAndClientAsync } from './utils/graphql_server';
 import { SignedOrderV4 } from '../src/types';
+import { client } from 'websocket';
 
 blockchainTests.resets('GraphQLClient', (env) => {
     describe('integration tests', () => {
@@ -121,35 +125,81 @@ blockchainTests.resets('GraphQLClient', (env) => {
             });
         });
 
-        describe('#addOrdersV4Async', async () => {});
+        describe('#addOrdersV4Async', async () => {
+            it('properly signs stuff', async () => {
+                const order = new LimitOrder({
+                    chainId: 1,
+                    verifyingContract: '0x5315e44798395d4a952530d131249fe00f554565',
+                    makerToken: '0x0b1ba0af832d7c05fd64161e0db78e85978e8082',
+                    takerToken: '0x871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
+                    makerAmount: new BigNumber(100),
+                    takerAmount: new BigNumber(42),
+                    takerTokenFeeAmount: new BigNumber(0),
+                    maker: '0x6ecbe1db9ef729cbe972c83fb886247691fb6beb',
+                    taker: '0x0000000000000000000000000000000000000000',
+                    sender: '0x0000000000000000000000000000000000000000',
+                    feeRecipient: '0x0000000000000000000000000000000000000000',
+                    pool: '0x0000000000000000000000000000000000000000000000000000000000000000',
+                    expiry: new BigNumber(1611614113),
+                    salt: new BigNumber(464085317),
+                });
+                const hash = order.getHash();
+                console.log(hash);
+                const signature = await order.getSignatureWithProviderAsync(provider);
+                console.log({
+                    ...order,
+                    ...{
+                        signatureType: signature.signatureType,
+                        signatureV: signature.v,
+                        signatureR: signature.r,
+                        signatureS: signature.s,
+                    },
+                });
+            });
+        });
         describe('#findOrdersV4Async', async () => {
             it('returns all orders when no options are provided', async () => {
-                const ordersLength = 10;
+                const ordersLength = 1;
                 const orders = [];
 
                 for (let i = 0; i < ordersLength; i++) {
                     const order = getRandomLimitOrder().clone({ maker: makerAddress });
                     const signature = await order.getSignatureWithProviderAsync(provider);
                     const signedOrder: SignedOrderV4 = {
-                        ...order,
-                        ...{
-                            exchangeAddress: '',
-                            signatureType: signature.signatureType,
-                            signatureV: signature.v,
-                            signatureR: signature.r,
-                            signatureS: signature.s,
-                        },
+                        chainId: 1337,
+                        exchangeAddress: order.verifyingContract,
+                        makerToken: order.makerToken,
+                        takerToken: order.takerToken,
+                        makerAmount: order.makerAmount,
+                        takerAmount: order.takerAmount,
+                        takerTokenFeeAmount: order.takerTokenFeeAmount,
+                        maker: order.maker,
+                        taker: order.taker,
+                        sender: order.sender,
+                        feeRecipient: order.feeRecipient,
+                        pool: order.pool,
+                        expiry: order.expiry,
+                        salt: order.salt,
+                        signatureType: signature.signatureType,
+                        signatureV: signature.v,
+                        signatureR: signature.r,
+                        signatureS: signature.s,
                     };
                     orders[i] = signedOrder;
                 }
                 console.log('adding orders');
-                const validationResults = await deployment.client.addOrdersV4Async(orders);
+                const newClient = new MeshGraphQLClient({
+                    httpUrl: `http://localhost:60567/graphql`,
+                    webSocketUrl: `ws://localhost:60567/graphql`,
+                });
+
+                const validationResults = await newClient.addOrdersV4Async(orders);
                 expect(validationResults.accepted.length).to.be.eq(ordersLength);
 
                 // Verify that all of the orders that were added to the mesh node
                 // were returned in the response.
                 console.log('checking orders');
-                const gotOrders = await deployment.client.findOrdersV4Async();
+                const gotOrders = await newClient.findOrdersV4Async();
                 console.log(gotOrders);
                 // const expectedOrders = orders.map((order) => ({
                 //     ...order,

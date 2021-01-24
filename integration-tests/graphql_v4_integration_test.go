@@ -18,6 +18,16 @@ import (
 	gqlclient "github.com/0xProject/0x-mesh/graphql/client"
 )
 
+func TestOrderSignatureV4(t *testing.T) {
+	signedTestOrder := scenario.NewSignedTestOrderV4(t, orderopts.SetupMakerState(true))
+	order, err := signedTestOrder.MarshalJSON()
+	require.NoError(t, err)
+	fmt.Println(string(order))
+	hash, _ := signedTestOrder.ComputeOrderHash()
+	fmt.Println(hash.Hex())
+
+}
+
 func TestAddOrdersSuccessLocalV4(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -26,10 +36,11 @@ func TestAddOrdersSuccessLocalV4(t *testing.T) {
 	// Create a new valid order.
 	signedTestOrder := scenario.NewSignedTestOrderV4(t, orderopts.SetupMakerState(true))
 	time.Sleep(blockProcessingWaitTime)
+	order, err := signedTestOrder.MarshalJSON()
+	require.NoError(t, err)
+	fmt.Println(string(order))
 
-	fmt.Printf("%+v\n", signedTestOrder)
-
-	_, err := client.GetStats(ctx)
+	_, err = client.GetStats(ctx)
 	require.NoError(t, err)
 
 	// Send the "AddOrders" request to the GraphQL server.
@@ -92,7 +103,7 @@ func TestAddOrdersSuccessV4(t *testing.T) {
 	signedTestOrder := scenario.NewSignedTestOrderV4(t, orderopts.SetupMakerState(true))
 	time.Sleep(blockProcessingWaitTime)
 
-	fmt.Printf("%+v\n", signedTestOrder)
+	fmt.Printf("%+v\n", signedTestOrder.Sender.Hex())
 
 	_, err := client.GetStats(ctx)
 	require.NoError(t, err)

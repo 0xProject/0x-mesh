@@ -24,6 +24,13 @@ export interface AddOrdersResponse<
     addOrders: StringifiedAddOrdersResults<T, K>;
 }
 
+export interface AddOrdersResponseV4<
+    T extends GenericStringifiedOrderWithMetadata,
+    K extends GenericStringifiedSignedOrders
+> {
+    addOrdersV4: StringifiedAddOrdersResults<T, K>;
+}
+
 export interface OrderResponse {
     order: StringifiedOrderWithMetadata | null;
 }
@@ -158,6 +165,7 @@ export enum RejectedOrderCode {
 export interface OrderEvent {
     timestampMs: number;
     order: OrderWithMetadata;
+    orderv4: OrderWithMetadataV4;
     endState: OrderEventEndState;
     contractEvents: ContractEvent[];
 }

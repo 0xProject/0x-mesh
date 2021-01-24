@@ -155,6 +155,8 @@ type Order struct {
 type OrderEvent struct {
 	// The order that was affected.
 	Order *OrderWithMetadata `json:"order"`
+	// The v4 order that was affected.
+	Orderv4 *OrderV4WithMetadata `json:"orderv4"`
 	// A way of classifying the effect that the order event had on the order. You can
 	// think of different end states as different "types" of order events.
 	EndState OrderEndState `json:"endState"`

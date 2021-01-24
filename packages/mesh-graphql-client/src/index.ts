@@ -24,6 +24,7 @@ import { BrowserLink } from './browser_link';
 import {
     AddOrdersOpts,
     AddOrdersResponse,
+    AddOrdersResponseV4,
     AddOrdersResults,
     convertFilterValue,
     fromStringifiedAddOrdersResults,
@@ -36,6 +37,7 @@ import {
     OrderEventResponse,
     OrderQuery,
     OrderResponse,
+    OrderResponseV4,
     OrdersResponse,
     OrdersResponseV4,
     OrderWithMetadata,
@@ -161,7 +163,6 @@ const addOrdersMutationV4 = gql`
         addOrdersV4(orders: $orders, pinned: $pinned, opts: $opts) {
             accepted {
                 order {
-                    hash
                     chainId
                     exchangeAddress
                     makerToken
@@ -184,9 +185,9 @@ const addOrdersMutationV4 = gql`
                 isNew
             }
             rejected {
-                hash
                 code
                 message
+                hash
                 order {
                     chainId
                     exchangeAddress
@@ -233,6 +234,33 @@ const orderQuery = gql`
             expirationTimeSeconds
             salt
             signature
+            fillableTakerAssetAmount
+        }
+    }
+`;
+
+const orderQueryV4 = gql`
+    query OrderV4($hash: String!) {
+        orderv4(hash: $hash) {
+            hash
+            chainId
+            exchangeAddress
+            makerToken
+            takerToken
+            makerAmount
+            takerAmount
+            takerTokenFeeAmount
+            maker
+            taker
+            sender
+            feeRecipient
+            pool
+            expiry
+            salt
+            signatureType
+            signatureV
+            signatureR
+            signatureS
             fillableTakerAssetAmount
         }
     }
@@ -479,7 +507,8 @@ export class MeshGraphQLClient {
         pinned: boolean = true,
         opts?: AddOrdersOpts,
     ): Promise<AddOrdersResults<OrderWithMetadataV4, SignedOrderV4>> {
-        const resp: FetchResult<AddOrdersResponse<
+        console.log(orders.map(toStringifiedSignedOrderV4));
+        const resp: FetchResult<AddOrdersResponseV4<
             StringifiedOrderWithMetadataV4,
             StringifiedSignedOrderV4
         >> = await this._client.mutate({
@@ -500,7 +529,9 @@ export class MeshGraphQLClient {
             throw new Error('received no data');
         }
 
-        const results = resp.data.addOrders;
+        console.log(resp.data.addOrdersV4.rejected[0]);
+
+        const results = resp.data.addOrdersV4;
 
         return fromStringifiedAddOrdersResultsV4(results);
     }
@@ -519,6 +550,22 @@ export class MeshGraphQLClient {
             return null;
         }
         return fromStringifiedOrderWithMetadata(resp.data.order);
+    }
+
+    public async getOrderAsyncV4(hash: string): Promise<OrderWithMetadataV4 | null> {
+        const resp: ApolloQueryResult<OrderResponseV4> = await this._client.query({
+            query: orderQueryV4,
+            variables: {
+                hash,
+            },
+        });
+        if (resp.data == null) {
+            throw new Error('received no data');
+        }
+        if (resp.data.order == null) {
+            return null;
+        }
+        return fromStringifiedOrderWithMetadataV4(resp.data.order);
     }
 
     public async findOrdersAsync(

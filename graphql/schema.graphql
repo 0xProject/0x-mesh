@@ -543,6 +543,10 @@ type OrderEvent {
     """
     order: OrderWithMetadata!
     """
+    The v4 order that was affected.
+    """
+    orderv4: OrderV4WithMetadata!
+    """
     A way of classifying the effect that the order event had on the order. You can
     think of different end states as different "types" of order events.
     """
