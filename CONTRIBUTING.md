@@ -69,7 +69,7 @@ CI can be found [here](https://github.com/0xProject/0x-mesh/blob/development/.ci
 
 
 ```
-docker run --rm --pull -ti -p 8545:8545 -e VERSION=6.5.9 0xorg/ganache-cli
+docker run --rm --pull -ti -p 8545:8545 -e VERSION=6.5.10 0xorg/ganache-cli
 ```
 
 There are various Make targets for running tests:
