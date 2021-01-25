@@ -353,6 +353,7 @@ export interface StringifiedRejectedOrderResult<K extends GenericStringifiedSign
 export interface StringifiedOrderEvent {
     timestamp: string;
     order: StringifiedOrderWithMetadata;
+    orderv4: StringifiedOrderWithMetadataV4;
     endState: OrderEventEndState;
     fillableTakerAssetAmount: BigNumber;
     contractEvents: ContractEvent[];
@@ -565,6 +566,7 @@ export function fromStringifiedOrderEvent(event: StringifiedOrderEvent): OrderEv
         ...event,
         timestampMs: new Date(event.timestamp).getUTCMilliseconds(),
         order: fromStringifiedOrderWithMetadata(event.order),
+        orderv4: fromStringifiedOrderWithMetadataV4(event.orderv4),
     };
 }
 

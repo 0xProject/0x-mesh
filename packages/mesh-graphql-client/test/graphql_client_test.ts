@@ -62,6 +62,8 @@ blockchainTests.resets('GraphQLClient', (env) => {
         let makerAddress: string;
         let orderFactory: OrderFactory;
         let provider: Web3ProviderEngine;
+        let makerTokenAddress: string;
+        let feeTokenAddress: string;
 
         beforeEach(async () => {
             deployment = await startServerAndClientAsync();
@@ -112,6 +114,8 @@ blockchainTests.resets('GraphQLClient', (env) => {
             await feeToken
                 .approve(erc20ProxyAddress, new BigNumber('100e18'))
                 .awaitTransactionSuccessAsync({ from: makerAddress });
+            makerTokenAddress = makerToken.address;
+            feeTokenAddress = feeToken.address;
             orderFactory = new OrderFactory(constants.TESTRPC_PRIVATE_KEYS[accounts.indexOf(makerAddress)], {
                 ...constants.STATIC_ORDER_PARAMS,
                 feeRecipientAddress: constants.NULL_ADDRESS,
@@ -162,8 +166,13 @@ blockchainTests.resets('GraphQLClient', (env) => {
                 const ordersLength = 1;
                 const orders = [];
 
+                console.log('token addresses', makerTokenAddress, feeTokenAddress);
                 for (let i = 0; i < ordersLength; i++) {
-                    const order = getRandomLimitOrder().clone({ maker: makerAddress });
+                    const order = getRandomLimitOrder().clone({
+                        maker: makerAddress,
+                        makerToken: makerTokenAddress,
+                        takerToken: feeTokenAddress,
+                    });
                     const signature = await order.getSignatureWithProviderAsync(provider);
                     const signedOrder: SignedOrderV4 = {
                         chainId: 1337,

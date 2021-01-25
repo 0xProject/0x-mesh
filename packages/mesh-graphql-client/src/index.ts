@@ -589,7 +589,7 @@ export class MeshGraphQLClient {
         query: OrderQuery = { sort: [], filters: [], limit: defaultOrderQueryLimit },
     ): Promise<OrderWithMetadataV4[]> {
         const resp: ApolloQueryResult<OrdersResponseV4> = await this._client.query({
-            query: ordersQuery,
+            query: ordersQueryV4,
             variables: {
                 sort: query.sort || [],
                 filters: query.filters?.map(convertFilterValue) || [],

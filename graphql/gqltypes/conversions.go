@@ -13,6 +13,8 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func AddOrderOptsToCommonType(opts *AddOrdersOpts) *types.AddOrdersOpts {
@@ -350,8 +352,13 @@ func RejectedOrderResultsFromOrderInfos(infos []*ordervalidator.RejectedOrderInf
 }
 
 func OrderEventFromZeroExType(event *zeroex.OrderEvent) *OrderEvent {
-	return &OrderEvent{
-		Order: &OrderWithMetadata{
+	baseEvent := &OrderEvent{
+		EndState:       OrderEndState(event.EndState),
+		Timestamp:      event.Timestamp.Format(time.RFC3339),
+		ContractEvents: ContractEventsFromZeroExType(event.ContractEvents),
+	}
+	if event.SignedOrder != nil {
+		baseEvent.Order = &OrderWithMetadata{
 			Hash:                     event.OrderHash.String(),
 			ChainID:                  event.SignedOrder.ChainID.String(),
 			ExchangeAddress:          strings.ToLower(event.SignedOrder.ExchangeAddress.Hex()),
@@ -371,11 +378,37 @@ func OrderEventFromZeroExType(event *zeroex.OrderEvent) *OrderEvent {
 			Salt:                     event.SignedOrder.Salt.String(),
 			Signature:                types.BytesToHex(event.SignedOrder.Signature),
 			FillableTakerAssetAmount: event.FillableTakerAssetAmount.String(),
-		},
-		EndState:       OrderEndState(event.EndState),
-		Timestamp:      event.Timestamp.Format(time.RFC3339),
-		ContractEvents: ContractEventsFromZeroExType(event.ContractEvents),
+		}
+	} else {
+		hash, err := event.SignedOrderV4.ComputeOrderHash()
+		if err != nil {
+			log.Error(err)
+		}
+		sigV := strconv.FormatUint(uint64(event.SignedOrderV4.Signature.V), 10)
+		baseEvent.Orderv4 = &OrderV4WithMetadata{
+			ChainID:                  event.SignedOrderV4.ChainID.String(),
+			ExchangeAddress:          event.SignedOrderV4.ExchangeAddress.Hex(),
+			MakerToken:               event.SignedOrderV4.MakerToken.Hex(),
+			TakerToken:               event.SignedOrderV4.TakerToken.Hex(),
+			MakerAmount:              event.SignedOrderV4.MakerAmount.String(),
+			TakerAmount:              event.SignedOrderV4.MakerAmount.String(),
+			TakerTokenFeeAmount:      event.SignedOrderV4.TakerTokenFeeAmount.String(),
+			Maker:                    event.SignedOrderV4.Maker.Hex(),
+			Taker:                    event.SignedOrderV4.Taker.Hex(),
+			Sender:                   event.SignedOrderV4.Sender.Hex(),
+			FeeRecipient:             event.SignedOrderV4.FeeRecipient.Hex(),
+			Pool:                     event.SignedOrderV4.Pool.String(),
+			Expiry:                   event.SignedOrderV4.Expiry.String(),
+			Salt:                     event.SignedOrderV4.Salt.String(),
+			SignatureType:            event.SignedOrderV4.Signature.SignatureType.String(),
+			SignatureV:               sigV,
+			SignatureR:               event.SignedOrderV4.Signature.R.String(),
+			SignatureS:               event.SignedOrderV4.Signature.S.String(),
+			Hash:                     hash.Hex(),
+			FillableTakerAssetAmount: event.FillableTakerAssetAmount.String(),
+		}
 	}
+	return baseEvent
 }
 
 func OrderEventsFromZeroExType(orderEvents []*zeroex.OrderEvent) []*OrderEvent {

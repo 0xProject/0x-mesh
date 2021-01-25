@@ -7,8 +7,6 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/machinebox/graphql"
-
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -86,7 +84,6 @@ func (c *Client) AddOrdersV4(ctx context.Context, orders []*zeroex.SignedOrderV4
 		return nil, err
 	}
 
-	log.Infof("client results are: %+v", resp.AddOrders)
 	returnResult := addOrdersResultsFromGQLTypeV4(&resp.AddOrders)
 	return returnResult, nil
 }
@@ -102,7 +99,6 @@ func (c *Client) GetOrderV4(ctx context.Context, hash common.Hash) (*OrderWithMe
 		return nil, err
 	}
 
-	log.Infof("getOrder client results are: %+v", resp.Order)
 	if resp.Order == nil {
 		return nil, nil
 	}
