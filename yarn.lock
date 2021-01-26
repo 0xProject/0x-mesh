@@ -9694,7 +9694,7 @@ typedoc-default-themes@^0.6.3:
     lunr "^2.3.8"
     underscore "^1.9.1"
 
-typedoc-plugin-markdown@2.2.x, typedoc-plugin-markdown@^2.1.0:
+typedoc-plugin-markdown@^2.1.0:
   version "2.2.17"
   resolved "https://registry.yarnpkg.com/typedoc-plugin-markdown/-/typedoc-plugin-markdown-2.2.17.tgz#aaef7420e8268170e62c764f43740e10f842548d"
   integrity sha512-eE6cTeqsZIbjur6RG91Lhx1vTwjR49OHwVPRlmsxY3dthS4FNRL8sHxT5Y9pkosBwv1kSmNGQEPHjMYy1Ag6DQ==

@@ -10,7 +10,7 @@ import {
     randomAddress,
     getRandomInteger,
 } from '@0x/contracts-test-utils';
-import { LimitOrder, LimitOrderFields } from '@0x/protocol-utils';
+import { LimitOrder, LimitOrderFields, Signature } from '@0x/protocol-utils';
 import { BlockchainLifecycle, Web3Config, web3Factory } from '@0x/dev-utils';
 import { assetDataUtils } from '@0x/order-utils';
 import { Web3ProviderEngine } from '@0x/subproviders';
@@ -30,10 +30,12 @@ import {
     SortDirection,
 } from '../src/index';
 
+const exchangeProxyV4Address = '0x5315e44798395d4a952530d131249fe00f554565';
+
 function getRandomLimitOrder(fields: Partial<LimitOrderFields> = {}): LimitOrder {
     return new LimitOrder({
         chainId: 1,
-        verifyingContract: '0x5315e44798395d4a952530d131249fe00f554565',
+        verifyingContract: exchangeProxyV4Address,
         makerToken: '0x34d402f14d58e001d8efbe6585051bf9706aa064',
         takerToken: '0xcdb594a32b1cc3479d8746279712c39d18a07fc0',
         makerAmount: new BigNumber(100),
@@ -114,6 +116,15 @@ blockchainTests.resets('GraphQLClient', (env) => {
             await feeToken
                 .approve(erc20ProxyAddress, new BigNumber('100e18'))
                 .awaitTransactionSuccessAsync({ from: makerAddress });
+            // tslint:disable-next-line: await-promise
+            await makerToken
+                .approve('0x5315e44798395d4a952530d131249fe00f554565', new BigNumber('100e18'))
+                .awaitTransactionSuccessAsync({ from: makerAddress });
+            // tslint:disable-next-line: await-promise
+            await feeToken
+                .approve('0x5315e44798395d4a952530d131249fe00f554565', new BigNumber('100e18'))
+                .awaitTransactionSuccessAsync({ from: makerAddress });
+
             makerTokenAddress = makerToken.address;
             feeTokenAddress = feeToken.address;
             orderFactory = new OrderFactory(constants.TESTRPC_PRIVATE_KEYS[accounts.indexOf(makerAddress)], {
@@ -129,9 +140,9 @@ blockchainTests.resets('GraphQLClient', (env) => {
             });
         });
 
-        describe('#addOrdersV4Async', async () => {
-            it('properly signs stuff', async () => {
-                const order = new LimitOrder({
+        describe('#LimitOrderV4', async () => {
+            it('is being signed properly', async () => {
+                const testOrder = new LimitOrder({
                     chainId: 1,
                     verifyingContract: '0x5315e44798395d4a952530d131249fe00f554565',
                     makerToken: '0x0b1ba0af832d7c05fd64161e0db78e85978e8082',
@@ -139,7 +150,7 @@ blockchainTests.resets('GraphQLClient', (env) => {
                     makerAmount: new BigNumber(100),
                     takerAmount: new BigNumber(42),
                     takerTokenFeeAmount: new BigNumber(0),
-                    maker: '0x6ecbe1db9ef729cbe972c83fb886247691fb6beb',
+                    maker: '0x05cac48d17ecc4d8a9db09dde766a03959b98367',
                     taker: '0x0000000000000000000000000000000000000000',
                     sender: '0x0000000000000000000000000000000000000000',
                     feeRecipient: '0x0000000000000000000000000000000000000000',
@@ -147,18 +158,20 @@ blockchainTests.resets('GraphQLClient', (env) => {
                     expiry: new BigNumber(1611614113),
                     salt: new BigNumber(464085317),
                 });
-                const hash = order.getHash();
-                console.log(hash);
-                const signature = await order.getSignatureWithProviderAsync(provider);
-                console.log({
-                    ...order,
-                    ...{
-                        signatureType: signature.signatureType,
-                        signatureV: signature.v,
-                        signatureR: signature.r,
-                        signatureS: signature.s,
-                    },
-                });
+                const expectedHash = '0x4de42b085ed2ce2ef4f8e64df51b7d3ee8586f8ab781ffe45fa45ce884cd278d';
+                const hash = testOrder.getHash();
+                expect(hash).to.be.eq(expectedHash);
+                const expectedSignature: Signature = {
+                    signatureType: 3,
+                    v: 28,
+                    r: '0x575a304e2fe23038a0e4561097b8e47b75270dc28c6bda49bc9a431a6aa9d980',
+                    s: '0x43f976de7c59159b0ea2e5594dadc2ec1c7ff4088f76160ab4aa49999996ef7f',
+                };
+                const signature = testOrder.getSignatureWithKey(
+                    '0xee094b79aa0315914955f2f09be9abe541dcdc51f0aae5bec5453e9f73a471a6',
+                );
+
+                expect(signature).to.be.deep.eq(expectedSignature);
             });
         });
         describe('#findOrdersV4Async', async () => {
@@ -172,10 +185,11 @@ blockchainTests.resets('GraphQLClient', (env) => {
                         maker: makerAddress,
                         makerToken: makerTokenAddress,
                         takerToken: feeTokenAddress,
+                        chainId: 1337,
                     });
                     const signature = await order.getSignatureWithProviderAsync(provider);
                     const signedOrder: SignedOrderV4 = {
-                        chainId: 1337,
+                        chainId: order.chainId,
                         exchangeAddress: order.verifyingContract,
                         makerToken: order.makerToken,
                         takerToken: order.takerToken,
@@ -195,20 +209,22 @@ blockchainTests.resets('GraphQLClient', (env) => {
                         signatureS: signature.s,
                     };
                     orders[i] = signedOrder;
+                    console.log(signedOrder);
                 }
                 console.log('adding orders');
-                const newClient = new MeshGraphQLClient({
-                    httpUrl: `http://localhost:60567/graphql`,
-                    webSocketUrl: `ws://localhost:60567/graphql`,
-                });
+                // const newClient = new MeshGraphQLClient({
+                //     httpUrl: `http://localhost:60567/graphql`,
+                //     webSocketUrl: `ws://localhost:60567/graphql`,
+                // });
 
-                const validationResults = await newClient.addOrdersV4Async(orders);
+                const validationResults = await deployment.client.addOrdersV4Async(orders);
+                console.log(validationResults.rejected);
                 expect(validationResults.accepted.length).to.be.eq(ordersLength);
 
                 // Verify that all of the orders that were added to the mesh node
                 // were returned in the response.
                 console.log('checking orders');
-                const gotOrders = await newClient.findOrdersV4Async();
+                const gotOrders = await deployment.client.findOrdersV4Async();
                 console.log(gotOrders);
                 // const expectedOrders = orders.map((order) => ({
                 //     ...order,

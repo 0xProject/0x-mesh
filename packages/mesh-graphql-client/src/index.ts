@@ -6,7 +6,6 @@ import {
     ApolloClient,
     ApolloQueryResult,
     FetchResult,
-    gql,
     InMemoryCache,
     NormalizedCacheObject,
     OperationVariables,
@@ -21,6 +20,16 @@ import * as ws from 'ws';
 import * as Observable from 'zen-observable';
 
 import { BrowserLink } from './browser_link';
+import {
+    statsQuery,
+    orderQuery,
+    orderQueryV4,
+    ordersQuery,
+    ordersQueryV4,
+    addOrdersMutation,
+    addOrdersMutationV4,
+    orderEventsSubscription,
+} from './queries';
 import {
     AddOrdersOpts,
     AddOrdersResponse,
@@ -71,301 +80,6 @@ export { ApolloQueryResult, QueryOptions } from '@apollo/client/core';
 export { Observable };
 
 const defaultOrderQueryLimit = 100;
-
-const statsQuery = gql`
-    query Stats {
-        stats {
-            version
-            pubSubTopic
-            rendezvous
-            peerID
-            ethereumChainID
-            latestBlock {
-                number
-                hash
-            }
-            numPeers
-            numOrders
-            numOrdersIncludingRemoved
-            startOfCurrentUTCDay
-            ethRPCRequestsSentInCurrentUTCDay
-            ethRPCRateLimitExpiredRequests
-            maxExpirationTime
-        }
-    }
-`;
-
-const addOrdersMutation = gql`
-    mutation AddOrders(
-        $orders: [NewOrder!]!
-        $pinned: Boolean = true
-        $opts: AddOrdersOpts = { keepCancelled: false, keepExpired: false, keepFullyFilled: false, keepUnfunded: false }
-    ) {
-        addOrders(orders: $orders, pinned: $pinned, opts: $opts) {
-            accepted {
-                order {
-                    hash
-                    chainId
-                    exchangeAddress
-                    makerAddress
-                    makerAssetData
-                    makerAssetAmount
-                    makerFeeAssetData
-                    makerFee
-                    takerAddress
-                    takerAssetData
-                    takerAssetAmount
-                    takerFeeAssetData
-                    takerFee
-                    senderAddress
-                    feeRecipientAddress
-                    expirationTimeSeconds
-                    salt
-                    signature
-                    fillableTakerAssetAmount
-                }
-                isNew
-            }
-            rejected {
-                hash
-                code
-                message
-                order {
-                    chainId
-                    exchangeAddress
-                    makerAddress
-                    makerAssetData
-                    makerAssetAmount
-                    makerFeeAssetData
-                    makerFee
-                    takerAddress
-                    takerAssetData
-                    takerAssetAmount
-                    takerFeeAssetData
-                    takerFee
-                    senderAddress
-                    feeRecipientAddress
-                    expirationTimeSeconds
-                    salt
-                    signature
-                }
-            }
-        }
-    }
-`;
-
-const addOrdersMutationV4 = gql`
-    mutation AddOrdersV4(
-        $orders: [NewOrderV4!]!
-        $pinned: Boolean = true
-        $opts: AddOrdersOpts = { keepCancelled: false, keepExpired: false, keepFullyFilled: false, keepUnfunded: false }
-    ) {
-        addOrdersV4(orders: $orders, pinned: $pinned, opts: $opts) {
-            accepted {
-                order {
-                    chainId
-                    exchangeAddress
-                    makerToken
-                    takerToken
-                    makerAmount
-                    takerAmount
-                    takerTokenFeeAmount
-                    maker
-                    taker
-                    sender
-                    feeRecipient
-                    pool
-                    expiry
-                    salt
-                    signatureType
-                    signatureV
-                    signatureR
-                    signatureS
-                }
-                isNew
-            }
-            rejected {
-                code
-                message
-                hash
-                order {
-                    chainId
-                    exchangeAddress
-                    makerToken
-                    takerToken
-                    makerAmount
-                    takerAmount
-                    takerTokenFeeAmount
-                    maker
-                    taker
-                    sender
-                    feeRecipient
-                    pool
-                    expiry
-                    salt
-                    signatureType
-                    signatureV
-                    signatureR
-                    signatureS
-                }
-            }
-        }
-    }
-`;
-
-const orderQuery = gql`
-    query Order($hash: String!) {
-        order(hash: $hash) {
-            hash
-            chainId
-            exchangeAddress
-            makerAddress
-            makerAssetData
-            makerAssetAmount
-            makerFeeAssetData
-            makerFee
-            takerAddress
-            takerAssetData
-            takerAssetAmount
-            takerFeeAssetData
-            takerFee
-            senderAddress
-            feeRecipientAddress
-            expirationTimeSeconds
-            salt
-            signature
-            fillableTakerAssetAmount
-        }
-    }
-`;
-
-const orderQueryV4 = gql`
-    query OrderV4($hash: String!) {
-        orderv4(hash: $hash) {
-            hash
-            chainId
-            exchangeAddress
-            makerToken
-            takerToken
-            makerAmount
-            takerAmount
-            takerTokenFeeAmount
-            maker
-            taker
-            sender
-            feeRecipient
-            pool
-            expiry
-            salt
-            signatureType
-            signatureV
-            signatureR
-            signatureS
-            fillableTakerAssetAmount
-        }
-    }
-`;
-
-const ordersQuery = gql`
-    query Orders(
-        $filters: [OrderFilter!] = []
-        $sort: [OrderSort!] = [{ field: hash, direction: ASC }]
-        $limit: Int = 100
-    ) {
-        orders(filters: $filters, sort: $sort, limit: $limit) {
-            hash
-            chainId
-            exchangeAddress
-            makerAddress
-            makerAssetData
-            makerAssetAmount
-            makerFeeAssetData
-            makerFee
-            takerAddress
-            takerAssetData
-            takerAssetAmount
-            takerFeeAssetData
-            takerFee
-            senderAddress
-            feeRecipientAddress
-            expirationTimeSeconds
-            salt
-            signature
-            fillableTakerAssetAmount
-        }
-    }
-`;
-
-const ordersQueryV4 = gql`
-    query Orders(
-        $filters: [OrderFilterV4!] = []
-        $sort: [OrderSortV4!] = [{ field: hash, direction: ASC }]
-        $limit: Int = 100
-    ) {
-        ordersv4(filters: $filters, sort: $sort, limit: $limit) {
-            hash
-            chainId
-            exchangeAddress
-            makerToken
-            takerToken
-            makerAmount
-            takerAmount
-            takerTokenFeeAmount
-            maker
-            taker
-            sender
-            feeRecipient
-            pool
-            expiry
-            salt
-            signatureType
-            signatureV
-            signatureR
-            signatureS
-        }
-    }
-`;
-
-const orderEventsSubscription = gql`
-    subscription {
-        orderEvents {
-            timestamp
-            endState
-            order {
-                hash
-                chainId
-                exchangeAddress
-                makerAddress
-                makerAssetData
-                makerAssetAmount
-                makerFeeAssetData
-                makerFee
-                takerAddress
-                takerAssetData
-                takerAssetAmount
-                takerFeeAssetData
-                takerFee
-                senderAddress
-                feeRecipientAddress
-                expirationTimeSeconds
-                salt
-                signature
-                fillableTakerAssetAmount
-            }
-            contractEvents {
-                blockHash
-                txHash
-                txIndex
-                logIndex
-                isRemoved
-                address
-                kind
-                parameters
-            }
-        }
-    }
-`;
-
 export interface LinkConfig {
     httpUrl?: string;
     webSocketUrl?: string;
@@ -507,7 +221,6 @@ export class MeshGraphQLClient {
         pinned: boolean = true,
         opts?: AddOrdersOpts,
     ): Promise<AddOrdersResults<OrderWithMetadataV4, SignedOrderV4>> {
-        console.log(orders.map(toStringifiedSignedOrderV4));
         const resp: FetchResult<AddOrdersResponseV4<
             StringifiedOrderWithMetadataV4,
             StringifiedSignedOrderV4
@@ -528,8 +241,6 @@ export class MeshGraphQLClient {
         if (resp.data == null) {
             throw new Error('received no data');
         }
-
-        console.log(resp.data.addOrdersV4.rejected[0]);
 
         const results = resp.data.addOrdersV4;
 
