@@ -41,8 +41,7 @@ func TestGenerateOrderHashV4(t *testing.T) {
 }
 
 func TestGanacheOrderHashV4(t *testing.T) {
-	// See <https://0xproject.slack.com/archives/CAU8U19LJ/p1610762234026600?thread_ts=1610761930.023900&cid=CAU8U19LJ>
-	expectedOrderHash := common.HexToHash("0xef61679248399669a4dd10de335d0c151a5c42568618abace01f7a8ec1e693e1")
+	expectedOrderHash := common.HexToHash("0xbefb7f65e67f5d5bf8384130396cff2e206553f07c0143962f3e59653c7ff564")
 
 	order := *testOrderV4
 	order.ChainID = big.NewInt(1337)

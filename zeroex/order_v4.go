@@ -152,16 +152,9 @@ func (o *OrderV4) ComputeOrderHash() (common.Hash, error) {
 		return *o.hash, nil
 	}
 
-	// HACK: Override chain id for ganache snapshot
-	// See <https://0xproject.slack.com/archives/CAU8U19LJ/p1610762170026200?thread_ts=1610761930.023900&cid=CAU8U19LJ>
-	var hackedChainID = o.ChainID.Int64()
-	if hackedChainID == 1337 {
-		hackedChainID = 1
-	}
-
 	// TODO: This domain is constant for a given environment and should probably
 	// not depend on the order.
-	chainID := math.NewHexOrDecimal256(hackedChainID)
+	chainID := math.NewHexOrDecimal256(o.ChainID.Int64())
 	var domain = gethsigner.TypedDataDomain{
 		Name:              "ZeroEx",
 		Version:           "1.0.0",

@@ -67,9 +67,8 @@ installed locally and start
 ) passed in the `VERSION` environment variable. The snapshot version that is used in the mesh project's
 CI can be found [here](https://github.com/0xProject/0x-mesh/blob/development/.circleci/config.yml#L10)
 
-
 ```
-docker run --rm --pull -ti -p 8545:8545 -e VERSION=6.5.9 0xorg/ganache-cli
+docker run --rm --pull -ti -p 8545:8545 -e VERSION=6.5.11 0xorg/ganache-cli
 ```
 
 There are various Make targets for running tests:
