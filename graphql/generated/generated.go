@@ -210,7 +210,11 @@ type ComplexityRoot struct {
 		MaxExpirationTime                 func(childComplexity int) int
 		NumOrders                         func(childComplexity int) int
 		NumOrdersIncludingRemoved         func(childComplexity int) int
+		NumOrdersIncludingRemovedV4       func(childComplexity int) int
+		NumOrdersV4                       func(childComplexity int) int
 		NumPeers                          func(childComplexity int) int
+		NumPinnedOrders                   func(childComplexity int) int
+		NumPinnedOrdersV4                 func(childComplexity int) int
 		PeerID                            func(childComplexity int) int
 		PubSubTopic                       func(childComplexity int) int
 		Rendezvous                        func(childComplexity int) int
@@ -1117,12 +1121,40 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Stats.NumOrdersIncludingRemoved(childComplexity), true
 
+	case "Stats.numOrdersIncludingRemovedV4":
+		if e.complexity.Stats.NumOrdersIncludingRemovedV4 == nil {
+			break
+		}
+
+		return e.complexity.Stats.NumOrdersIncludingRemovedV4(childComplexity), true
+
+	case "Stats.numOrdersV4":
+		if e.complexity.Stats.NumOrdersV4 == nil {
+			break
+		}
+
+		return e.complexity.Stats.NumOrdersV4(childComplexity), true
+
 	case "Stats.numPeers":
 		if e.complexity.Stats.NumPeers == nil {
 			break
 		}
 
 		return e.complexity.Stats.NumPeers(childComplexity), true
+
+	case "Stats.numPinnedOrders":
+		if e.complexity.Stats.NumPinnedOrders == nil {
+			break
+		}
+
+		return e.complexity.Stats.NumPinnedOrders(childComplexity), true
+
+	case "Stats.numPinnedOrdersV4":
+		if e.complexity.Stats.NumPinnedOrdersV4 == nil {
+			break
+		}
+
+		return e.complexity.Stats.NumPinnedOrdersV4(childComplexity), true
 
 	case "Stats.peerID":
 		if e.complexity.Stats.PeerID == nil {
@@ -1504,7 +1536,11 @@ type Stats {
     latestBlock: LatestBlock
     numPeers: Int!
     numOrders: Int!
+    numOrdersV4: Int!
     numOrdersIncludingRemoved: Int!
+    numOrdersIncludingRemovedV4: Int!
+    numPinnedOrders: Int!
+    numPinnedOrdersV4: Int!
     startOfCurrentUTCDay: String!
     ethRPCRequestsSentInCurrentUTCDay: Int!
     ethRPCRateLimitExpiredRequests: Int!
@@ -6295,6 +6331,40 @@ func (ec *executionContext) _Stats_numOrders(ctx context.Context, field graphql.
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Stats_numOrdersV4(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Stats",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NumOrdersV4, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Stats_numOrdersIncludingRemoved(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -6313,6 +6383,108 @@ func (ec *executionContext) _Stats_numOrdersIncludingRemoved(ctx context.Context
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.NumOrdersIncludingRemoved, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Stats_numOrdersIncludingRemovedV4(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Stats",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NumOrdersIncludingRemovedV4, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Stats_numPinnedOrders(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Stats",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NumPinnedOrders, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Stats_numPinnedOrdersV4(ctx context.Context, field graphql.CollectedField, obj *gqltypes.Stats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Stats",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NumPinnedOrdersV4, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -8967,8 +9139,28 @@ func (ec *executionContext) _Stats(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "numOrdersV4":
+			out.Values[i] = ec._Stats_numOrdersV4(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "numOrdersIncludingRemoved":
 			out.Values[i] = ec._Stats_numOrdersIncludingRemoved(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "numOrdersIncludingRemovedV4":
+			out.Values[i] = ec._Stats_numOrdersIncludingRemovedV4(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "numPinnedOrders":
+			out.Values[i] = ec._Stats_numPinnedOrders(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "numPinnedOrdersV4":
+			out.Values[i] = ec._Stats_numPinnedOrdersV4(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

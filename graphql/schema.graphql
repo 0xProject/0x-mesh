@@ -248,7 +248,11 @@ type Stats {
     latestBlock: LatestBlock
     numPeers: Int!
     numOrders: Int!
+    numOrdersV4: Int!
     numOrdersIncludingRemoved: Int!
+    numOrdersIncludingRemovedV4: Int!
+    numPinnedOrders: Int!
+    numPinnedOrdersV4: Int!
     startOfCurrentUTCDay: String!
     ethRPCRequestsSentInCurrentUTCDay: Int!
     ethRPCRateLimitExpiredRequests: Int!
