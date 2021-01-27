@@ -61,8 +61,11 @@ export interface Stats {
     latestBlock: LatestBlock;
     numPeers: number;
     numOrders: number;
+    numOrdersV4: number;
     numOrdersIncludingRemoved: number;
+    numOrdersIncludingRemovedV4: number;
     numPinnedOrders: number;
+    numPinnedOrdersV4: number;
     maxExpirationTime: BigNumber;
     startOfCurrentUTCDay: Date;
     ethRPCRequestsSentInCurrentUTCDay: number;

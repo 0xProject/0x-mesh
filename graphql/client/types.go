@@ -204,7 +204,11 @@ type Stats struct {
 	LatestBlock                       *LatestBlock `json:"latestBlock"`
 	NumPeers                          int          `json:"numPeers"`
 	NumOrders                         int          `json:"numOrders"`
+	NumOrdersV4                       int          `json:"numOrdersV4"`
 	NumOrdersIncludingRemoved         int          `json:"numOrdersIncludingRemoved"`
+	NumOrdersIncludingRemovedV4       int          `json:"numOrdersIncludingRemovedV4"`
+	NumPinnedOrders                   int          `json:"numPinnedOrders"`
+	NumPinnedOrdersV4                 int          `json:"numPinnedOrdersV4"`
 	StartOfCurrentUTCDay              time.Time    `json:"startOfCurrentUTCDay"`
 	EthRPCRequestsSentInCurrentUTCDay int          `json:"ethRPCRequestsSentInCurrentUTCDay"`
 	EthRPCRateLimitExpiredRequests    int          `json:"ethRPCRateLimitExpiredRequests"`

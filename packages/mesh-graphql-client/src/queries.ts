@@ -14,7 +14,11 @@ export const statsQuery = gql`
             }
             numPeers
             numOrders
+            numOrdersV4
             numOrdersIncludingRemoved
+            numOrdersIncludingRemovedV4
+            numPinnedOrders
+            numPinnedOrdersV4
             startOfCurrentUTCDay
             ethRPCRequestsSentInCurrentUTCDay
             ethRPCRateLimitExpiredRequests
