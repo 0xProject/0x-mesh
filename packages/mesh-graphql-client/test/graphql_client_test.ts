@@ -203,10 +203,12 @@ blockchainTests.resets('GraphQLClient', (env) => {
                         pool: order.pool,
                         expiry: order.expiry,
                         salt: order.salt,
-                        signatureType: signature.signatureType,
-                        signatureV: signature.v,
-                        signatureR: signature.r,
-                        signatureS: signature.s,
+                        signature: {
+                            signatureType: signature.signatureType,
+                            v: signature.v,
+                            r: signature.r,
+                            s: signature.s,
+                        },
                     };
                     orders[i] = signedOrder;
                     console.log(signedOrder);

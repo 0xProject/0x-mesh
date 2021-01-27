@@ -95,11 +95,16 @@ export interface OrderV4 {
     expiry: BigNumber;
     salt: BigNumber;
 }
-export interface SignedOrderV4 extends OrderV4 {
+
+export interface SignatureV4 {
     signatureType: SignatureType;
-    signatureR: string;
-    signatureS: string;
-    signatureV: number;
+    r: string;
+    s: string;
+    v: number;
+}
+
+export interface SignedOrderV4 extends OrderV4 {
+    signature: SignatureV4;
 }
 
 export interface OrderWithMetadataV4 extends SignedOrderV4 {
@@ -401,7 +406,7 @@ export function toStringifiedSignedOrder(order: SignedOrder): StringifiedSignedO
  * Converts SignedOrderV4 to StringifiedSignedOrderV4
  */
 export function toStringifiedSignedOrderV4(order: SignedOrderV4): StringifiedSignedOrderV4 {
-    return {
+    const stringifiedOrder: any = {
         ...order,
         chainId: order.chainId.toString(),
         makerAmount: order.makerAmount.toString(),
@@ -409,9 +414,13 @@ export function toStringifiedSignedOrderV4(order: SignedOrderV4): StringifiedSig
         takerTokenFeeAmount: order.takerTokenFeeAmount.toString(),
         expiry: order.expiry.toString(),
         salt: order.salt.toString(),
-        signatureType: order.signatureType.toString(),
-        signatureV: order.signatureType.toString(),
+        signatureType: order.signature.signatureType.toString(),
+        signatureV: order.signature.v.toString(),
+        signatureR: order.signature.r.toString(),
+        signatureS: order.signature.s.toString(),
     };
+    delete stringifiedOrder.signature;
+    return stringifiedOrder;
 }
 
 /**
@@ -445,8 +454,12 @@ export function fromStringifiedOrderWithMetadataV4(order: StringifiedOrderWithMe
         takerTokenFeeAmount: new BigNumber(order.takerTokenFeeAmount),
         expiry: new BigNumber(order.expiry),
         fillableTakerAssetAmount: new BigNumber(order.fillableTakerAssetAmount),
-        signatureType: parseInt(order.signatureType),
-        signatureV: parseInt(order.signatureV),
+        signature: {
+            signatureType: parseInt(order.signatureType),
+            v: parseInt(order.signatureV),
+            r: order.signatureR,
+            s: order.signatureS,
+        },
         salt: new BigNumber(order.salt),
     };
 }
@@ -480,8 +493,12 @@ export function fromStringifiedSignedOrderV4(order: StringifiedSignedOrderV4): S
         takerAmount: new BigNumber(order.takerAmount),
         takerTokenFeeAmount: new BigNumber(order.takerTokenFeeAmount),
         expiry: new BigNumber(order.expiry),
-        signatureType: parseInt(order.signatureType),
-        signatureV: parseInt(order.signatureV),
+        signature: {
+            signatureType: parseInt(order.signatureType),
+            v: parseInt(order.signatureV),
+            r: order.signatureR,
+            s: order.signatureS,
+        },
         salt: new BigNumber(order.salt),
     };
 }
