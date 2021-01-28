@@ -1,5 +1,6 @@
 import { SignatureType, SignedOrder } from '@0x/types';
 import { BigNumber } from '@0x/utils';
+import { LimitOrderFields, Signature } from '@0x/protocol-utils';
 
 export interface AddOrdersOpts {
     keepCancelled?: boolean;
@@ -82,33 +83,8 @@ export interface OrderWithMetadata extends SignedOrder {
     fillableTakerAssetAmount: BigNumber;
 }
 
-export interface OrderV4 {
-    chainId: number;
-    exchangeAddress: string;
-    makerToken: string;
-    takerToken: string;
-    makerAmount: BigNumber;
-    takerAmount: BigNumber;
-    takerTokenFeeAmount: BigNumber;
-    maker: string;
-    taker: string;
-    sender: string;
-    feeRecipient: string;
-    pool: string;
-    expiry: BigNumber;
-    salt: BigNumber;
-}
-
-export interface SignatureV4 {
-    signatureType: SignatureType;
-    r: string;
-    s: string;
-    v: number;
-}
-
-export interface SignedOrderV4 extends OrderV4 {
-    signature: SignatureV4;
-}
+export type OrderV4 = LimitOrderFields;
+export type SignedOrderV4 = OrderV4 & { signature: Signature };
 
 export interface OrderWithMetadataV4 extends SignedOrderV4 {
     hash: string;
@@ -280,8 +256,11 @@ export interface StringifiedStats {
     latestBlock: StringifiedLatestBlock;
     numPeers: number;
     numOrders: number;
+    numOrdersV4: number;
     numOrdersIncludingRemoved: number;
+    numOrdersIncludingRemovedV4: number;
     numPinnedOrders: number;
+    numPinnedOrdersV4: number;
     maxExpirationTime: string;
     startOfCurrentUTCDay: string;
     ethRPCRequestsSentInCurrentUTCDay: number;
@@ -457,6 +436,7 @@ export function fromStringifiedOrderWithMetadataV4(order: StringifiedOrderWithMe
         takerTokenFeeAmount: new BigNumber(order.takerTokenFeeAmount),
         expiry: new BigNumber(order.expiry),
         fillableTakerAssetAmount: new BigNumber(order.fillableTakerAssetAmount),
+        verifyingContract: order.exchangeAddress,
         signature: {
             signatureType: parseInt(order.signatureType),
             v: parseInt(order.signatureV),
@@ -493,6 +473,7 @@ export function fromStringifiedSignedOrderV4(order: StringifiedSignedOrderV4): S
         // tslint:disable-next-line: custom-no-magic-numbers
         chainId: Number.parseInt(order.chainId, 10),
         makerAmount: new BigNumber(order.makerAmount),
+        verifyingContract: order.exchangeAddress,
         takerAmount: new BigNumber(order.takerAmount),
         takerTokenFeeAmount: new BigNumber(order.takerTokenFeeAmount),
         expiry: new BigNumber(order.expiry),

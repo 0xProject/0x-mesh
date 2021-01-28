@@ -74,6 +74,9 @@ export {
     SortDirection,
     OrderEventEndState,
     RejectedOrderCode,
+    OrderWithMetadataV4,
+    AcceptedOrderResult,
+    RejectedOrderResult,
 } from './types';
 export { SignedOrder } from '@0x/types';
 export { ApolloQueryResult, QueryOptions } from '@apollo/client/core';

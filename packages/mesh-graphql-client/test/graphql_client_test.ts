@@ -190,7 +190,7 @@ blockchainTests.resets('GraphQLClient', (env) => {
                     const signature = await order.getSignatureWithProviderAsync(provider);
                     const signedOrder: SignedOrderV4 = {
                         chainId: order.chainId,
-                        exchangeAddress: order.verifyingContract,
+                        verifyingContract: order.verifyingContract,
                         makerToken: order.makerToken,
                         takerToken: order.takerToken,
                         makerAmount: order.makerAmount,
