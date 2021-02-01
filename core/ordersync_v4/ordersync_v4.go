@@ -442,13 +442,13 @@ func (s *Service) handleOrderSyncResponse(res *Response, peer peer.ID) (*Request
 			log.WithFields(map[string]interface{}{
 				"orderHash": acceptedOrderInfo.OrderHash.Hex(),
 				"from":      peer.Pretty(),
-				"protocol":  "ordersync",
+				"protocol":  "ordersyncv4",
 			}).Info("received new valid order from peer")
 			log.WithFields(map[string]interface{}{
 				"order":     acceptedOrderInfo.SignedOrderV4,
 				"orderHash": acceptedOrderInfo.OrderHash.Hex(),
 				"from":      peer.Pretty(),
-				"protocol":  "ordersync",
+				"protocol":  "ordersyncv4",
 			}).Trace("all fields for new valid order received from peer")
 		}
 	}

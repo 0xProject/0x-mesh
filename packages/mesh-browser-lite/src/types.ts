@@ -744,8 +744,11 @@ export interface WrapperStats {
     latestBlock: WrapperLatestBlock;
     numPeers: number;
     numOrders: number;
+    numOrdersV4: number;
     numOrdersIncludingRemoved: number;
+    numOrdersIncludingRemovedV4: number;
     numPinnedOrders: number;
+    numPinnedOrdersV4: number;
     maxExpirationTime: string; // string instead of BigNumber
     startOfCurrentUTCDay: string; // string instead of Date
     ethRPCRequestsSentInCurrentUTCDay: number;

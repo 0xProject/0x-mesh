@@ -29,7 +29,7 @@ func (r *mutationResolver) AddOrders(ctx context.Context, orders []*gqltypes.New
 	return gqltypes.AddOrdersResultsFromValidationResults(results)
 }
 
-func (r *mutationResolver) AddOrdersV4(ctx context.Context, orders []*gqltypes.NewOrderV4, pinned *bool, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error) {
+func (r *mutationResolver) AddOrdersV4(ctx context.Context, orders []*gqltypes.NewOrderV4, pinned *bool, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResultsV4, error) {
 	isPinned := false
 	if pinned != nil {
 		isPinned = (*pinned)
@@ -40,7 +40,10 @@ func (r *mutationResolver) AddOrdersV4(ctx context.Context, orders []*gqltypes.N
 	if err != nil {
 		return nil, err
 	}
-	return gqltypes.AddOrdersResultsFromValidationResults(results)
+
+	returnResult, err := gqltypes.AddOrdersResultsFromValidationResultsV4(results)
+
+	return returnResult, err
 }
 
 func (r *queryResolver) Order(ctx context.Context, hash string) (*gqltypes.OrderWithMetadata, error) {

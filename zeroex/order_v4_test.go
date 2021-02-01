@@ -15,8 +15,8 @@ import (
 
 // See <https://github.com/0xProject/protocol/blob/edda1edc507fbfceb6dcb02ef212ee4bdcb123a6/packages/protocol-utils/test/orders_test.ts#L24>
 var testOrderV4 = &OrderV4{
-	ChainID:         big.NewInt(8008),
-	ExchangeAddress: common.HexToAddress("0x6701704d2421c64ee9aa93ec7f96ede81c4be77d"),
+	ChainID:           big.NewInt(8008),
+	VerifyingContract: common.HexToAddress("0x6701704d2421c64ee9aa93ec7f96ede81c4be77d"),
 
 	MakerToken:          common.HexToAddress("0x349e8d89e8b37214d9ce3949fc5754152c525bc3"),
 	TakerToken:          common.HexToAddress("0x83c62b2e67dea0df2a27be0def7a22bd7102642c"),
@@ -45,7 +45,7 @@ func TestGanacheOrderHashV4(t *testing.T) {
 
 	order := *testOrderV4
 	order.ChainID = big.NewInt(1337)
-	order.ExchangeAddress = common.HexToAddress("0x5315e44798395d4a952530d131249fE00f554565")
+	order.VerifyingContract = common.HexToAddress("0x5315e44798395d4a952530d131249fE00f554565")
 	order.ResetHash()
 
 	actualOrderHash, err := order.ComputeOrderHash()
@@ -61,6 +61,36 @@ func TestSignOrderV4(t *testing.T) {
 	assert.Equal(t, uint8(28), signedOrder.Signature.V)
 	assert.Equal(t, HexToBytes32("0x5d4fe9b4c8f94efc46ef9e7e3f996c238f9c930fd5c03014ec6db6d4d18a34e5"), signedOrder.Signature.R)
 	assert.Equal(t, HexToBytes32("0x0949269d29524aec1ba5b19236c392a3d1866ca39bb8c7b6345e90a3fbf404fc"), signedOrder.Signature.S)
+}
+
+func TestCustomOrderV4(t *testing.T) {
+	tOrder := &OrderV4{
+		ChainID:           big.NewInt(1337),
+		VerifyingContract: common.HexToAddress("0x5315e44798395d4a952530d131249fe00f554565"),
+
+		MakerToken:          common.HexToAddress("0x0b1ba0af832d7c05fd64161e0db78e85978e8082"),
+		TakerToken:          common.HexToAddress("0x871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),
+		MakerAmount:         big.NewInt(100),
+		TakerAmount:         big.NewInt(42),
+		TakerTokenFeeAmount: big.NewInt(0),
+		Maker:               common.HexToAddress("0x05cac48d17ecc4d8a9db09dde766a03959b98367"),
+		Taker:               common.HexToAddress("0x0000000000000000000000000000000000000000"),
+		Sender:              common.HexToAddress("0x0000000000000000000000000000000000000000"),
+		FeeRecipient:        common.HexToAddress("0x0000000000000000000000000000000000000000"),
+		Pool:                HexToBytes32("0x0000000000000000000000000000000000000000000000000000000000000000"),
+		Expiry:              big.NewInt(1611614113),
+		Salt:                big.NewInt(464085317),
+	}
+	hash, err := tOrder.ComputeOrderHash()
+	require.NoError(t, err)
+	fmt.Println(hash.Hex())
+	privateKeyBytes := hexutil.MustDecode("0xee094b79aa0315914955f2f09be9abe541dcdc51f0aae5bec5453e9f73a471a6")
+	privateKey, err := crypto.ToECDSA(privateKeyBytes)
+	require.NoError(t, err)
+	localSigner := signer.NewLocalSigner(privateKey)
+	signedOrder, err := SignOrderV4(localSigner, tOrder)
+	require.NoError(t, err)
+	fmt.Printf("%v", signedOrder.Signature)
 }
 
 func TestSignedOrderJSONMarshalling(t *testing.T) {

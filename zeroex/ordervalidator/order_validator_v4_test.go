@@ -307,8 +307,8 @@ func TestOrderHashV4(t *testing.T) {
 
 func TestOrderStateV4(t *testing.T) {
 	order := &zeroex.OrderV4{
-		ChainID:         big.NewInt(1337),
-		ExchangeAddress: ganacheAddresses.ExchangeProxy,
+		ChainID:           big.NewInt(1337),
+		VerifyingContract: ganacheAddresses.ExchangeProxy,
 
 		// TODO: Invalid token addresses currently make the call fail. This should be fixed soon, but for now make sure we use valid tokens.
 		MakerToken:          ganacheAddresses.WETH9,

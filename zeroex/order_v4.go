@@ -28,8 +28,8 @@ type OrderV4 struct {
 	// TODO: These are constant within a chain context (mainnet/testnet/etc)
 	// probably best to keep them out of the order struct, but this is how V3
 	// does it.
-	ChainID         *big.Int       `json:"chainId"`
-	ExchangeAddress common.Address `json:"exchangeAddress"`
+	ChainID           *big.Int       `json:"chainId"`
+	VerifyingContract common.Address `json:"verifyingContract"`
 
 	// Limit order values
 	MakerToken          common.Address `json:"makerToken"`
@@ -58,6 +58,19 @@ type SignatureFieldV4 struct {
 
 // SignatureTypeV4 represents the type of 0x signature encountered
 type SignatureTypeV4 uint8
+
+func (s SignatureTypeV4) String() string {
+	return strconv.FormatUint(uint64(s), 10)
+}
+
+func SignatureTypeV4FromString(s string) (SignatureTypeV4, error) {
+	sigType, err := strconv.ParseUint(s, 10, 8)
+	if err != nil {
+		return 0, err
+	}
+
+	return SignatureTypeV4(sigType), nil
+}
 
 // SignedOrderV4 represents a signed 0x order
 // See <https://0xprotocol.readthedocs.io/en/latest/basics/orders.html#how-to-sign>
@@ -159,7 +172,7 @@ func (o *OrderV4) ComputeOrderHash() (common.Hash, error) {
 		Name:              "ZeroEx",
 		Version:           "1.0.0",
 		ChainId:           chainID,
-		VerifyingContract: o.ExchangeAddress.Hex(),
+		VerifyingContract: o.VerifyingContract.Hex(),
 	}
 
 	var message = map[string]interface{}{
@@ -241,7 +254,7 @@ func (s *SignedOrderV4) UnmarshalJSON(data []byte) error {
 
 	var ok bool
 	s.ChainID = big.NewInt(signedOrderJSON.ChainID)
-	s.ExchangeAddress = common.HexToAddress(signedOrderJSON.ExchangeAddress)
+	s.VerifyingContract = common.HexToAddress(signedOrderJSON.ExchangeAddress)
 	s.MakerToken = common.HexToAddress(signedOrderJSON.MakerToken)
 	s.TakerToken = common.HexToAddress(signedOrderJSON.TakerToken)
 	s.MakerAmount, ok = math.ParseBig256(signedOrderJSON.MakerAmount)
@@ -287,7 +300,7 @@ func (s *SignedOrderV4) UnmarshalJSON(data []byte) error {
 func (s *SignedOrderV4) MarshalJSON() ([]byte, error) {
 	return json.Marshal(SignedOrderJSONV4{
 		ChainID:             s.ChainID.Int64(),
-		ExchangeAddress:     strings.ToLower(s.ExchangeAddress.Hex()),
+		ExchangeAddress:     strings.ToLower(s.VerifyingContract.Hex()),
 		MakerToken:          strings.ToLower(s.MakerToken.Hex()),
 		TakerToken:          strings.ToLower(s.TakerToken.Hex()),
 		MakerAmount:         s.MakerAmount.String(),

@@ -16,8 +16,8 @@ import (
 
 func defaultTestOrderV4() *zeroex.OrderV4 {
 	return &zeroex.OrderV4{
-		ChainID:         big.NewInt(constants.TestChainID),
-		ExchangeAddress: ganacheAddresses.ExchangeProxy,
+		ChainID:           big.NewInt(constants.TestChainID),
+		VerifyingContract: ganacheAddresses.ExchangeProxy,
 		// FIXME: Ganache snapshot currently requires valid token addresses or it will revert
 		MakerToken:          ganacheAddresses.WETH9,
 		TakerToken:          ganacheAddresses.ZRXToken,

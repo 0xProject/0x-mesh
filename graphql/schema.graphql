@@ -135,7 +135,7 @@ A signed 0x v4 order according to the [protocol specification](https://0xprotoco
 """
 type OrderV4 {
     chainId: String!
-    exchangeAddress: String!
+    verifyingContract: String!
     makerToken: String!
     takerToken: String!
     makerAmount: String!
@@ -148,7 +148,10 @@ type OrderV4 {
     pool: String!
     expiry: String!
     salt: String!
-    signature: String!
+    signatureType: String!
+    signatureV: String!
+    signatureR: String!
+    signatureS: String!
 }
 
 """
@@ -156,7 +159,7 @@ A signed 0x v4 order along with some additional metadata about the order which i
 """
 type OrderV4WithMetadata {
     chainId: String!
-    exchangeAddress: String!
+    verifyingContract: String!
     makerToken: String!
     takerToken: String!
     makerAmount: String!
@@ -169,7 +172,10 @@ type OrderV4WithMetadata {
     pool: String!
     expiry: String!
     salt: String!
-    signature: String!
+    signatureType: String!
+    signatureV: String!
+    signatureR: String!
+    signatureS: String!
     """
     The hash, which can be used to uniquely identify an order. Encoded as a hexadecimal string.
     """
@@ -186,7 +192,7 @@ An enum containing all the order fields for which filters and/or sorting is supp
 enum OrderFieldV4 {
     hash
     chainId
-    exchangeAddress
+    verifyingContract
     makerToken
     takerToken
     makerAmount
@@ -242,7 +248,11 @@ type Stats {
     latestBlock: LatestBlock
     numPeers: Int!
     numOrders: Int!
+    numOrdersV4: Int!
     numOrdersIncludingRemoved: Int!
+    numOrdersIncludingRemovedV4: Int!
+    numPinnedOrders: Int!
+    numPinnedOrdersV4: Int!
     startOfCurrentUTCDay: String!
     ethRPCRequestsSentInCurrentUTCDay: Int!
     ethRPCRateLimitExpiredRequests: Int!
@@ -336,7 +346,7 @@ A signed v4 0x order according to the [protocol specification](https://github.co
 """
 input NewOrderV4 {
     chainId: String!
-    exchangeAddress: String!
+    verifyingContract: String!
     makerToken: String!
     takerToken: String!
     makerAmount: String!
@@ -372,6 +382,23 @@ type AddOrdersResults {
     rejected: [RejectedOrderResult!]!
 }
 
+"""
+The results of the addOrdersV4 mutation. Includes which orders were accepted and which orders where rejected.
+"""
+type AddOrdersResultsV4 {
+    """
+    The set of orders that were accepted. Accepted orders will be watched and order events will be emitted if
+    their status changes.
+    """
+    accepted: [AcceptedOrderResultV4!]!
+    """
+    The set of orders that were rejected, including the reason they were rejected. Rejected orders will not be
+    watched.
+    """
+    rejected: [RejectedOrderResultV4!]!
+}
+
+
 type AcceptedOrderResult {
     """
     The order that was accepted, including metadata.
@@ -404,6 +431,40 @@ type RejectedOrderResult {
     """
     message: String!
 }
+
+type AcceptedOrderResultV4 {
+    """
+    The v4 order that was accepted, including metadata.
+    """
+    order: OrderV4WithMetadata!
+    """
+    Whether or not the order is new. Set to true if this is the first time this Mesh node has accepted the order
+    and false otherwise.
+    """
+    isNew: Boolean!
+}
+
+type RejectedOrderResultV4 {
+    """
+    The hash of the order. May be null if the hash could not be computed.
+    """
+    hash: String
+    """
+    The v4 order that was rejected.
+    """
+    order: OrderV4!
+    """
+    A machine-readable code indicating why the order was rejected. This code is designed to
+    be used by programs and applications and will never change without breaking backwards-compatibility.
+    """
+    code: RejectedOrderCode!
+    """
+    A human-readable message indicating why the order was rejected. This message may change
+    in future releases and is not covered by backwards-compatibility guarantees.
+    """
+    message: String!
+}
+
 
 """
 A set of all possible codes included in RejectedOrderResult.
@@ -454,7 +515,7 @@ type Mutation {
             keepFullyFilled: false,
             keepUnfunded: false,
         },
-    ): AddOrdersResults!
+    ): AddOrdersResultsV4!
 }
 
 input AddOrdersOpts {
@@ -485,6 +546,10 @@ type OrderEvent {
     The order that was affected.
     """
     order: OrderWithMetadata!
+    """
+    The v4 order that was affected.
+    """
+    orderv4: OrderV4WithMetadata!
     """
     A way of classifying the effect that the order event had on the order. You can
     think of different end states as different "types" of order events.

@@ -13,6 +13,8 @@ import (
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func AddOrderOptsToCommonType(opts *AddOrdersOpts) *types.AddOrdersOpts {
@@ -85,18 +87,14 @@ func NewOrderToSignedOrder(newOrder *NewOrder) *zeroex.SignedOrder {
 }
 
 func NewOrderToSignedOrderV4(newOrder *NewOrderV4) *zeroex.SignedOrderV4 {
-	signatureType, err := strconv.ParseUint(newOrder.SignatureType, 10, 8)
-	if err != nil {
-		panic(err)
-	}
-	signatureV, err := strconv.ParseUint(newOrder.SignatureV, 10, 8)
+	signatureType, err := zeroex.SignatureTypeV4FromString(newOrder.SignatureType)
 	if err != nil {
 		panic(err)
 	}
 	return &zeroex.SignedOrderV4{
 		OrderV4: zeroex.OrderV4{
 			ChainID:             math.MustParseBig256(newOrder.ChainID),
-			ExchangeAddress:     common.HexToAddress(newOrder.ExchangeAddress),
+			VerifyingContract:   common.HexToAddress(newOrder.VerifyingContract),
 			MakerToken:          common.HexToAddress(newOrder.MakerToken),
 			TakerToken:          common.HexToAddress(newOrder.TakerToken),
 			Maker:               common.HexToAddress(newOrder.Maker),
@@ -111,8 +109,8 @@ func NewOrderToSignedOrderV4(newOrder *NewOrderV4) *zeroex.SignedOrderV4 {
 			Pool:                zeroex.BigToBytes32(math.MustParseBig256(newOrder.Pool)),
 		},
 		Signature: zeroex.SignatureFieldV4{
-			SignatureType: zeroex.SignatureTypeV4(signatureType),
-			V:             uint8(signatureV),
+			SignatureType: signatureType,
+			V:             parseUint8FromStringOrPanic(newOrder.SignatureV),
 			R:             zeroex.BigToBytes32(math.MustParseBig256(newOrder.SignatureR)),
 			S:             zeroex.BigToBytes32(math.MustParseBig256(newOrder.SignatureS)),
 		},
@@ -157,10 +155,41 @@ func NewOrderFromSignedOrder(signedOrder *zeroex.SignedOrder) *NewOrder {
 	}
 }
 
+func NewOrderFromSignedOrderV4(signedOrder *zeroex.SignedOrderV4) *NewOrderV4 {
+	return &NewOrderV4{
+		ChainID:             signedOrder.ChainID.String(),
+		VerifyingContract:   strings.ToLower(signedOrder.VerifyingContract.Hex()),
+		MakerToken:          strings.ToLower(signedOrder.MakerToken.Hex()),
+		TakerToken:          strings.ToLower(signedOrder.TakerToken.Hex()),
+		MakerAmount:         signedOrder.MakerAmount.String(),
+		TakerAmount:         signedOrder.TakerAmount.String(),
+		TakerTokenFeeAmount: signedOrder.TakerTokenFeeAmount.String(),
+		Maker:               strings.ToLower(signedOrder.Maker.Hex()),
+		Taker:               strings.ToLower(signedOrder.Taker.Hex()),
+		Sender:              strings.ToLower(signedOrder.Sender.Hex()),
+		FeeRecipient:        strings.ToLower(signedOrder.FeeRecipient.Hex()),
+		Pool:                signedOrder.Pool.String(),
+		Expiry:              signedOrder.Expiry.String(),
+		Salt:                signedOrder.Salt.String(),
+		SignatureType:       signedOrder.Signature.SignatureType.String(),
+		SignatureV:          strconv.FormatUint(uint64(signedOrder.Signature.V), 10),
+		SignatureR:          signedOrder.Signature.R.String(),
+		SignatureS:          signedOrder.Signature.S.String(),
+	}
+}
+
 func NewOrdersFromSignedOrders(signedOrders []*zeroex.SignedOrder) []*NewOrder {
 	result := make([]*NewOrder, len(signedOrders))
 	for i, order := range signedOrders {
 		result[i] = NewOrderFromSignedOrder(order)
+	}
+	return result
+}
+
+func NewOrdersFromSignedOrdersV4(signedOrders []*zeroex.SignedOrderV4) []*NewOrderV4 {
+	result := make([]*NewOrderV4, len(signedOrders))
+	for i, order := range signedOrders {
+		result[i] = NewOrderFromSignedOrderV4(order)
 	}
 	return result
 }
@@ -193,7 +222,7 @@ func OrderWithMetadataFromCommonTypeV4(order *types.OrderWithMetadata) *OrderV4W
 	return &OrderV4WithMetadata{
 		Hash:                     order.Hash.Hex(),
 		ChainID:                  order.OrderV4.ChainID.String(),
-		ExchangeAddress:          strings.ToLower(order.OrderV4.ExchangeAddress.Hex()),
+		VerifyingContract:        strings.ToLower(order.OrderV4.VerifyingContract.Hex()),
 		Maker:                    strings.ToLower(order.OrderV4.Maker.Hex()),
 		Taker:                    strings.ToLower(order.OrderV4.Taker.Hex()),
 		Sender:                   strings.ToLower(order.OrderV4.Sender.Hex()),
@@ -205,7 +234,10 @@ func OrderWithMetadataFromCommonTypeV4(order *types.OrderWithMetadata) *OrderV4W
 		Pool:                     order.OrderV4.Pool.String(),
 		Expiry:                   order.OrderV4.Expiry.String(),
 		Salt:                     order.OrderV4.Salt.String(),
-		Signature:                types.BytesToHex(order.Signature),
+		SignatureType:            order.SignatureV4.SignatureType.String(),
+		SignatureV:               strconv.FormatUint(uint64(order.SignatureV4.V), 10),
+		SignatureR:               order.SignatureV4.R.String(),
+		SignatureS:               order.SignatureV4.S.String(),
 		FillableTakerAssetAmount: order.FillableTakerAssetAmount.String(),
 	}
 }
@@ -320,8 +352,13 @@ func RejectedOrderResultsFromOrderInfos(infos []*ordervalidator.RejectedOrderInf
 }
 
 func OrderEventFromZeroExType(event *zeroex.OrderEvent) *OrderEvent {
-	return &OrderEvent{
-		Order: &OrderWithMetadata{
+	baseEvent := &OrderEvent{
+		EndState:       OrderEndState(event.EndState),
+		Timestamp:      event.Timestamp.Format(time.RFC3339),
+		ContractEvents: ContractEventsFromZeroExType(event.ContractEvents),
+	}
+	if event.SignedOrder != nil {
+		baseEvent.Order = &OrderWithMetadata{
 			Hash:                     event.OrderHash.String(),
 			ChainID:                  event.SignedOrder.ChainID.String(),
 			ExchangeAddress:          strings.ToLower(event.SignedOrder.ExchangeAddress.Hex()),
@@ -341,11 +378,37 @@ func OrderEventFromZeroExType(event *zeroex.OrderEvent) *OrderEvent {
 			Salt:                     event.SignedOrder.Salt.String(),
 			Signature:                types.BytesToHex(event.SignedOrder.Signature),
 			FillableTakerAssetAmount: event.FillableTakerAssetAmount.String(),
-		},
-		EndState:       OrderEndState(event.EndState),
-		Timestamp:      event.Timestamp.Format(time.RFC3339),
-		ContractEvents: ContractEventsFromZeroExType(event.ContractEvents),
+		}
+	} else {
+		hash, err := event.SignedOrderV4.ComputeOrderHash()
+		if err != nil {
+			log.Error(err)
+		}
+		sigV := strconv.FormatUint(uint64(event.SignedOrderV4.Signature.V), 10)
+		baseEvent.Orderv4 = &OrderV4WithMetadata{
+			ChainID:                  event.SignedOrderV4.ChainID.String(),
+			VerifyingContract:        event.SignedOrderV4.VerifyingContract.Hex(),
+			MakerToken:               event.SignedOrderV4.MakerToken.Hex(),
+			TakerToken:               event.SignedOrderV4.TakerToken.Hex(),
+			MakerAmount:              event.SignedOrderV4.MakerAmount.String(),
+			TakerAmount:              event.SignedOrderV4.MakerAmount.String(),
+			TakerTokenFeeAmount:      event.SignedOrderV4.TakerTokenFeeAmount.String(),
+			Maker:                    event.SignedOrderV4.Maker.Hex(),
+			Taker:                    event.SignedOrderV4.Taker.Hex(),
+			Sender:                   event.SignedOrderV4.Sender.Hex(),
+			FeeRecipient:             event.SignedOrderV4.FeeRecipient.Hex(),
+			Pool:                     event.SignedOrderV4.Pool.String(),
+			Expiry:                   event.SignedOrderV4.Expiry.String(),
+			Salt:                     event.SignedOrderV4.Salt.String(),
+			SignatureType:            event.SignedOrderV4.Signature.SignatureType.String(),
+			SignatureV:               sigV,
+			SignatureR:               event.SignedOrderV4.Signature.R.String(),
+			SignatureS:               event.SignedOrderV4.Signature.S.String(),
+			Hash:                     hash.Hex(),
+			FillableTakerAssetAmount: event.FillableTakerAssetAmount.String(),
+		}
 	}
+	return baseEvent
 }
 
 func OrderEventsFromZeroExType(orderEvents []*zeroex.OrderEvent) []*OrderEvent {
@@ -471,7 +534,7 @@ func FilterValueFromJSONV4(f OrderFilterV4) (interface{}, error) {
 		return stringToBigInt(f.Value)
 	case OrderFieldV4Hash:
 		return stringToHash(f.Value)
-	case OrderFieldV4ExchangeAddress, OrderFieldV4Maker, OrderFieldV4Taker, OrderFieldV4Sender, OrderFieldV4FeeRecipient:
+	case OrderFieldV4VerifyingContract, OrderFieldV4Maker, OrderFieldV4Taker, OrderFieldV4Sender, OrderFieldV4FeeRecipient:
 		return stringToAddress(f.Value)
 	default:
 		return "", fmt.Errorf("invalid filter field: %q", f.Field)

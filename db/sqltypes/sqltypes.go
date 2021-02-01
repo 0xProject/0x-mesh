@@ -266,9 +266,9 @@ type OrderSignatureV4 struct {
 // OrderV4 is the SQL database representation of V4 0x order along with some relevant metadata.
 type OrderV4 struct {
 	// Common with the zeroex type
-	Hash            common.Hash    `db:"hash"`
-	ChainID         *SortedBigInt  `db:"chainID"`
-	ExchangeAddress common.Address `db:"exchangeAddress"`
+	Hash              common.Hash    `db:"hash"`
+	ChainID           *SortedBigInt  `db:"chainID"`
+	VerifyingContract common.Address `db:"verifyingContract"`
 	// Limit order values
 	MakerToken          common.Address `db:"makerToken"`
 	TakerToken          common.Address `db:"takerToken"`
@@ -407,7 +407,7 @@ func OrderToCommonTypeV4(order *OrderV4) *types.OrderWithMetadata {
 		Hash: order.Hash,
 		OrderV4: &zeroex.OrderV4{
 			ChainID:             order.ChainID.Int,
-			ExchangeAddress:     order.ExchangeAddress,
+			VerifyingContract:   order.VerifyingContract,
 			MakerToken:          order.MakerToken,
 			TakerToken:          order.TakerToken,
 			MakerAmount:         order.MakerAmount.Int,
@@ -489,7 +489,7 @@ func OrderFromCommonTypeV4(order *types.OrderWithMetadata) *OrderV4 {
 	return &OrderV4{
 		Hash:                     order.Hash,
 		ChainID:                  NewSortedBigInt(order.OrderV4.ChainID),
-		ExchangeAddress:          order.OrderV4.ExchangeAddress,
+		VerifyingContract:        order.OrderV4.VerifyingContract,
 		MakerToken:               order.OrderV4.MakerToken,
 		TakerToken:               order.OrderV4.TakerToken,
 		MakerAmount:              NewSortedBigInt(order.OrderV4.MakerAmount),

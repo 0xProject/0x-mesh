@@ -1277,7 +1277,7 @@ func newTestOrderV4() *types.OrderWithMetadata {
 		Hash: common.BigToHash(big.NewInt(int64(rand.Int()))),
 		OrderV4: &zeroex.OrderV4{
 			ChainID:             big.NewInt(constants.TestChainID),
-			ExchangeAddress:     contractAddresses.Exchange,
+			VerifyingContract:   contractAddresses.Exchange,
 			MakerToken:          constants.GanacheDummyERC721TokenAddress,
 			TakerToken:          constants.GanacheDummyERC721TokenAddress,
 			MakerAmount:         math.MaxBig256,
@@ -1394,6 +1394,27 @@ func createAndStoreOrdersForFilterTests(t *testing.T, db *DB) []*types.OrderWith
 		storedOrders = append(storedOrders, order)
 	}
 	_, _, _, err := db.AddOrders(storedOrders)
+	require.NoError(t, err)
+	return storedOrders
+}
+
+func createAndStoreOrdersForFilterTestsV4(t *testing.T, db *DB) []*types.OrderWithMetadata {
+	// Create some test orders with very specific characteristics to make it easier to write tests.
+	// - Both MakerAssetAmount and TakerAssetAmount will be 0, 1, 2, etc.
+	// - MakerAssetData will be 'a', 'b', 'c', etc.
+	// - ParsedMakerAssetData will always be for the ERC721Dummy contract, and each will contain
+	//   two token ids: (0, 1), (0, 11), (0, 21), (0, 31) etc.
+	numOrders := 10
+	storedOrders := []*types.OrderWithMetadata{}
+	for i := 0; i < numOrders; i++ {
+		order := newTestOrderV4()
+		order.OrderV4.MakerAmount = big.NewInt(int64(i))
+		order.OrderV4.TakerAmount = big.NewInt(int64(i))
+		order.OrderV4.MakerToken = constants.GanacheDummyERC721TokenAddress
+		order.OrderV4.TakerToken = constants.GanacheDummyERC721TokenAddress
+		storedOrders = append(storedOrders, order)
+	}
+	_, _, _, err := db.AddOrdersV4(storedOrders)
 	require.NoError(t, err)
 	return storedOrders
 }

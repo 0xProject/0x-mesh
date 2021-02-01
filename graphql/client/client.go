@@ -28,7 +28,7 @@ const (
 		addOrders(orders: $orders, pinned: $pinned, opts: $opts) {
 			accepted {
 				order {
-					hash
+                                        hash
 					chainId
 					exchangeAddress
 					makerAddress
@@ -51,7 +51,7 @@ const (
 				isNew
 			}
 			rejected {
-				hash
+                                hash
 				code
 				message
 				order {
@@ -138,7 +138,11 @@ const (
 			}
 			numPeers
 			numOrders
+                        numOrdersV4
 			numOrdersIncludingRemoved
+			numOrdersIncludingRemovedV4
+			numPinnedOrders
+			numPinnedOrdersV4
 			startOfCurrentUTCDay
 			ethRPCRequestsSentInCurrentUTCDay
 			ethRPCRateLimitExpiredRequests

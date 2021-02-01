@@ -57,7 +57,7 @@ const (
 	estimatedNonPollingEthereumRPCRequestsPer24Hrs = 50000
 	// logStatsInterval is how often to log stats for this node.
 	logStatsInterval = 5 * time.Minute
-	version          = "10.2.0"
+	version          = "10.3.0"
 	// ordersyncMinPeers is the minimum amount of peers to receive orders from
 	// before considering the ordersync process finished.
 	ordersyncMinPeers = 5
@@ -1178,7 +1178,24 @@ func (app *App) GetStats() (*types.Stats, error) {
 	if err != nil {
 		return nil, err
 	}
+	numOrdersV4, err := app.db.CountOrdersV4(&db.OrderQueryV4{
+		Filters: []db.OrderFilterV4{
+			{
+				Field: db.OV4FIsRemoved,
+				Kind:  db.Equal,
+				Value: false,
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	numOrdersIncludingRemoved, err := app.db.CountOrders(nil)
+	if err != nil {
+		return nil, err
+	}
+	numOrdersIncludingRemovedV4, err := app.db.CountOrdersV4(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1194,6 +1211,19 @@ func (app *App) GetStats() (*types.Stats, error) {
 	if err != nil {
 		return nil, err
 	}
+	numPinnedOrdersV4, err := app.db.CountOrdersV4(&db.OrderQueryV4{
+		Filters: []db.OrderFilterV4{
+			{
+				Field: db.OV4FIsPinned,
+				Kind:  db.Equal,
+				Value: true,
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	metadata, err := app.db.GetMetadata()
 	if err != nil {
 		return nil, err
@@ -1216,9 +1246,12 @@ func (app *App) GetStats() (*types.Stats, error) {
 		EthereumChainID:                   app.config.EthereumChainID,
 		LatestBlock:                       latestBlock,
 		NumOrders:                         numOrders,
+		NumOrdersV4:                       numOrdersV4,
 		NumPeers:                          app.node.GetNumPeers(),
 		NumOrdersIncludingRemoved:         numOrdersIncludingRemoved,
+		NumOrdersIncludingRemovedV4:       numOrdersIncludingRemovedV4,
 		NumPinnedOrders:                   numPinnedOrders,
+		NumPinnedOrdersV4:                 numPinnedOrdersV4,
 		MaxExpirationTime:                 maxExpirationTime,
 		StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
 		EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,

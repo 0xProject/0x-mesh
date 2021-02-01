@@ -4,7 +4,7 @@ const v4OrdersSchema = `
 CREATE TABLE IF NOT EXISTS ordersv4 (
 	hash                     TEXT UNIQUE NOT NULL,
 	chainID                  TEXT NOT NULL,
-	exchangeAddress          TEXT NOT NULL,
+	verifyingContract        TEXT NOT NULL,
 	makerToken               TEXT NOT NULL,
 	takerToken               TEXT NOT NULL,
 	makerAmount              TEXT NOT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS ordersv4 (
 const insertOrderQueryV4 = `INSERT INTO ordersv4 (
 	hash,
 	chainID,
-	exchangeAddress,
+	verifyingContract,
 	makerToken,
 	takerToken,
 	makerAmount,
@@ -70,7 +70,7 @@ const insertOrderQueryV4 = `INSERT INTO ordersv4 (
 ) VALUES (
 	:hash,
 	:chainID,
-	:exchangeAddress,
+	:verifyingContract,
 	:makerToken,
 	:takerToken,
 	:makerAmount,
@@ -104,7 +104,7 @@ const insertOrderQueryV4 = `INSERT INTO ordersv4 (
 
 const updateOrderQueryV4 = `UPDATE ordersv4 SET
 	chainID = :chainID,
-	exchangeAddress = :exchangeAddress,
+	verifyingContract = :verifyingContract,
 	maker = :maker,
 	makerToken = :makerToken,
 	makerAmount = :makerAmount,
