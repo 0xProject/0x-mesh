@@ -21,14 +21,14 @@ import * as Observable from 'zen-observable';
 
 import { BrowserLink } from './browser_link';
 import {
-    statsQuery,
+    addOrdersMutation,
+    addOrdersMutationV4,
+    orderEventsSubscription,
     orderQuery,
     orderQueryV4,
     ordersQuery,
     ordersQueryV4,
-    addOrdersMutation,
-    addOrdersMutationV4,
-    orderEventsSubscription,
+    statsQuery,
 } from './queries';
 import {
     AddOrdersOpts,

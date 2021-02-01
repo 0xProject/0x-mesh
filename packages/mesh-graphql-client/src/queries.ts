@@ -286,7 +286,7 @@ export const orderEventsSubscription = gql`
             }
             orderv4 {
                 chainId
-                exchangeAddress
+                verifyingContract
                 makerToken
                 takerToken
                 makerAmount

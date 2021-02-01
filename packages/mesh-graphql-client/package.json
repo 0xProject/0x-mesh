@@ -51,7 +51,7 @@
         "@0x/mesh-browser-lite": "^10.2.0",
         "@0x/protocol-utils": "^1.1.4",
         "@0x/types": "^3.2.0",
-        "@0x/utils": "^5.4.0",
+        "@0x/utils": "^6.2.0",
         "@apollo/client": "^3.3.6",
         "@types/ws": "^7.2.6",
         "graphql": "^15.3.0",
