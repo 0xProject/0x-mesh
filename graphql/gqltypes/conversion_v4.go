@@ -43,7 +43,7 @@ func RejectedOrderResultFromOrderInfoV4(info *ordervalidator.RejectedOrderInfo) 
 		Hash: hash,
 		Order: &OrderV4{
 			ChainID:             info.SignedOrderV4.OrderV4.ChainID.String(),
-			ExchangeAddress:     strings.ToLower(info.SignedOrderV4.OrderV4.ExchangeAddress.Hex()),
+			VerifyingContract:   strings.ToLower(info.SignedOrderV4.OrderV4.VerifyingContract.Hex()),
 			Maker:               strings.ToLower(info.SignedOrderV4.OrderV4.Maker.Hex()),
 			Taker:               strings.ToLower(info.SignedOrderV4.OrderV4.Taker.Hex()),
 			Sender:              strings.ToLower(info.SignedOrderV4.OrderV4.Sender.Hex()),
@@ -66,7 +66,7 @@ func AcceptedOrderResultFromOrderInfoV4(info *ordervalidator.AcceptedOrderInfo) 
 		Order: &OrderV4WithMetadata{
 			Hash:                     info.OrderHash.Hex(),
 			ChainID:                  info.SignedOrderV4.ChainID.String(),
-			ExchangeAddress:          strings.ToLower(info.SignedOrderV4.ExchangeAddress.Hex()),
+			VerifyingContract:        strings.ToLower(info.SignedOrderV4.VerifyingContract.Hex()),
 			Maker:                    strings.ToLower(info.SignedOrderV4.Maker.Hex()),
 			Taker:                    strings.ToLower(info.SignedOrderV4.Taker.Hex()),
 			Sender:                   strings.ToLower(info.SignedOrderV4.Sender.Hex()),

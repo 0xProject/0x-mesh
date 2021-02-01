@@ -289,7 +289,7 @@ export interface StringifiedSignedOrder {
 
 export interface StringifiedSignedOrderV4 {
     chainId: string;
-    exchangeAddress: string;
+    verifyingContract: string;
     makerToken: string;
     takerToken: string;
     makerAmount: string;
@@ -436,7 +436,6 @@ export function fromStringifiedOrderWithMetadataV4(order: StringifiedOrderWithMe
         takerTokenFeeAmount: new BigNumber(order.takerTokenFeeAmount),
         expiry: new BigNumber(order.expiry),
         fillableTakerAssetAmount: new BigNumber(order.fillableTakerAssetAmount),
-        verifyingContract: order.exchangeAddress,
         signature: {
             signatureType: parseInt(order.signatureType),
             v: parseInt(order.signatureV),
@@ -473,7 +472,6 @@ export function fromStringifiedSignedOrderV4(order: StringifiedSignedOrderV4): S
         // tslint:disable-next-line: custom-no-magic-numbers
         chainId: Number.parseInt(order.chainId, 10),
         makerAmount: new BigNumber(order.makerAmount),
-        verifyingContract: order.exchangeAddress,
         takerAmount: new BigNumber(order.takerAmount),
         takerTokenFeeAmount: new BigNumber(order.takerTokenFeeAmount),
         expiry: new BigNumber(order.expiry),

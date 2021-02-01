@@ -145,8 +145,8 @@ type OrderWithMetadata struct {
 
 // A signed v4 0x order along with some additional metadata about the order which is not part of the 0x protocol specification.
 type OrderWithMetadataV4 struct {
-	ChainID         *big.Int       `json:"chainId"`
-	ExchangeAddress common.Address `json:"exchangeAddress"`
+	ChainID           *big.Int       `json:"chainId"`
+	VerifyingContract common.Address `json:"verifyingContract"`
 
 	// Limit order values
 	MakerToken          common.Address          `json:"makerToken"`

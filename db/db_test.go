@@ -1277,7 +1277,7 @@ func newTestOrderV4() *types.OrderWithMetadata {
 		Hash: common.BigToHash(big.NewInt(int64(rand.Int()))),
 		OrderV4: &zeroex.OrderV4{
 			ChainID:             big.NewInt(constants.TestChainID),
-			ExchangeAddress:     contractAddresses.Exchange,
+			VerifyingContract:   contractAddresses.Exchange,
 			MakerToken:          constants.GanacheDummyERC721TokenAddress,
 			TakerToken:          constants.GanacheDummyERC721TokenAddress,
 			MakerAmount:         math.MaxBig256,

@@ -135,7 +135,7 @@ A signed 0x v4 order according to the [protocol specification](https://0xprotoco
 """
 type OrderV4 {
     chainId: String!
-    exchangeAddress: String!
+    verifyingContract: String!
     makerToken: String!
     takerToken: String!
     makerAmount: String!
@@ -159,7 +159,7 @@ A signed 0x v4 order along with some additional metadata about the order which i
 """
 type OrderV4WithMetadata {
     chainId: String!
-    exchangeAddress: String!
+    verifyingContract: String!
     makerToken: String!
     takerToken: String!
     makerAmount: String!
@@ -192,7 +192,7 @@ An enum containing all the order fields for which filters and/or sorting is supp
 enum OrderFieldV4 {
     hash
     chainId
-    exchangeAddress
+    verifyingContract
     makerToken
     takerToken
     makerAmount
@@ -346,7 +346,7 @@ A signed v4 0x order according to the [protocol specification](https://github.co
 """
 input NewOrderV4 {
     chainId: String!
-    exchangeAddress: String!
+    verifyingContract: String!
     makerToken: String!
     takerToken: String!
     makerAmount: String!

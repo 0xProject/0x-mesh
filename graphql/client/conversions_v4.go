@@ -37,7 +37,7 @@ func orderWithMetadataFromGQLTypeV4(order *gqltypes.OrderV4WithMetadata) *OrderW
 	return &OrderWithMetadataV4{
 		Hash:                common.HexToHash(order.Hash),
 		ChainID:             math.MustParseBig256(order.ChainID),
-		ExchangeAddress:     common.HexToAddress(order.ExchangeAddress),
+		VerifyingContract:   common.HexToAddress(order.VerifyingContract),
 		MakerToken:          common.HexToAddress(order.MakerToken),
 		TakerToken:          common.HexToAddress(order.TakerToken),
 		Maker:               common.HexToAddress(order.Maker),
@@ -80,10 +80,9 @@ func rejectedOrderResultFromGQLTypeV4(result *gqltypes.RejectedOrderResultV4) *R
 	return &RejectedOrderResultV4{
 		Hash: hash,
 		Order: &OrderWithMetadataV4{
-			// FIXME(oskar) - ??
-			Hash:                common.HexToHash(order.Maker),
+			Hash:                *hash,
 			ChainID:             math.MustParseBig256(order.ChainID),
-			ExchangeAddress:     common.HexToAddress(order.ExchangeAddress),
+			VerifyingContract:   common.HexToAddress(order.VerifyingContract),
 			MakerToken:          common.HexToAddress(order.MakerToken),
 			TakerToken:          common.HexToAddress(order.TakerToken),
 			Maker:               common.HexToAddress(order.Maker),

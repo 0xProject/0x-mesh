@@ -96,7 +96,7 @@ export const addOrdersMutationV4 = gql`
             accepted {
                 order {
                     chainId
-                    exchangeAddress
+                    verifyingContract
                     makerToken
                     takerToken
                     makerAmount
@@ -122,7 +122,7 @@ export const addOrdersMutationV4 = gql`
                 hash
                 order {
                     chainId
-                    exchangeAddress
+                    verifyingContract
                     makerToken
                     takerToken
                     makerAmount
@@ -176,7 +176,7 @@ export const orderQueryV4 = gql`
         orderv4(hash: $hash) {
             hash
             chainId
-            exchangeAddress
+            verifyingContract
             makerToken
             takerToken
             makerAmount
@@ -237,7 +237,7 @@ export const ordersQueryV4 = gql`
         ordersv4(filters: $filters, sort: $sort, limit: $limit) {
             hash
             chainId
-            exchangeAddress
+            verifyingContract
             makerToken
             takerToken
             makerAmount

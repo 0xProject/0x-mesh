@@ -1301,7 +1301,7 @@ func (w *Watcher) setupInMemoryOrderState(order *types.OrderWithMetadata) error 
 		}
 	}
 	if order.OrderV4 != nil {
-		w.eventDecoder.AddKnownExchange(order.OrderV4.ExchangeAddress)
+		w.eventDecoder.AddKnownExchange(order.OrderV4.VerifyingContract)
 		// Add MakerToken to EventDecoder
 		w.eventDecoder.AddKnownERC20(order.OrderV4.MakerToken)
 		w.contractAddressToSeenCount.Inc(order.OrderV4.MakerToken)

@@ -15,8 +15,8 @@ import (
 
 // See <https://github.com/0xProject/protocol/blob/edda1edc507fbfceb6dcb02ef212ee4bdcb123a6/packages/protocol-utils/test/orders_test.ts#L24>
 var testOrderV4 = &OrderV4{
-	ChainID:         big.NewInt(8008),
-	ExchangeAddress: common.HexToAddress("0x6701704d2421c64ee9aa93ec7f96ede81c4be77d"),
+	ChainID:           big.NewInt(8008),
+	VerifyingContract: common.HexToAddress("0x6701704d2421c64ee9aa93ec7f96ede81c4be77d"),
 
 	MakerToken:          common.HexToAddress("0x349e8d89e8b37214d9ce3949fc5754152c525bc3"),
 	TakerToken:          common.HexToAddress("0x83c62b2e67dea0df2a27be0def7a22bd7102642c"),
@@ -46,7 +46,7 @@ func TestGanacheOrderHashV4(t *testing.T) {
 
 	order := *testOrderV4
 	order.ChainID = big.NewInt(1337)
-	order.ExchangeAddress = common.HexToAddress("0x5315e44798395d4a952530d131249fE00f554565")
+	order.VerifyingContract = common.HexToAddress("0x5315e44798395d4a952530d131249fE00f554565")
 	order.ResetHash()
 
 	actualOrderHash, err := order.ComputeOrderHash()
@@ -66,8 +66,8 @@ func TestSignOrderV4(t *testing.T) {
 
 func TestCustomOrderV4(t *testing.T) {
 	tOrder := &OrderV4{
-		ChainID:         big.NewInt(1337),
-		ExchangeAddress: common.HexToAddress("0x5315e44798395d4a952530d131249fe00f554565"),
+		ChainID:           big.NewInt(1337),
+		VerifyingContract: common.HexToAddress("0x5315e44798395d4a952530d131249fe00f554565"),
 
 		MakerToken:          common.HexToAddress("0x0b1ba0af832d7c05fd64161e0db78e85978e8082"),
 		TakerToken:          common.HexToAddress("0x871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c"),

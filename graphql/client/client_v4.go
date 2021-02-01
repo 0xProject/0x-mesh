@@ -14,7 +14,7 @@ const (
 		orderv4(hash: $hash) {
                         hash
 			chainId
-			exchangeAddress
+			verifyingContract
 			makerToken
 			takerToken
 			makerAmount
@@ -38,7 +38,7 @@ const (
 		ordersv4(filters: $filters, sort: $sort, limit: $limit) {
                         hash
 			chainId
-			exchangeAddress
+			verifyingContract
 			makerToken
 			takerToken
 			makerAmount
@@ -56,6 +56,69 @@ const (
 			signatureR
 			signatureS
 			fillableTakerAssetAmount
+		}
+	}`
+
+	addOrdersMutationV4 = `
+mutation AddOrdersV4(
+	$orders: [NewOrderV4!]!,
+	$pinned: Boolean = true,
+	$opts: AddOrdersOpts = {
+		keepCancelled: false,
+		keepExpired: false,
+		keepFullyFilled: false,
+		keepUnfunded: false,
+	},
+) {
+		addOrdersV4(orders: $orders, pinned: $pinned, opts: $opts) {
+			accepted {
+				order {
+					chainId
+					verifyingContract
+					makerToken
+					takerToken
+					makerAmount
+					takerAmount
+					takerTokenFeeAmount
+					maker
+					taker
+					sender
+					feeRecipient
+					pool
+					expiry
+					salt
+					signatureType
+					signatureV
+					signatureR
+					signatureS
+				}
+				isNew
+			}
+			rejected {
+				code
+				message
+                                hash
+				order {
+					chainId
+					verifyingContract
+					makerToken
+					takerToken
+					makerAmount
+					takerAmount
+					takerTokenFeeAmount
+					maker
+					taker
+					sender
+					feeRecipient
+					pool
+					expiry
+					salt
+					signatureType
+					signatureV
+					signatureR
+					signatureS
+				}
+			}
 		}
 	}`
 )

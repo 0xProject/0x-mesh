@@ -116,7 +116,6 @@ type ComplexityRoot struct {
 
 	OrderV4 struct {
 		ChainID             func(childComplexity int) int
-		ExchangeAddress     func(childComplexity int) int
 		Expiry              func(childComplexity int) int
 		FeeRecipient        func(childComplexity int) int
 		Maker               func(childComplexity int) int
@@ -133,11 +132,11 @@ type ComplexityRoot struct {
 		TakerAmount         func(childComplexity int) int
 		TakerToken          func(childComplexity int) int
 		TakerTokenFeeAmount func(childComplexity int) int
+		VerifyingContract   func(childComplexity int) int
 	}
 
 	OrderV4WithMetadata struct {
 		ChainID                  func(childComplexity int) int
-		ExchangeAddress          func(childComplexity int) int
 		Expiry                   func(childComplexity int) int
 		FeeRecipient             func(childComplexity int) int
 		FillableTakerAssetAmount func(childComplexity int) int
@@ -156,6 +155,7 @@ type ComplexityRoot struct {
 		TakerAmount              func(childComplexity int) int
 		TakerToken               func(childComplexity int) int
 		TakerTokenFeeAmount      func(childComplexity int) int
+		VerifyingContract        func(childComplexity int) int
 	}
 
 	OrderWithMetadata struct {
@@ -569,13 +569,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.OrderV4.ChainID(childComplexity), true
 
-	case "OrderV4.exchangeAddress":
-		if e.complexity.OrderV4.ExchangeAddress == nil {
-			break
-		}
-
-		return e.complexity.OrderV4.ExchangeAddress(childComplexity), true
-
 	case "OrderV4.expiry":
 		if e.complexity.OrderV4.Expiry == nil {
 			break
@@ -688,19 +681,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.OrderV4.TakerTokenFeeAmount(childComplexity), true
 
+	case "OrderV4.verifyingContract":
+		if e.complexity.OrderV4.VerifyingContract == nil {
+			break
+		}
+
+		return e.complexity.OrderV4.VerifyingContract(childComplexity), true
+
 	case "OrderV4WithMetadata.chainId":
 		if e.complexity.OrderV4WithMetadata.ChainID == nil {
 			break
 		}
 
 		return e.complexity.OrderV4WithMetadata.ChainID(childComplexity), true
-
-	case "OrderV4WithMetadata.exchangeAddress":
-		if e.complexity.OrderV4WithMetadata.ExchangeAddress == nil {
-			break
-		}
-
-		return e.complexity.OrderV4WithMetadata.ExchangeAddress(childComplexity), true
 
 	case "OrderV4WithMetadata.expiry":
 		if e.complexity.OrderV4WithMetadata.Expiry == nil {
@@ -827,6 +820,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.OrderV4WithMetadata.TakerTokenFeeAmount(childComplexity), true
+
+	case "OrderV4WithMetadata.verifyingContract":
+		if e.complexity.OrderV4WithMetadata.VerifyingContract == nil {
+			break
+		}
+
+		return e.complexity.OrderV4WithMetadata.VerifyingContract(childComplexity), true
 
 	case "OrderWithMetadata.chainId":
 		if e.complexity.OrderWithMetadata.ChainID == nil {
@@ -1423,7 +1423,7 @@ A signed 0x v4 order according to the [protocol specification](https://0xprotoco
 """
 type OrderV4 {
     chainId: String!
-    exchangeAddress: String!
+    verifyingContract: String!
     makerToken: String!
     takerToken: String!
     makerAmount: String!
@@ -1447,7 +1447,7 @@ A signed 0x v4 order along with some additional metadata about the order which i
 """
 type OrderV4WithMetadata {
     chainId: String!
-    exchangeAddress: String!
+    verifyingContract: String!
     makerToken: String!
     takerToken: String!
     makerAmount: String!
@@ -1480,7 +1480,7 @@ An enum containing all the order fields for which filters and/or sorting is supp
 enum OrderFieldV4 {
     hash
     chainId
-    exchangeAddress
+    verifyingContract
     makerToken
     takerToken
     makerAmount
@@ -1634,7 +1634,7 @@ A signed v4 0x order according to the [protocol specification](https://github.co
 """
 input NewOrderV4 {
     chainId: String!
-    exchangeAddress: String!
+    verifyingContract: String!
     makerToken: String!
     takerToken: String!
     makerAmount: String!
@@ -3631,7 +3631,7 @@ func (ec *executionContext) _OrderV4_chainId(ctx context.Context, field graphql.
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderV4_exchangeAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV4) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV4_verifyingContract(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV4) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -3648,7 +3648,7 @@ func (ec *executionContext) _OrderV4_exchangeAddress(ctx context.Context, field 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ExchangeAddress, nil
+		return obj.VerifyingContract, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4243,7 +4243,7 @@ func (ec *executionContext) _OrderV4WithMetadata_chainId(ctx context.Context, fi
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _OrderV4WithMetadata_exchangeAddress(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV4WithMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _OrderV4WithMetadata_verifyingContract(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderV4WithMetadata) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -4260,7 +4260,7 @@ func (ec *executionContext) _OrderV4WithMetadata_exchangeAddress(ctx context.Con
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ExchangeAddress, nil
+		return obj.VerifyingContract, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -7932,9 +7932,9 @@ func (ec *executionContext) unmarshalInputNewOrderV4(ctx context.Context, obj in
 			if err != nil {
 				return it, err
 			}
-		case "exchangeAddress":
+		case "verifyingContract":
 			var err error
-			it.ExchangeAddress, err = ec.unmarshalNString2string(ctx, v)
+			it.VerifyingContract, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -8584,8 +8584,8 @@ func (ec *executionContext) _OrderV4(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "exchangeAddress":
-			out.Values[i] = ec._OrderV4_exchangeAddress(ctx, field, obj)
+		case "verifyingContract":
+			out.Values[i] = ec._OrderV4_verifyingContract(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -8696,8 +8696,8 @@ func (ec *executionContext) _OrderV4WithMetadata(ctx context.Context, sel ast.Se
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "exchangeAddress":
-			out.Values[i] = ec._OrderV4WithMetadata_exchangeAddress(ctx, field, obj)
+		case "verifyingContract":
+			out.Values[i] = ec._OrderV4WithMetadata_verifyingContract(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

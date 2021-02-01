@@ -112,7 +112,7 @@ type NewOrder struct {
 // A signed v4 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format).
 type NewOrderV4 struct {
 	ChainID             string `json:"chainId"`
-	ExchangeAddress     string `json:"exchangeAddress"`
+	VerifyingContract   string `json:"verifyingContract"`
 	MakerToken          string `json:"makerToken"`
 	TakerToken          string `json:"takerToken"`
 	MakerAmount         string `json:"makerAmount"`
@@ -204,7 +204,7 @@ type OrderSortV4 struct {
 // A signed 0x v4 order according to the [protocol specification](https://0xprotocol.readthedocs.io/en/latest/basics/orders.html)
 type OrderV4 struct {
 	ChainID             string `json:"chainId"`
-	ExchangeAddress     string `json:"exchangeAddress"`
+	VerifyingContract   string `json:"verifyingContract"`
 	MakerToken          string `json:"makerToken"`
 	TakerToken          string `json:"takerToken"`
 	MakerAmount         string `json:"makerAmount"`
@@ -226,7 +226,7 @@ type OrderV4 struct {
 // A signed 0x v4 order along with some additional metadata about the order which is not part of the 0x protocol specification.
 type OrderV4WithMetadata struct {
 	ChainID             string `json:"chainId"`
-	ExchangeAddress     string `json:"exchangeAddress"`
+	VerifyingContract   string `json:"verifyingContract"`
 	MakerToken          string `json:"makerToken"`
 	TakerToken          string `json:"takerToken"`
 	MakerAmount         string `json:"makerAmount"`
@@ -523,7 +523,7 @@ type OrderFieldV4 string
 const (
 	OrderFieldV4Hash                     OrderFieldV4 = "hash"
 	OrderFieldV4ChainID                  OrderFieldV4 = "chainId"
-	OrderFieldV4ExchangeAddress          OrderFieldV4 = "exchangeAddress"
+	OrderFieldV4VerifyingContract        OrderFieldV4 = "verifyingContract"
 	OrderFieldV4MakerToken               OrderFieldV4 = "makerToken"
 	OrderFieldV4TakerToken               OrderFieldV4 = "takerToken"
 	OrderFieldV4MakerAmount              OrderFieldV4 = "makerAmount"
@@ -543,7 +543,7 @@ const (
 var AllOrderFieldV4 = []OrderFieldV4{
 	OrderFieldV4Hash,
 	OrderFieldV4ChainID,
-	OrderFieldV4ExchangeAddress,
+	OrderFieldV4VerifyingContract,
 	OrderFieldV4MakerToken,
 	OrderFieldV4TakerToken,
 	OrderFieldV4MakerAmount,
@@ -562,7 +562,7 @@ var AllOrderFieldV4 = []OrderFieldV4{
 
 func (e OrderFieldV4) IsValid() bool {
 	switch e {
-	case OrderFieldV4Hash, OrderFieldV4ChainID, OrderFieldV4ExchangeAddress, OrderFieldV4MakerToken, OrderFieldV4TakerToken, OrderFieldV4MakerAmount, OrderFieldV4TakerAmount, OrderFieldV4TakerTokenFeeAmount, OrderFieldV4Maker, OrderFieldV4Taker, OrderFieldV4Sender, OrderFieldV4FeeRecipient, OrderFieldV4Pool, OrderFieldV4Expiry, OrderFieldV4Salt, OrderFieldV4Signature, OrderFieldV4FillableTakerAssetAmount:
+	case OrderFieldV4Hash, OrderFieldV4ChainID, OrderFieldV4VerifyingContract, OrderFieldV4MakerToken, OrderFieldV4TakerToken, OrderFieldV4MakerAmount, OrderFieldV4TakerAmount, OrderFieldV4TakerTokenFeeAmount, OrderFieldV4Maker, OrderFieldV4Taker, OrderFieldV4Sender, OrderFieldV4FeeRecipient, OrderFieldV4Pool, OrderFieldV4Expiry, OrderFieldV4Salt, OrderFieldV4Signature, OrderFieldV4FillableTakerAssetAmount:
 		return true
 	}
 	return false

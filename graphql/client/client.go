@@ -77,69 +77,6 @@ const (
 		}
 	}`
 
-	addOrdersMutationV4 = `
-mutation AddOrdersV4(
-	$orders: [NewOrderV4!]!,
-	$pinned: Boolean = true,
-	$opts: AddOrdersOpts = {
-		keepCancelled: false,
-		keepExpired: false,
-		keepFullyFilled: false,
-		keepUnfunded: false,
-	},
-) {
-		addOrdersV4(orders: $orders, pinned: $pinned, opts: $opts) {
-			accepted {
-				order {
-					chainId
-					exchangeAddress
-					makerToken
-					takerToken
-					makerAmount
-					takerAmount
-					takerTokenFeeAmount
-					maker
-					taker
-					sender
-					feeRecipient
-					pool
-					expiry
-					salt
-					signatureType
-					signatureV
-					signatureR
-					signatureS
-				}
-				isNew
-			}
-			rejected {
-				code
-				message
-                                hash
-				order {
-					chainId
-					exchangeAddress
-					makerToken
-					takerToken
-					makerAmount
-					takerAmount
-					takerTokenFeeAmount
-					maker
-					taker
-					sender
-					feeRecipient
-					pool
-					expiry
-					salt
-					signatureType
-					signatureV
-					signatureR
-					signatureS
-				}
-			}
-		}
-	}`
-
 	ordersQuery = `query Orders($filters: [OrderFilter!] = [], $sort: [OrderSort!] = [{ field: hash, direction: ASC }], $limit: Int = 100) {
 		orders(filters: $filters, sort: $sort, limit: $limit) {
 			hash

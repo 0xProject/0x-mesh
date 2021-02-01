@@ -94,7 +94,7 @@ func NewOrderToSignedOrderV4(newOrder *NewOrderV4) *zeroex.SignedOrderV4 {
 	return &zeroex.SignedOrderV4{
 		OrderV4: zeroex.OrderV4{
 			ChainID:             math.MustParseBig256(newOrder.ChainID),
-			ExchangeAddress:     common.HexToAddress(newOrder.ExchangeAddress),
+			VerifyingContract:   common.HexToAddress(newOrder.VerifyingContract),
 			MakerToken:          common.HexToAddress(newOrder.MakerToken),
 			TakerToken:          common.HexToAddress(newOrder.TakerToken),
 			Maker:               common.HexToAddress(newOrder.Maker),
@@ -158,7 +158,7 @@ func NewOrderFromSignedOrder(signedOrder *zeroex.SignedOrder) *NewOrder {
 func NewOrderFromSignedOrderV4(signedOrder *zeroex.SignedOrderV4) *NewOrderV4 {
 	return &NewOrderV4{
 		ChainID:             signedOrder.ChainID.String(),
-		ExchangeAddress:     strings.ToLower(signedOrder.ExchangeAddress.Hex()),
+		VerifyingContract:   strings.ToLower(signedOrder.VerifyingContract.Hex()),
 		MakerToken:          strings.ToLower(signedOrder.MakerToken.Hex()),
 		TakerToken:          strings.ToLower(signedOrder.TakerToken.Hex()),
 		MakerAmount:         signedOrder.MakerAmount.String(),
@@ -222,7 +222,7 @@ func OrderWithMetadataFromCommonTypeV4(order *types.OrderWithMetadata) *OrderV4W
 	return &OrderV4WithMetadata{
 		Hash:                     order.Hash.Hex(),
 		ChainID:                  order.OrderV4.ChainID.String(),
-		ExchangeAddress:          strings.ToLower(order.OrderV4.ExchangeAddress.Hex()),
+		VerifyingContract:        strings.ToLower(order.OrderV4.VerifyingContract.Hex()),
 		Maker:                    strings.ToLower(order.OrderV4.Maker.Hex()),
 		Taker:                    strings.ToLower(order.OrderV4.Taker.Hex()),
 		Sender:                   strings.ToLower(order.OrderV4.Sender.Hex()),
@@ -387,7 +387,7 @@ func OrderEventFromZeroExType(event *zeroex.OrderEvent) *OrderEvent {
 		sigV := strconv.FormatUint(uint64(event.SignedOrderV4.Signature.V), 10)
 		baseEvent.Orderv4 = &OrderV4WithMetadata{
 			ChainID:                  event.SignedOrderV4.ChainID.String(),
-			ExchangeAddress:          event.SignedOrderV4.ExchangeAddress.Hex(),
+			VerifyingContract:        event.SignedOrderV4.VerifyingContract.Hex(),
 			MakerToken:               event.SignedOrderV4.MakerToken.Hex(),
 			TakerToken:               event.SignedOrderV4.TakerToken.Hex(),
 			MakerAmount:              event.SignedOrderV4.MakerAmount.String(),
@@ -534,7 +534,7 @@ func FilterValueFromJSONV4(f OrderFilterV4) (interface{}, error) {
 		return stringToBigInt(f.Value)
 	case OrderFieldV4Hash:
 		return stringToHash(f.Value)
-	case OrderFieldV4ExchangeAddress, OrderFieldV4Maker, OrderFieldV4Taker, OrderFieldV4Sender, OrderFieldV4FeeRecipient:
+	case OrderFieldV4VerifyingContract, OrderFieldV4Maker, OrderFieldV4Taker, OrderFieldV4Sender, OrderFieldV4FeeRecipient:
 		return stringToAddress(f.Value)
 	default:
 		return "", fmt.Errorf("invalid filter field: %q", f.Field)
