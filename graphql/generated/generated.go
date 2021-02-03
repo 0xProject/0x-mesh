@@ -1833,11 +1833,11 @@ type OrderEvent {
     """
     The order that was affected.
     """
-    order: OrderWithMetadata!
+    order: OrderWithMetadata
     """
     The v4 order that was affected.
     """
-    orderv4: OrderV4WithMetadata!
+    orderv4: OrderV4WithMetadata
     """
     A way of classifying the effect that the order event had on the order. You can
     think of different end states as different "types" of order events.
@@ -3451,14 +3451,11 @@ func (ec *executionContext) _OrderEvent_order(ctx context.Context, field graphql
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*gqltypes.OrderWithMetadata)
 	fc.Result = res
-	return ec.marshalNOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadata(ctx, field.Selections, res)
+	return ec.marshalOOrderWithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderWithMetadata(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderEvent_orderv4(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderEvent) (ret graphql.Marshaler) {
@@ -3485,14 +3482,11 @@ func (ec *executionContext) _OrderEvent_orderv4(ctx context.Context, field graph
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*gqltypes.OrderV4WithMetadata)
 	fc.Result = res
-	return ec.marshalNOrderV4WithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderV4WithMetadata(ctx, field.Selections, res)
+	return ec.marshalOOrderV4WithMetadata2ᚖgithubᚗcomᚋ0xProjectᚋ0xᚑmeshᚋgraphqlᚋgqltypesᚐOrderV4WithMetadata(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _OrderEvent_endState(ctx context.Context, field graphql.CollectedField, obj *gqltypes.OrderEvent) (ret graphql.Marshaler) {
@@ -8534,14 +8528,8 @@ func (ec *executionContext) _OrderEvent(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = graphql.MarshalString("OrderEvent")
 		case "order":
 			out.Values[i] = ec._OrderEvent_order(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "orderv4":
 			out.Values[i] = ec._OrderEvent_orderv4(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		case "endState":
 			out.Values[i] = ec._OrderEvent_endState(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
