@@ -508,7 +508,8 @@ blockchainTests.resets('GraphQLClient', (env) => {
                                 const orderHash = orderHashUtils.getOrderHashHex(order);
                                 let hasSeenMatch = false;
                                 for (const event of events) {
-                                    if (orderHash === event.order.hash) {
+                                    const orderHash = event.order?.hash || event.orderv4?.hash || null;
+                                    if (orderHash === orderHash) {
                                         hasSeenMatch = true;
                                         const expectedOrder = {
                                             ...order,

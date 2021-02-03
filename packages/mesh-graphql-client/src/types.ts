@@ -148,8 +148,8 @@ export enum RejectedOrderCode {
 
 export interface OrderEvent {
     timestampMs: number;
-    order: OrderWithMetadata;
-    orderv4: OrderWithMetadataV4;
+    order?: OrderWithMetadata;
+    orderv4?: OrderWithMetadataV4;
     endState: OrderEventEndState;
     contractEvents: ContractEvent[];
 }
@@ -339,8 +339,8 @@ export interface StringifiedRejectedOrderResult<K extends GenericStringifiedSign
 
 export interface StringifiedOrderEvent {
     timestamp: string;
-    order: StringifiedOrderWithMetadata;
-    orderv4: StringifiedOrderWithMetadataV4;
+    order?: StringifiedOrderWithMetadata;
+    orderv4?: StringifiedOrderWithMetadataV4;
     endState: OrderEventEndState;
     fillableTakerAssetAmount: BigNumber;
     contractEvents: ContractEvent[];
@@ -564,8 +564,10 @@ export function fromStringifiedOrderEvent(event: StringifiedOrderEvent): OrderEv
     return {
         ...event,
         timestampMs: new Date(event.timestamp).getUTCMilliseconds(),
-        order: fromStringifiedOrderWithMetadata(event.order),
-        orderv4: fromStringifiedOrderWithMetadataV4(event.orderv4),
+        order: event.order === undefined ? undefined : 
+            fromStringifiedOrderWithMetadata(event.order),
+        orderv4: event.orderv4 === undefined ? undefined :
+            fromStringifiedOrderWithMetadataV4(event.orderv4),
     };
 }
 
