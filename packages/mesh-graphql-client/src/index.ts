@@ -266,7 +266,7 @@ export class MeshGraphQLClient {
         return fromStringifiedOrderWithMetadata(resp.data.order);
     }
 
-    public async getOrderAsyncV4(hash: string): Promise<OrderWithMetadataV4 | null> {
+    public async getOrderV4Async(hash: string): Promise<OrderWithMetadataV4 | null> {
         const resp: ApolloQueryResult<OrderResponseV4> = await this._client.query({
             query: orderQueryV4,
             variables: {
@@ -276,10 +276,10 @@ export class MeshGraphQLClient {
         if (resp.data == null) {
             throw new Error('received no data');
         }
-        if (resp.data.order == null) {
+        if (resp.data.orderv4 == null) {
             return null;
         }
-        return fromStringifiedOrderWithMetadataV4(resp.data.order);
+        return fromStringifiedOrderWithMetadataV4(resp.data.orderv4);
     }
 
     public async findOrdersAsync(
@@ -313,7 +313,7 @@ export class MeshGraphQLClient {
         if (resp.data == null) {
             throw new Error('received no data');
         }
-        return resp.data.orders.map(fromStringifiedOrderWithMetadataV4);
+        return resp.data.ordersv4.map(fromStringifiedOrderWithMetadataV4);
     }
 
     public onReconnected(cb: () => void): void {
