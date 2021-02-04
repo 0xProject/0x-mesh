@@ -346,6 +346,8 @@ func RejectedCodeFromValidatorStatus(status ordervalidator.RejectedOrderStatus) 
 		return RejectedOrderCodeSenderAddressNotAllowed, nil
 	case ordervalidator.RODatabaseFullOfOrders.Code:
 		return RejectedOrderCodeDatabaseFullOfOrders, nil
+	case ordervalidator.ROTakerAddressNotAllowed.Code:
+		return RejectedOrderCodeTakerAddressNotAllowed, nil
 	default:
 		return "", fmt.Errorf("unexpected RejectedOrderStatus.Code: %q", status.Code)
 	}
