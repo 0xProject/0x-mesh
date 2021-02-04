@@ -1,5 +1,30 @@
 import { gql } from '@apollo/client/core';
 
+// HACK(kimpers): Since we disabled `_typename` we cannot use GQL fragments.
+// Instead use a string with all field names to make sure that the same data is returned everywhere
+const ORDER_V4_WITH_METADATA_FIELDS = `
+    hash
+    chainId
+    verifyingContract
+    makerToken
+    takerToken
+    makerAmount
+    takerAmount
+    takerTokenFeeAmount
+    maker
+    taker
+    sender
+    feeRecipient
+    pool
+    expiry
+    salt
+    fillableTakerAssetAmount
+    signatureType
+    signatureV
+    signatureR
+    signatureS
+`;
+
 export const statsQuery = gql`
     query Stats {
         stats {
@@ -95,24 +120,7 @@ export const addOrdersMutationV4 = gql`
         addOrdersV4(orders: $orders, pinned: $pinned, opts: $opts) {
             accepted {
                 order {
-                    chainId
-                    verifyingContract
-                    makerToken
-                    takerToken
-                    makerAmount
-                    takerAmount
-                    takerTokenFeeAmount
-                    maker
-                    taker
-                    sender
-                    feeRecipient
-                    pool
-                    expiry
-                    salt
-                    signatureType
-                    signatureV
-                    signatureR
-                    signatureS
+                    ${ORDER_V4_WITH_METADATA_FIELDS}
                 }
                 isNew
             }
@@ -174,26 +182,7 @@ export const orderQuery = gql`
 export const orderQueryV4 = gql`
     query OrderV4($hash: String!) {
         orderv4(hash: $hash) {
-            hash
-            chainId
-            verifyingContract
-            makerToken
-            takerToken
-            makerAmount
-            takerAmount
-            takerTokenFeeAmount
-            maker
-            taker
-            sender
-            feeRecipient
-            pool
-            expiry
-            salt
-            signatureType
-            signatureV
-            signatureR
-            signatureS
-            fillableTakerAssetAmount
+            ${ORDER_V4_WITH_METADATA_FIELDS}
         }
     }
 `;
@@ -235,25 +224,7 @@ export const ordersQueryV4 = gql`
         $limit: Int = 100
     ) {
         ordersv4(filters: $filters, sort: $sort, limit: $limit) {
-            hash
-            chainId
-            verifyingContract
-            makerToken
-            takerToken
-            makerAmount
-            takerAmount
-            takerTokenFeeAmount
-            maker
-            taker
-            sender
-            feeRecipient
-            pool
-            expiry
-            salt
-            signatureType
-            signatureV
-            signatureR
-            signatureS
+            ${ORDER_V4_WITH_METADATA_FIELDS}
         }
     }
 `;
@@ -285,26 +256,7 @@ export const orderEventsSubscription = gql`
                 fillableTakerAssetAmount
             }
             orderv4 {
-                chainId
-                verifyingContract
-                makerToken
-                takerToken
-                makerAmount
-                takerAmount
-                takerTokenFeeAmount
-                maker
-                taker
-                sender
-                feeRecipient
-                pool
-                expiry
-                salt
-                signatureType
-                signatureV
-                signatureR
-                signatureS
-                hash
-                fillableTakerAssetAmount
+                ${ORDER_V4_WITH_METADATA_FIELDS}
             }
             contractEvents {
                 blockHash
