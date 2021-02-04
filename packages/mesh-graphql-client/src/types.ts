@@ -427,8 +427,9 @@ export function fromStringifiedOrderWithMetadata(order: StringifiedOrderWithMeta
  * Converts StringifiedOrderWithMetadata to OrderWithMetadata
  */
 export function fromStringifiedOrderWithMetadataV4(order: StringifiedOrderWithMetadataV4): OrderWithMetadataV4 {
+    const { signatureType, signatureV, signatureR, signatureS, ...orderRest } = order;
     return {
-        ...order,
+        ...orderRest,
         // tslint:disable-next-line: custom-no-magic-numbers
         chainId: Number.parseInt(order.chainId, 10),
         makerAmount: new BigNumber(order.makerAmount),
@@ -437,10 +438,12 @@ export function fromStringifiedOrderWithMetadataV4(order: StringifiedOrderWithMe
         expiry: new BigNumber(order.expiry),
         fillableTakerAssetAmount: new BigNumber(order.fillableTakerAssetAmount),
         signature: {
-            signatureType: parseInt(order.signatureType),
-            v: parseInt(order.signatureV),
-            r: order.signatureR,
-            s: order.signatureS,
+            // tslint:disable-next-line: custom-no-magic-numbers
+            signatureType: parseInt(signatureType, 10),
+            // tslint:disable-next-line: custom-no-magic-numbers
+            v: parseInt(signatureV, 10),
+            r: signatureR,
+            s: signatureS,
         },
         salt: new BigNumber(order.salt),
     };
