@@ -420,6 +420,7 @@ const (
 	RejectedOrderCodeIncorrectExchangeAddress         RejectedOrderCode = "INCORRECT_EXCHANGE_ADDRESS"
 	RejectedOrderCodeSenderAddressNotAllowed          RejectedOrderCode = "SENDER_ADDRESS_NOT_ALLOWED"
 	RejectedOrderCodeDatabaseFullOfOrders             RejectedOrderCode = "DATABASE_FULL_OF_ORDERS"
+	RejectedOrderCodeTakerAddressNotAllowed           RejectedOrderCode = "TAKER_ADDRESS_NOT_ALLOWED"
 )
 
 var AllRejectedOrderCode = []RejectedOrderCode{
@@ -443,11 +444,12 @@ var AllRejectedOrderCode = []RejectedOrderCode{
 	RejectedOrderCodeIncorrectExchangeAddress,
 	RejectedOrderCodeSenderAddressNotAllowed,
 	RejectedOrderCodeDatabaseFullOfOrders,
+	RejectedOrderCodeTakerAddressNotAllowed,
 }
 
 func (e RejectedOrderCode) IsValid() bool {
 	switch e {
-	case RejectedOrderCodeEthRPCRequestFailed, RejectedOrderCodeOrderHasInvalidMakerAssetAmount, RejectedOrderCodeOrderHasInvalidTakerAssetAmount, RejectedOrderCodeOrderExpired, RejectedOrderCodeOrderFullyFilled, RejectedOrderCodeOrderCancelled, RejectedOrderCodeOrderUnfunded, RejectedOrderCodeOrderHasInvalidMakerAssetData, RejectedOrderCodeOrderHasInvalidMakerFeeAssetData, RejectedOrderCodeOrderHasInvalidTakerAssetData, RejectedOrderCodeOrderHasInvalidTakerFeeAssetData, RejectedOrderCodeOrderHasInvalidSignature, RejectedOrderCodeOrderMaxExpirationExceeded, RejectedOrderCodeInternalError, RejectedOrderCodeMaxOrderSizeExceeded, RejectedOrderCodeOrderAlreadyStoredAndUnfillable, RejectedOrderCodeOrderForIncorrectChain, RejectedOrderCodeIncorrectExchangeAddress, RejectedOrderCodeSenderAddressNotAllowed, RejectedOrderCodeDatabaseFullOfOrders:
+	case RejectedOrderCodeEthRPCRequestFailed, RejectedOrderCodeOrderHasInvalidMakerAssetAmount, RejectedOrderCodeOrderHasInvalidTakerAssetAmount, RejectedOrderCodeOrderExpired, RejectedOrderCodeOrderFullyFilled, RejectedOrderCodeOrderCancelled, RejectedOrderCodeOrderUnfunded, RejectedOrderCodeOrderHasInvalidMakerAssetData, RejectedOrderCodeOrderHasInvalidMakerFeeAssetData, RejectedOrderCodeOrderHasInvalidTakerAssetData, RejectedOrderCodeOrderHasInvalidTakerFeeAssetData, RejectedOrderCodeOrderHasInvalidSignature, RejectedOrderCodeOrderMaxExpirationExceeded, RejectedOrderCodeInternalError, RejectedOrderCodeMaxOrderSizeExceeded, RejectedOrderCodeOrderAlreadyStoredAndUnfillable, RejectedOrderCodeOrderForIncorrectChain, RejectedOrderCodeIncorrectExchangeAddress, RejectedOrderCodeSenderAddressNotAllowed, RejectedOrderCodeDatabaseFullOfOrders, RejectedOrderCodeTakerAddressNotAllowed:
 		return true
 	}
 	return false

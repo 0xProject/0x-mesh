@@ -248,6 +248,7 @@ const (
 	RejectedOrderCodeIncorrectExchangeAddress         RejectedOrderCode = "INCORRECT_EXCHANGE_ADDRESS"
 	RejectedOrderCodeSenderAddressNotAllowed          RejectedOrderCode = "SENDER_ADDRESS_NOT_ALLOWED"
 	RejectedOrderCodeDatabaseFullOfOrders             RejectedOrderCode = "DATABASE_FULL_OF_ORDERS"
+	RejectedOrderCodeTakerAddressNotAllowed           RejectedOrderCode = "TAKER_ADDRESS_NOT_ALLOWED"
 	RejectedOrderCodeInvalidSchema                    RejectedOrderCode = "INVALID_SCHEMA"
 )
 

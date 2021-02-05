@@ -107,6 +107,7 @@ export enum RejectedOrderCode {
     IncorrectExchangeAddress = 'INCORRECT_EXCHANGE_ADDRESS',
     SenderAddressNotAllowed = 'SENDER_ADDRESS_NOT_ALLOWED',
     DatabaseFullOfOrders = 'DATABASE_FULL_OF_ORDERS',
+    TakerAddressNotAllowed = 'TAKER_ADDRESS_NOT_ALLOWED',
 }
 
 export interface OrderEvent {
