@@ -13,7 +13,7 @@ sending orders through the 0x Mesh network.
 
 \+ **new Mesh**(`config`: [Config](#interface-config)): _[Mesh](#class-mesh)_
 
-_Defined in [mesh.ts:132](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/mesh.ts#L132)_
+_Defined in [mesh.ts:132](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/mesh.ts#L132)_
 
 Instantiates a new Mesh instance.
 
@@ -33,7 +33,7 @@ An instance of Mesh
 
 • **wrapper**? : _MeshWrapper_
 
-_Defined in [mesh.ts:129](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/mesh.ts#L129)_
+_Defined in [mesh.ts:129](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/mesh.ts#L129)_
 
 ### Methods
 
@@ -41,7 +41,7 @@ _Defined in [mesh.ts:129](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 ▸ **addOrdersAsync**(`orders`: SignedOrder[], `pinned`: boolean): _Promise‹[ValidationResults](#interface-validationresults)›_
 
-_Defined in [mesh.ts:269](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/mesh.ts#L269)_
+_Defined in [mesh.ts:269](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/mesh.ts#L269)_
 
 Validates and adds the given orders to Mesh. If an order is successfully
 added, Mesh will share it with any peers in the network and start
@@ -68,7 +68,7 @@ were accepted and which were rejected.
 
 ▸ **getOrdersAsync**(`perPage`: number): _Promise‹[GetOrdersResponse](#interface-getordersresponse)›_
 
-_Defined in [mesh.ts:207](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/mesh.ts#L207)_
+_Defined in [mesh.ts:207](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/mesh.ts#L207)_
 
 Get all 0x signed orders currently stored in the Mesh node
 
@@ -88,7 +88,7 @@ the snapshotID, snapshotTimestamp and all orders, their hashes and fillableTaker
 
 ▸ **getOrdersForPageAsync**(`perPage`: number, `minOrderHash?`: undefined | string): _Promise‹[GetOrdersResponse](#interface-getordersresponse)›_
 
-_Defined in [mesh.ts:240](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/mesh.ts#L240)_
+_Defined in [mesh.ts:240](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/mesh.ts#L240)_
 
 Get page of 0x signed orders stored on the Mesh node at the specified snapshot
 
@@ -109,7 +109,7 @@ Up to perPage orders with hash greater than minOrderHash, including order hashes
 
 ▸ **getStatsAsync**(): _Promise‹[Stats](#interface-stats)›_
 
-_Defined in [mesh.ts:190](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/mesh.ts#L190)_
+_Defined in [mesh.ts:190](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/mesh.ts#L190)_
 
 Returns various stats about Mesh, including the total number of orders
 and the number of peers Mesh is connected to.
@@ -122,7 +122,7 @@ and the number of peers Mesh is connected to.
 
 ▸ **onError**(`handler`: function): _void_
 
-_Defined in [mesh.ts:152](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/mesh.ts#L152)_
+_Defined in [mesh.ts:152](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/mesh.ts#L152)_
 
 Registers a handler which will be called in the event of a critical
 error. Note that the handler will not be called for non-critical errors.
@@ -151,7 +151,7 @@ The handler to be called.
 
 ▸ **onOrderEvents**(`handler`: function): _void_
 
-_Defined in [mesh.ts:165](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/mesh.ts#L165)_
+_Defined in [mesh.ts:165](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/mesh.ts#L165)_
 
 Registers a handler which will be called for any incoming order events.
 Order events are fired whenver an order is added, canceled, expired, or
@@ -180,7 +180,7 @@ The handler to be called.
 
 ▸ **startAsync**(): _Promise‹void›_
 
-_Defined in [mesh.ts:174](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/mesh.ts#L174)_
+_Defined in [mesh.ts:174](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/mesh.ts#L174)_
 
 Starts the Mesh node in the background. Mesh will automatically find
 peers in the network and begin receiving orders from them.
@@ -197,7 +197,7 @@ peers in the network and begin receiving orders from them.
 
 • **ERC1155ApprovalForAllEvent**: = "ERC1155ApprovalForAllEvent"
 
-_Defined in [types.ts:505](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L505)_
+_Defined in [types.ts:505](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L505)_
 
 ---
 
@@ -205,7 +205,7 @@ _Defined in [types.ts:505](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ERC1155TransferBatchEvent**: = "ERC1155TransferBatchEvent"
 
-_Defined in [types.ts:507](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L507)_
+_Defined in [types.ts:507](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L507)_
 
 ---
 
@@ -213,7 +213,7 @@ _Defined in [types.ts:507](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ERC1155TransferSingleEvent**: = "ERC1155TransferSingleEvent"
 
-_Defined in [types.ts:506](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L506)_
+_Defined in [types.ts:506](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L506)_
 
 ---
 
@@ -221,7 +221,7 @@ _Defined in [types.ts:506](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ERC20ApprovalEvent**: = "ERC20ApprovalEvent"
 
-_Defined in [types.ts:501](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L501)_
+_Defined in [types.ts:501](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L501)_
 
 ---
 
@@ -229,7 +229,7 @@ _Defined in [types.ts:501](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ERC20TransferEvent**: = "ERC20TransferEvent"
 
-_Defined in [types.ts:500](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L500)_
+_Defined in [types.ts:500](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L500)_
 
 ---
 
@@ -237,7 +237,7 @@ _Defined in [types.ts:500](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ERC721ApprovalEvent**: = "ERC721ApprovalEvent"
 
-_Defined in [types.ts:503](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L503)_
+_Defined in [types.ts:503](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L503)_
 
 ---
 
@@ -245,7 +245,7 @@ _Defined in [types.ts:503](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ERC721ApprovalForAllEvent**: = "ERC721ApprovalForAllEvent"
 
-_Defined in [types.ts:504](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L504)_
+_Defined in [types.ts:504](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L504)_
 
 ---
 
@@ -253,7 +253,7 @@ _Defined in [types.ts:504](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ERC721TransferEvent**: = "ERC721TransferEvent"
 
-_Defined in [types.ts:502](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L502)_
+_Defined in [types.ts:502](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L502)_
 
 ---
 
@@ -261,7 +261,7 @@ _Defined in [types.ts:502](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ExchangeCancelEvent**: = "ExchangeCancelEvent"
 
-_Defined in [types.ts:509](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L509)_
+_Defined in [types.ts:509](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L509)_
 
 ---
 
@@ -269,7 +269,7 @@ _Defined in [types.ts:509](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ExchangeCancelUpToEvent**: = "ExchangeCancelUpToEvent"
 
-_Defined in [types.ts:510](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L510)_
+_Defined in [types.ts:510](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L510)_
 
 ---
 
@@ -277,7 +277,7 @@ _Defined in [types.ts:510](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ExchangeFillEvent**: = "ExchangeFillEvent"
 
-_Defined in [types.ts:508](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L508)_
+_Defined in [types.ts:508](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L508)_
 
 ---
 
@@ -285,7 +285,7 @@ _Defined in [types.ts:508](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **WethDepositEvent**: = "WethDepositEvent"
 
-_Defined in [types.ts:511](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L511)_
+_Defined in [types.ts:511](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L511)_
 
 ---
 
@@ -293,7 +293,7 @@ _Defined in [types.ts:511](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **WethWithdrawalEvent**: = "WethWithdrawalEvent"
 
-_Defined in [types.ts:512](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L512)_
+_Defined in [types.ts:512](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L512)_
 
 <hr />
 
@@ -305,7 +305,7 @@ _Defined in [types.ts:512](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **Added**: = "ADDED"
 
-_Defined in [types.ts:575](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L575)_
+_Defined in [types.ts:575](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L575)_
 
 ---
 
@@ -313,7 +313,7 @@ _Defined in [types.ts:575](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **Cancelled**: = "CANCELLED"
 
-_Defined in [types.ts:578](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L578)_
+_Defined in [types.ts:578](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L578)_
 
 ---
 
@@ -321,7 +321,7 @@ _Defined in [types.ts:578](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **Expired**: = "EXPIRED"
 
-_Defined in [types.ts:579](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L579)_
+_Defined in [types.ts:579](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L579)_
 
 ---
 
@@ -329,7 +329,7 @@ _Defined in [types.ts:579](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **FillabilityIncreased**: = "FILLABILITY_INCREASED"
 
-_Defined in [types.ts:582](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L582)_
+_Defined in [types.ts:582](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L582)_
 
 ---
 
@@ -337,7 +337,7 @@ _Defined in [types.ts:582](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **Filled**: = "FILLED"
 
-_Defined in [types.ts:576](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L576)_
+_Defined in [types.ts:576](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L576)_
 
 ---
 
@@ -345,7 +345,7 @@ _Defined in [types.ts:576](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **FullyFilled**: = "FULLY_FILLED"
 
-_Defined in [types.ts:577](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L577)_
+_Defined in [types.ts:577](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L577)_
 
 ---
 
@@ -353,7 +353,7 @@ _Defined in [types.ts:577](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **Invalid**: = "INVALID"
 
-_Defined in [types.ts:574](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L574)_
+_Defined in [types.ts:574](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L574)_
 
 ---
 
@@ -361,7 +361,7 @@ _Defined in [types.ts:574](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **StoppedWatching**: = "STOPPED_WATCHING"
 
-_Defined in [types.ts:583](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L583)_
+_Defined in [types.ts:583](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L583)_
 
 ---
 
@@ -369,7 +369,7 @@ _Defined in [types.ts:583](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **Unexpired**: = "UNEXPIRED"
 
-_Defined in [types.ts:580](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L580)_
+_Defined in [types.ts:580](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L580)_
 
 ---
 
@@ -377,7 +377,7 @@ _Defined in [types.ts:580](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **Unfunded**: = "UNFUNDED"
 
-_Defined in [types.ts:581](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L581)_
+_Defined in [types.ts:581](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L581)_
 
 <hr />
 
@@ -391,7 +391,7 @@ A set of categories for rejected orders.
 
 • **MeshError**: = "MESH_ERROR"
 
-_Defined in [types.ts:713](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L713)_
+_Defined in [types.ts:714](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L714)_
 
 ---
 
@@ -399,7 +399,7 @@ _Defined in [types.ts:713](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **MeshValidation**: = "MESH_VALIDATION"
 
-_Defined in [types.ts:714](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L714)_
+_Defined in [types.ts:715](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L715)_
 
 ---
 
@@ -407,7 +407,7 @@ _Defined in [types.ts:714](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ZeroExValidation**: = "ZEROEX_VALIDATION"
 
-_Defined in [types.ts:712](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L712)_
+_Defined in [types.ts:713](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L713)_
 
 <hr />
 
@@ -419,7 +419,7 @@ _Defined in [types.ts:712](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **Debug**: = 5
 
-_Defined in [types.ts:238](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L238)_
+_Defined in [types.ts:238](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L238)_
 
 ---
 
@@ -427,7 +427,7 @@ _Defined in [types.ts:238](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **Error**: = 2
 
-_Defined in [types.ts:235](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L235)_
+_Defined in [types.ts:235](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L235)_
 
 ---
 
@@ -435,7 +435,7 @@ _Defined in [types.ts:235](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **Fatal**: = 1
 
-_Defined in [types.ts:234](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L234)_
+_Defined in [types.ts:234](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L234)_
 
 ---
 
@@ -443,7 +443,7 @@ _Defined in [types.ts:234](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **Info**: = 4
 
-_Defined in [types.ts:237](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L237)_
+_Defined in [types.ts:237](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L237)_
 
 ---
 
@@ -451,7 +451,7 @@ _Defined in [types.ts:237](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **Panic**: = 0
 
-_Defined in [types.ts:233](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L233)_
+_Defined in [types.ts:233](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L233)_
 
 ---
 
@@ -459,7 +459,7 @@ _Defined in [types.ts:233](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **Trace**: = 6
 
-_Defined in [types.ts:239](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L239)_
+_Defined in [types.ts:239](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L239)_
 
 ---
 
@@ -467,7 +467,7 @@ _Defined in [types.ts:239](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **Warn**: = 3
 
-_Defined in [types.ts:236](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L236)_
+_Defined in [types.ts:236](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L236)_
 
 <hr />
 
@@ -485,7 +485,7 @@ Info for any orders that were accepted.
 
 • **fillableTakerAssetAmount**: _BigNumber_
 
-_Defined in [types.ts:693](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L693)_
+_Defined in [types.ts:694](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L694)_
 
 ---
 
@@ -493,7 +493,7 @@ _Defined in [types.ts:693](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **isNew**: _boolean_
 
-_Defined in [types.ts:694](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L694)_
+_Defined in [types.ts:695](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L695)_
 
 ---
 
@@ -501,7 +501,7 @@ _Defined in [types.ts:694](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **orderHash**: _string_
 
-_Defined in [types.ts:691](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L691)_
+_Defined in [types.ts:692](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L692)_
 
 ---
 
@@ -509,7 +509,7 @@ _Defined in [types.ts:691](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **signedOrder**: _SignedOrder_
 
-_Defined in [types.ts:692](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L692)_
+_Defined in [types.ts:693](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L693)_
 
 <hr />
 
@@ -527,7 +527,7 @@ A set of configuration options for Mesh.
 
 • **blockPollingIntervalSeconds**? : _undefined | number_
 
-_Defined in [types.ts:144](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L144)_
+_Defined in [types.ts:144](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L144)_
 
 ---
 
@@ -535,7 +535,7 @@ _Defined in [types.ts:144](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **bootstrapList**? : _string[]_
 
-_Defined in [types.ts:137](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L137)_
+_Defined in [types.ts:137](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L137)_
 
 ---
 
@@ -543,7 +543,7 @@ _Defined in [types.ts:137](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **customContractAddresses**? : _[ContractAddresses](#interface-contractaddresses)_
 
-_Defined in [types.ts:188](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L188)_
+_Defined in [types.ts:188](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L188)_
 
 ---
 
@@ -551,7 +551,7 @@ _Defined in [types.ts:188](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **customOrderFilter**? : _[JsonSchema](#interface-jsonschema)_
 
-_Defined in [types.ts:213](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L213)_
+_Defined in [types.ts:213](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L213)_
 
 ---
 
@@ -559,7 +559,7 @@ _Defined in [types.ts:213](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **enableEthereumRPCRateLimiting**? : _undefined | false | true_
 
-_Defined in [types.ts:161](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L161)_
+_Defined in [types.ts:161](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L161)_
 
 ---
 
@@ -567,7 +567,7 @@ _Defined in [types.ts:161](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ethereumChainID**: _number_
 
-_Defined in [types.ts:129](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L129)_
+_Defined in [types.ts:129](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L129)_
 
 ---
 
@@ -575,7 +575,7 @@ _Defined in [types.ts:129](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ethereumRPCMaxContentLength**? : _undefined | number_
 
-_Defined in [types.ts:153](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L153)_
+_Defined in [types.ts:153](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L153)_
 
 ---
 
@@ -583,7 +583,7 @@ _Defined in [types.ts:153](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ethereumRPCMaxRequestsPer24HrUTC**? : _undefined | number_
 
-_Defined in [types.ts:166](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L166)_
+_Defined in [types.ts:166](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L166)_
 
 ---
 
@@ -591,7 +591,7 @@ _Defined in [types.ts:166](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ethereumRPCMaxRequestsPerSecond**? : _undefined | number_
 
-_Defined in [types.ts:172](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L172)_
+_Defined in [types.ts:172](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L172)_
 
 ---
 
@@ -599,7 +599,7 @@ _Defined in [types.ts:172](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ethereumRPCURL**? : _undefined | string_
 
-_Defined in [types.ts:126](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L126)_
+_Defined in [types.ts:126](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L126)_
 
 ---
 
@@ -607,7 +607,7 @@ _Defined in [types.ts:126](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **maxBytesPerSecond**? : _undefined | number_
 
-_Defined in [types.ts:219](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L219)_
+_Defined in [types.ts:219](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L219)_
 
 ---
 
@@ -615,7 +615,7 @@ _Defined in [types.ts:219](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **maxOrdersInStorage**? : _undefined | number_
 
-_Defined in [types.ts:193](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L193)_
+_Defined in [types.ts:193](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L193)_
 
 ---
 
@@ -623,7 +623,7 @@ _Defined in [types.ts:193](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **useBootstrapList**? : _undefined | false | true_
 
-_Defined in [types.ts:132](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L132)_
+_Defined in [types.ts:132](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L132)_
 
 ---
 
@@ -631,7 +631,7 @@ _Defined in [types.ts:132](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **verbosity**? : _[Verbosity](#enumeration-verbosity)_
 
-_Defined in [types.ts:123](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L123)_
+_Defined in [types.ts:123](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L123)_
 
 ---
 
@@ -639,7 +639,7 @@ _Defined in [types.ts:123](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **web3Provider**? : _SupportedProvider_
 
-_Defined in [types.ts:216](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L216)_
+_Defined in [types.ts:216](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L216)_
 
 <hr />
 
@@ -655,7 +655,7 @@ _Defined in [types.ts:216](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **devUtils**: _string_
 
-_Defined in [types.ts:224](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L224)_
+_Defined in [types.ts:224](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L224)_
 
 ---
 
@@ -663,7 +663,7 @@ _Defined in [types.ts:224](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **erc1155Proxy**: _string_
 
-_Defined in [types.ts:227](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L227)_
+_Defined in [types.ts:227](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L227)_
 
 ---
 
@@ -671,7 +671,7 @@ _Defined in [types.ts:227](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **erc20Proxy**: _string_
 
-_Defined in [types.ts:225](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L225)_
+_Defined in [types.ts:225](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L225)_
 
 ---
 
@@ -679,7 +679,7 @@ _Defined in [types.ts:225](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **erc721Proxy**: _string_
 
-_Defined in [types.ts:226](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L226)_
+_Defined in [types.ts:226](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L226)_
 
 ---
 
@@ -687,7 +687,7 @@ _Defined in [types.ts:226](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **exchange**: _string_
 
-_Defined in [types.ts:223](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L223)_
+_Defined in [types.ts:223](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L223)_
 
 ---
 
@@ -695,7 +695,7 @@ _Defined in [types.ts:223](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **weth9**? : _undefined | string_
 
-_Defined in [types.ts:228](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L228)_
+_Defined in [types.ts:228](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L228)_
 
 ---
 
@@ -703,7 +703,7 @@ _Defined in [types.ts:228](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **zrxToken**? : _undefined | string_
 
-_Defined in [types.ts:229](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L229)_
+_Defined in [types.ts:229](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L229)_
 
 <hr />
 
@@ -719,7 +719,7 @@ _Defined in [types.ts:229](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **address**: _string_
 
-_Defined in [types.ts:553](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L553)_
+_Defined in [types.ts:553](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L553)_
 
 ---
 
@@ -727,7 +727,7 @@ _Defined in [types.ts:553](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **blockHash**: _string_
 
-_Defined in [types.ts:548](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L548)_
+_Defined in [types.ts:548](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L548)_
 
 ---
 
@@ -735,7 +735,7 @@ _Defined in [types.ts:548](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **isRemoved**: _boolean_
 
-_Defined in [types.ts:552](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L552)_
+_Defined in [types.ts:552](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L552)_
 
 ---
 
@@ -743,7 +743,7 @@ _Defined in [types.ts:552](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **kind**: _[ContractEventKind](#enumeration-contracteventkind)_
 
-_Defined in [types.ts:554](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L554)_
+_Defined in [types.ts:554](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L554)_
 
 ---
 
@@ -751,7 +751,7 @@ _Defined in [types.ts:554](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **logIndex**: _number_
 
-_Defined in [types.ts:551](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L551)_
+_Defined in [types.ts:551](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L551)_
 
 ---
 
@@ -759,7 +759,7 @@ _Defined in [types.ts:551](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **parameters**: _ContractEventParameters_
 
-_Defined in [types.ts:555](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L555)_
+_Defined in [types.ts:555](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L555)_
 
 ---
 
@@ -767,7 +767,7 @@ _Defined in [types.ts:555](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **txHash**: _string_
 
-_Defined in [types.ts:549](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L549)_
+_Defined in [types.ts:549](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L549)_
 
 ---
 
@@ -775,7 +775,7 @@ _Defined in [types.ts:549](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **txIndex**: _number_
 
-_Defined in [types.ts:550](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L550)_
+_Defined in [types.ts:550](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L550)_
 
 <hr />
 
@@ -791,7 +791,7 @@ _Defined in [types.ts:550](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **approved**: _boolean_
 
-_Defined in [types.ts:417](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L417)_
+_Defined in [types.ts:417](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L417)_
 
 ---
 
@@ -799,7 +799,7 @@ _Defined in [types.ts:417](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **operator**: _string_
 
-_Defined in [types.ts:416](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L416)_
+_Defined in [types.ts:416](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L416)_
 
 ---
 
@@ -807,7 +807,7 @@ _Defined in [types.ts:416](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **owner**: _string_
 
-_Defined in [types.ts:415](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L415)_
+_Defined in [types.ts:415](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L415)_
 
 <hr />
 
@@ -823,7 +823,7 @@ _Defined in [types.ts:415](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **from**: _string_
 
-_Defined in [types.ts:399](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L399)_
+_Defined in [types.ts:399](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L399)_
 
 ---
 
@@ -831,7 +831,7 @@ _Defined in [types.ts:399](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ids**: _BigNumber[]_
 
-_Defined in [types.ts:401](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L401)_
+_Defined in [types.ts:401](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L401)_
 
 ---
 
@@ -839,7 +839,7 @@ _Defined in [types.ts:401](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **operator**: _string_
 
-_Defined in [types.ts:398](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L398)_
+_Defined in [types.ts:398](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L398)_
 
 ---
 
@@ -847,7 +847,7 @@ _Defined in [types.ts:398](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **to**: _string_
 
-_Defined in [types.ts:400](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L400)_
+_Defined in [types.ts:400](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L400)_
 
 ---
 
@@ -855,7 +855,7 @@ _Defined in [types.ts:400](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **values**: _BigNumber[]_
 
-_Defined in [types.ts:402](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L402)_
+_Defined in [types.ts:402](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L402)_
 
 <hr />
 
@@ -871,7 +871,7 @@ _Defined in [types.ts:402](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **from**: _string_
 
-_Defined in [types.ts:382](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L382)_
+_Defined in [types.ts:382](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L382)_
 
 ---
 
@@ -879,7 +879,7 @@ _Defined in [types.ts:382](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **id**: _BigNumber_
 
-_Defined in [types.ts:384](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L384)_
+_Defined in [types.ts:384](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L384)_
 
 ---
 
@@ -887,7 +887,7 @@ _Defined in [types.ts:384](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **operator**: _string_
 
-_Defined in [types.ts:381](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L381)_
+_Defined in [types.ts:381](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L381)_
 
 ---
 
@@ -895,7 +895,7 @@ _Defined in [types.ts:381](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **to**: _string_
 
-_Defined in [types.ts:383](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L383)_
+_Defined in [types.ts:383](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L383)_
 
 ---
 
@@ -903,7 +903,7 @@ _Defined in [types.ts:383](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **value**: _BigNumber_
 
-_Defined in [types.ts:385](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L385)_
+_Defined in [types.ts:385](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L385)_
 
 <hr />
 
@@ -919,7 +919,7 @@ _Defined in [types.ts:385](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **owner**: _string_
 
-_Defined in [types.ts:336](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L336)_
+_Defined in [types.ts:336](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L336)_
 
 ---
 
@@ -927,7 +927,7 @@ _Defined in [types.ts:336](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **spender**: _string_
 
-_Defined in [types.ts:337](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L337)_
+_Defined in [types.ts:337](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L337)_
 
 ---
 
@@ -935,7 +935,7 @@ _Defined in [types.ts:337](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **value**: _BigNumber_
 
-_Defined in [types.ts:338](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L338)_
+_Defined in [types.ts:338](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L338)_
 
 <hr />
 
@@ -951,7 +951,7 @@ _Defined in [types.ts:338](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **from**: _string_
 
-_Defined in [types.ts:323](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L323)_
+_Defined in [types.ts:323](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L323)_
 
 ---
 
@@ -959,7 +959,7 @@ _Defined in [types.ts:323](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **to**: _string_
 
-_Defined in [types.ts:324](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L324)_
+_Defined in [types.ts:324](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L324)_
 
 ---
 
@@ -967,7 +967,7 @@ _Defined in [types.ts:324](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **value**: _BigNumber_
 
-_Defined in [types.ts:325](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L325)_
+_Defined in [types.ts:325](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L325)_
 
 <hr />
 
@@ -983,7 +983,7 @@ _Defined in [types.ts:325](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **approved**: _string_
 
-_Defined in [types.ts:363](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L363)_
+_Defined in [types.ts:363](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L363)_
 
 ---
 
@@ -991,7 +991,7 @@ _Defined in [types.ts:363](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **owner**: _string_
 
-_Defined in [types.ts:362](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L362)_
+_Defined in [types.ts:362](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L362)_
 
 ---
 
@@ -999,7 +999,7 @@ _Defined in [types.ts:362](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **tokenId**: _BigNumber_
 
-_Defined in [types.ts:364](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L364)_
+_Defined in [types.ts:364](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L364)_
 
 <hr />
 
@@ -1015,7 +1015,7 @@ _Defined in [types.ts:364](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **approved**: _boolean_
 
-_Defined in [types.ts:377](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L377)_
+_Defined in [types.ts:377](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L377)_
 
 ---
 
@@ -1023,7 +1023,7 @@ _Defined in [types.ts:377](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **operator**: _string_
 
-_Defined in [types.ts:376](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L376)_
+_Defined in [types.ts:376](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L376)_
 
 ---
 
@@ -1031,7 +1031,7 @@ _Defined in [types.ts:376](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **owner**: _string_
 
-_Defined in [types.ts:375](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L375)_
+_Defined in [types.ts:375](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L375)_
 
 <hr />
 
@@ -1047,7 +1047,7 @@ _Defined in [types.ts:375](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **from**: _string_
 
-_Defined in [types.ts:349](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L349)_
+_Defined in [types.ts:349](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L349)_
 
 ---
 
@@ -1055,7 +1055,7 @@ _Defined in [types.ts:349](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **to**: _string_
 
-_Defined in [types.ts:350](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L350)_
+_Defined in [types.ts:350](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L350)_
 
 ---
 
@@ -1063,7 +1063,7 @@ _Defined in [types.ts:350](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **tokenId**: _BigNumber_
 
-_Defined in [types.ts:351](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L351)_
+_Defined in [types.ts:351](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L351)_
 
 <hr />
 
@@ -1079,7 +1079,7 @@ _Defined in [types.ts:351](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **feeRecipientAddress**: _string_
 
-_Defined in [types.ts:458](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L458)_
+_Defined in [types.ts:458](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L458)_
 
 ---
 
@@ -1087,7 +1087,7 @@ _Defined in [types.ts:458](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **makerAddress**: _string_
 
-_Defined in [types.ts:456](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L456)_
+_Defined in [types.ts:456](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L456)_
 
 ---
 
@@ -1095,7 +1095,7 @@ _Defined in [types.ts:456](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **makerAssetData**: _string_
 
-_Defined in [types.ts:460](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L460)_
+_Defined in [types.ts:460](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L460)_
 
 ---
 
@@ -1103,7 +1103,7 @@ _Defined in [types.ts:460](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **orderHash**: _string_
 
-_Defined in [types.ts:459](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L459)_
+_Defined in [types.ts:459](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L459)_
 
 ---
 
@@ -1111,7 +1111,7 @@ _Defined in [types.ts:459](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **senderAddress**: _string_
 
-_Defined in [types.ts:457](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L457)_
+_Defined in [types.ts:457](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L457)_
 
 ---
 
@@ -1119,7 +1119,7 @@ _Defined in [types.ts:457](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **takerAssetData**: _string_
 
-_Defined in [types.ts:461](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L461)_
+_Defined in [types.ts:461](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L461)_
 
 <hr />
 
@@ -1135,7 +1135,7 @@ _Defined in [types.ts:461](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **makerAddress**: _string_
 
-_Defined in [types.ts:465](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L465)_
+_Defined in [types.ts:465](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L465)_
 
 ---
 
@@ -1143,7 +1143,7 @@ _Defined in [types.ts:465](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **orderEpoch**: _BigNumber_
 
-_Defined in [types.ts:467](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L467)_
+_Defined in [types.ts:467](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L467)_
 
 ---
 
@@ -1151,7 +1151,7 @@ _Defined in [types.ts:467](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **orderSenderAddress**: _string_
 
-_Defined in [types.ts:466](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L466)_
+_Defined in [types.ts:466](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L466)_
 
 <hr />
 
@@ -1167,7 +1167,7 @@ _Defined in [types.ts:466](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **feeRecipientAddress**: _string_
 
-_Defined in [types.ts:424](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L424)_
+_Defined in [types.ts:424](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L424)_
 
 ---
 
@@ -1175,7 +1175,7 @@ _Defined in [types.ts:424](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **makerAddress**: _string_
 
-_Defined in [types.ts:421](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L421)_
+_Defined in [types.ts:421](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L421)_
 
 ---
 
@@ -1183,7 +1183,7 @@ _Defined in [types.ts:421](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **makerAssetData**: _string_
 
-_Defined in [types.ts:431](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L431)_
+_Defined in [types.ts:431](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L431)_
 
 ---
 
@@ -1191,7 +1191,7 @@ _Defined in [types.ts:431](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **makerAssetFilledAmount**: _BigNumber_
 
-_Defined in [types.ts:425](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L425)_
+_Defined in [types.ts:425](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L425)_
 
 ---
 
@@ -1199,7 +1199,7 @@ _Defined in [types.ts:425](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **makerFeeAssetData**: _string_
 
-_Defined in [types.ts:433](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L433)_
+_Defined in [types.ts:433](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L433)_
 
 ---
 
@@ -1207,7 +1207,7 @@ _Defined in [types.ts:433](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **makerFeePaid**: _BigNumber_
 
-_Defined in [types.ts:427](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L427)_
+_Defined in [types.ts:427](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L427)_
 
 ---
 
@@ -1215,7 +1215,7 @@ _Defined in [types.ts:427](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **orderHash**: _string_
 
-_Defined in [types.ts:430](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L430)_
+_Defined in [types.ts:430](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L430)_
 
 ---
 
@@ -1223,7 +1223,7 @@ _Defined in [types.ts:430](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **protocolFeePaid**: _BigNumber_
 
-_Defined in [types.ts:429](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L429)_
+_Defined in [types.ts:429](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L429)_
 
 ---
 
@@ -1231,7 +1231,7 @@ _Defined in [types.ts:429](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **senderAddress**: _string_
 
-_Defined in [types.ts:423](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L423)_
+_Defined in [types.ts:423](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L423)_
 
 ---
 
@@ -1239,7 +1239,7 @@ _Defined in [types.ts:423](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **takerAddress**: _string_
 
-_Defined in [types.ts:422](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L422)_
+_Defined in [types.ts:422](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L422)_
 
 ---
 
@@ -1247,7 +1247,7 @@ _Defined in [types.ts:422](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **takerAssetData**: _string_
 
-_Defined in [types.ts:432](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L432)_
+_Defined in [types.ts:432](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L432)_
 
 ---
 
@@ -1255,7 +1255,7 @@ _Defined in [types.ts:432](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **takerAssetFilledAmount**: _BigNumber_
 
-_Defined in [types.ts:426](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L426)_
+_Defined in [types.ts:426](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L426)_
 
 ---
 
@@ -1263,7 +1263,7 @@ _Defined in [types.ts:426](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **takerFeeAssetData**: _string_
 
-_Defined in [types.ts:434](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L434)_
+_Defined in [types.ts:434](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L434)_
 
 ---
 
@@ -1271,7 +1271,7 @@ _Defined in [types.ts:434](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **takerFeePaid**: _BigNumber_
 
-_Defined in [types.ts:428](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L428)_
+_Defined in [types.ts:428](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L428)_
 
 <hr />
 
@@ -1287,7 +1287,7 @@ _Defined in [types.ts:428](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ordersInfos**: _[OrderInfo](#interface-orderinfo)[]_
 
-_Defined in [types.ts:45](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L45)_
+_Defined in [types.ts:45](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L45)_
 
 ---
 
@@ -1295,7 +1295,7 @@ _Defined in [types.ts:45](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **timestamp**: _number_
 
-_Defined in [types.ts:44](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L44)_
+_Defined in [types.ts:44](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L44)_
 
 <hr />
 
@@ -1313,7 +1313,7 @@ An interface for JSON schema types, which are used for custom order filters.
 
 • **\$ref**? : _undefined | string_
 
-_Defined in [types.ts:67](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L67)_
+_Defined in [types.ts:67](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L67)_
 
 ---
 
@@ -1321,7 +1321,7 @@ _Defined in [types.ts:67](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **\$schema**? : _undefined | string_
 
-_Defined in [types.ts:66](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L66)_
+_Defined in [types.ts:66](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L66)_
 
 ---
 
@@ -1329,7 +1329,7 @@ _Defined in [types.ts:66](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **additionalItems**? : _boolean | [JsonSchema](#interface-jsonschema)_
 
-_Defined in [types.ts:78](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L78)_
+_Defined in [types.ts:78](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L78)_
 
 ---
 
@@ -1337,7 +1337,7 @@ _Defined in [types.ts:78](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **additionalProperties**? : _boolean | [JsonSchema](#interface-jsonschema)_
 
-_Defined in [types.ts:86](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L86)_
+_Defined in [types.ts:86](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L86)_
 
 ---
 
@@ -1345,7 +1345,7 @@ _Defined in [types.ts:86](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **allOf**? : _[JsonSchema](#interface-jsonschema)[]_
 
-_Defined in [types.ts:108](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L108)_
+_Defined in [types.ts:108](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L108)_
 
 ---
 
@@ -1353,7 +1353,7 @@ _Defined in [types.ts:108](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **anyOf**? : _[JsonSchema](#interface-jsonschema)[]_
 
-_Defined in [types.ts:109](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L109)_
+_Defined in [types.ts:109](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L109)_
 
 ---
 
@@ -1361,7 +1361,7 @@ _Defined in [types.ts:109](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **const**? : _any_
 
-_Defined in [types.ts:105](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L105)_
+_Defined in [types.ts:105](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L105)_
 
 ---
 
@@ -1369,7 +1369,7 @@ _Defined in [types.ts:105](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **definitions**? : _undefined | object_
 
-_Defined in [types.ts:87](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L87)_
+_Defined in [types.ts:87](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L87)_
 
 ---
 
@@ -1377,7 +1377,7 @@ _Defined in [types.ts:87](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **dependencies**? : _undefined | object_
 
-_Defined in [types.ts:96](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L96)_
+_Defined in [types.ts:96](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L96)_
 
 ---
 
@@ -1385,7 +1385,7 @@ _Defined in [types.ts:96](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **description**? : _undefined | string_
 
-_Defined in [types.ts:69](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L69)_
+_Defined in [types.ts:69](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L69)_
 
 ---
 
@@ -1393,7 +1393,7 @@ _Defined in [types.ts:69](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **enum**? : _any[]_
 
-_Defined in [types.ts:99](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L99)_
+_Defined in [types.ts:99](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L99)_
 
 ---
 
@@ -1401,7 +1401,7 @@ _Defined in [types.ts:99](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **exclusiveMaximum**? : _undefined | false | true_
 
-_Defined in [types.ts:72](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L72)_
+_Defined in [types.ts:72](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L72)_
 
 ---
 
@@ -1409,7 +1409,7 @@ _Defined in [types.ts:72](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **exclusiveMinimum**? : _undefined | false | true_
 
-_Defined in [types.ts:74](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L74)_
+_Defined in [types.ts:74](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L74)_
 
 ---
 
@@ -1417,7 +1417,7 @@ _Defined in [types.ts:74](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **format**? : _undefined | string_
 
-_Defined in [types.ts:107](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L107)_
+_Defined in [types.ts:107](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L107)_
 
 ---
 
@@ -1425,7 +1425,7 @@ _Defined in [types.ts:107](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **id**? : _undefined | string_
 
-_Defined in [types.ts:65](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L65)_
+_Defined in [types.ts:65](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L65)_
 
 ---
 
@@ -1433,7 +1433,7 @@ _Defined in [types.ts:65](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **items**? : _[JsonSchema](#interface-jsonschema) | [JsonSchema](#interface-jsonschema)[]_
 
-_Defined in [types.ts:79](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L79)_
+_Defined in [types.ts:79](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L79)_
 
 ---
 
@@ -1441,7 +1441,7 @@ _Defined in [types.ts:79](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **maxItems**? : _undefined | number_
 
-_Defined in [types.ts:80](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L80)_
+_Defined in [types.ts:80](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L80)_
 
 ---
 
@@ -1449,7 +1449,7 @@ _Defined in [types.ts:80](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **maxLength**? : _undefined | number_
 
-_Defined in [types.ts:75](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L75)_
+_Defined in [types.ts:75](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L75)_
 
 ---
 
@@ -1457,7 +1457,7 @@ _Defined in [types.ts:75](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **maxProperties**? : _undefined | number_
 
-_Defined in [types.ts:83](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L83)_
+_Defined in [types.ts:83](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L83)_
 
 ---
 
@@ -1465,7 +1465,7 @@ _Defined in [types.ts:83](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **maximum**? : _undefined | number_
 
-_Defined in [types.ts:71](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L71)_
+_Defined in [types.ts:71](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L71)_
 
 ---
 
@@ -1473,7 +1473,7 @@ _Defined in [types.ts:71](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **minItems**? : _undefined | number_
 
-_Defined in [types.ts:81](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L81)_
+_Defined in [types.ts:81](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L81)_
 
 ---
 
@@ -1481,7 +1481,7 @@ _Defined in [types.ts:81](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **minLength**? : _undefined | number_
 
-_Defined in [types.ts:76](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L76)_
+_Defined in [types.ts:76](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L76)_
 
 ---
 
@@ -1489,7 +1489,7 @@ _Defined in [types.ts:76](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **minProperties**? : _undefined | number_
 
-_Defined in [types.ts:84](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L84)_
+_Defined in [types.ts:84](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L84)_
 
 ---
 
@@ -1497,7 +1497,7 @@ _Defined in [types.ts:84](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **minimum**? : _undefined | number_
 
-_Defined in [types.ts:73](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L73)_
+_Defined in [types.ts:73](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L73)_
 
 ---
 
@@ -1505,7 +1505,7 @@ _Defined in [types.ts:73](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **multipleOf**? : _undefined | number_
 
-_Defined in [types.ts:70](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L70)_
+_Defined in [types.ts:70](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L70)_
 
 ---
 
@@ -1513,7 +1513,7 @@ _Defined in [types.ts:70](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **not**? : _[JsonSchema](#interface-jsonschema)_
 
-_Defined in [types.ts:111](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L111)_
+_Defined in [types.ts:111](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L111)_
 
 ---
 
@@ -1521,7 +1521,7 @@ _Defined in [types.ts:111](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **oneOf**? : _[JsonSchema](#interface-jsonschema)[]_
 
-_Defined in [types.ts:110](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L110)_
+_Defined in [types.ts:110](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L110)_
 
 ---
 
@@ -1529,7 +1529,7 @@ _Defined in [types.ts:110](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **pattern**? : _string | RegExp_
 
-_Defined in [types.ts:77](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L77)_
+_Defined in [types.ts:77](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L77)_
 
 ---
 
@@ -1537,7 +1537,7 @@ _Defined in [types.ts:77](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **patternProperties**? : _undefined | object_
 
-_Defined in [types.ts:93](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L93)_
+_Defined in [types.ts:93](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L93)_
 
 ---
 
@@ -1545,7 +1545,7 @@ _Defined in [types.ts:93](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **properties**? : _undefined | object_
 
-_Defined in [types.ts:90](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L90)_
+_Defined in [types.ts:90](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L90)_
 
 ---
 
@@ -1553,7 +1553,7 @@ _Defined in [types.ts:90](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **required**? : _string[]_
 
-_Defined in [types.ts:85](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L85)_
+_Defined in [types.ts:85](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L85)_
 
 ---
 
@@ -1561,7 +1561,7 @@ _Defined in [types.ts:85](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **title**? : _undefined | string_
 
-_Defined in [types.ts:68](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L68)_
+_Defined in [types.ts:68](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L68)_
 
 ---
 
@@ -1569,7 +1569,7 @@ _Defined in [types.ts:68](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **type**? : _string | string[]_
 
-_Defined in [types.ts:106](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L106)_
+_Defined in [types.ts:106](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L106)_
 
 ---
 
@@ -1577,7 +1577,7 @@ _Defined in [types.ts:106](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **uniqueItems**? : _undefined | false | true_
 
-_Defined in [types.ts:82](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L82)_
+_Defined in [types.ts:82](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L82)_
 
 <hr />
 
@@ -1593,7 +1593,7 @@ _Defined in [types.ts:82](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **hash**: _string_
 
-_Defined in [types.ts:733](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L733)_
+_Defined in [types.ts:734](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L734)_
 
 ---
 
@@ -1601,7 +1601,7 @@ _Defined in [types.ts:733](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **number**: _BigNumber_
 
-_Defined in [types.ts:732](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L732)_
+_Defined in [types.ts:733](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L733)_
 
 <hr />
 
@@ -1620,7 +1620,7 @@ or filled.
 
 • **contractEvents**: _[ContractEvent](#interface-contractevent)[]_
 
-_Defined in [types.ts:606](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L606)_
+_Defined in [types.ts:606](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L606)_
 
 ---
 
@@ -1628,7 +1628,7 @@ _Defined in [types.ts:606](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **endState**: _[OrderEventEndState](#enumeration-ordereventendstate)_
 
-_Defined in [types.ts:604](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L604)_
+_Defined in [types.ts:604](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L604)_
 
 ---
 
@@ -1636,7 +1636,7 @@ _Defined in [types.ts:604](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **fillableTakerAssetAmount**: _BigNumber_
 
-_Defined in [types.ts:605](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L605)_
+_Defined in [types.ts:605](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L605)_
 
 ---
 
@@ -1644,7 +1644,7 @@ _Defined in [types.ts:605](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **orderHash**: _string_
 
-_Defined in [types.ts:602](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L602)_
+_Defined in [types.ts:602](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L602)_
 
 ---
 
@@ -1652,7 +1652,7 @@ _Defined in [types.ts:602](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **signedOrder**: _SignedOrder_
 
-_Defined in [types.ts:603](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L603)_
+_Defined in [types.ts:603](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L603)_
 
 ---
 
@@ -1660,7 +1660,7 @@ _Defined in [types.ts:603](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **timestampMs**: _number_
 
-_Defined in [types.ts:601](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L601)_
+_Defined in [types.ts:601](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L601)_
 
 <hr />
 
@@ -1676,7 +1676,7 @@ _Defined in [types.ts:601](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **fillableTakerAssetAmount**: _BigNumber_
 
-_Defined in [types.ts:58](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L58)_
+_Defined in [types.ts:58](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L58)_
 
 ---
 
@@ -1684,7 +1684,7 @@ _Defined in [types.ts:58](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **orderHash**: _string_
 
-_Defined in [types.ts:56](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L56)_
+_Defined in [types.ts:56](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L56)_
 
 ---
 
@@ -1692,7 +1692,7 @@ _Defined in [types.ts:56](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pac
 
 • **signedOrder**: _SignedOrder_
 
-_Defined in [types.ts:57](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L57)_
+_Defined in [types.ts:57](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L57)_
 
 <hr />
 
@@ -1711,7 +1711,7 @@ rejected.
 
 • **kind**: _[RejectedOrderKind](#enumeration-rejectedorderkind)_
 
-_Defined in [types.ts:704](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L704)_
+_Defined in [types.ts:705](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L705)_
 
 ---
 
@@ -1719,7 +1719,7 @@ _Defined in [types.ts:704](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **orderHash**: _string_
 
-_Defined in [types.ts:702](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L702)_
+_Defined in [types.ts:703](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L703)_
 
 ---
 
@@ -1727,7 +1727,7 @@ _Defined in [types.ts:702](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **signedOrder**: _SignedOrder_
 
-_Defined in [types.ts:703](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L703)_
+_Defined in [types.ts:704](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L704)_
 
 ---
 
@@ -1735,7 +1735,7 @@ _Defined in [types.ts:703](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **status**: _[RejectedOrderStatus](#interface-rejectedorderstatus)_
 
-_Defined in [types.ts:705](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L705)_
+_Defined in [types.ts:706](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L706)_
 
 <hr />
 
@@ -1753,7 +1753,7 @@ Provides more information about why an order was rejected.
 
 • **code**: _string_
 
-_Defined in [types.ts:721](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L721)_
+_Defined in [types.ts:722](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L722)_
 
 ---
 
@@ -1761,7 +1761,7 @@ _Defined in [types.ts:721](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **message**: _string_
 
-_Defined in [types.ts:722](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L722)_
+_Defined in [types.ts:723](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L723)_
 
 <hr />
 
@@ -1777,7 +1777,7 @@ _Defined in [types.ts:722](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ethRPCRateLimitExpiredRequests**: _number_
 
-_Defined in [types.ts:770](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L770)_
+_Defined in [types.ts:771](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L771)_
 
 ---
 
@@ -1785,7 +1785,7 @@ _Defined in [types.ts:770](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ethRPCRequestsSentInCurrentUTCDay**: _number_
 
-_Defined in [types.ts:769](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L769)_
+_Defined in [types.ts:770](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L770)_
 
 ---
 
@@ -1793,7 +1793,7 @@ _Defined in [types.ts:769](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **ethereumChainID**: _number_
 
-_Defined in [types.ts:761](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L761)_
+_Defined in [types.ts:762](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L762)_
 
 ---
 
@@ -1801,7 +1801,7 @@ _Defined in [types.ts:761](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **latestBlock**? : _[LatestBlock](#interface-latestblock)_
 
-_Defined in [types.ts:762](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L762)_
+_Defined in [types.ts:763](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L763)_
 
 ---
 
@@ -1809,7 +1809,7 @@ _Defined in [types.ts:762](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **maxExpirationTime**: _BigNumber_
 
-_Defined in [types.ts:767](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L767)_
+_Defined in [types.ts:768](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L768)_
 
 ---
 
@@ -1817,7 +1817,7 @@ _Defined in [types.ts:767](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **numOrders**: _number_
 
-_Defined in [types.ts:764](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L764)_
+_Defined in [types.ts:765](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L765)_
 
 ---
 
@@ -1825,7 +1825,7 @@ _Defined in [types.ts:764](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **numOrdersIncludingRemoved**: _number_
 
-_Defined in [types.ts:765](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L765)_
+_Defined in [types.ts:766](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L766)_
 
 ---
 
@@ -1833,7 +1833,7 @@ _Defined in [types.ts:765](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **numPeers**: _number_
 
-_Defined in [types.ts:763](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L763)_
+_Defined in [types.ts:764](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L764)_
 
 ---
 
@@ -1841,7 +1841,7 @@ _Defined in [types.ts:763](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **numPinnedOrders**: _number_
 
-_Defined in [types.ts:766](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L766)_
+_Defined in [types.ts:767](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L767)_
 
 ---
 
@@ -1849,7 +1849,7 @@ _Defined in [types.ts:766](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **peerID**: _string_
 
-_Defined in [types.ts:760](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L760)_
+_Defined in [types.ts:761](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L761)_
 
 ---
 
@@ -1857,7 +1857,7 @@ _Defined in [types.ts:760](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **pubSubTopic**: _string_
 
-_Defined in [types.ts:757](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L757)_
+_Defined in [types.ts:758](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L758)_
 
 ---
 
@@ -1865,7 +1865,7 @@ _Defined in [types.ts:757](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **rendezvous**: _string_
 
-_Defined in [types.ts:758](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L758)_
+_Defined in [types.ts:759](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L759)_
 
 ---
 
@@ -1873,7 +1873,7 @@ _Defined in [types.ts:758](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **secondaryRendezvous**: _string[]_
 
-_Defined in [types.ts:759](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L759)_
+_Defined in [types.ts:760](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L760)_
 
 ---
 
@@ -1881,7 +1881,7 @@ _Defined in [types.ts:759](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **startOfCurrentUTCDay**: _Date_
 
-_Defined in [types.ts:768](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L768)_
+_Defined in [types.ts:769](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L769)_
 
 ---
 
@@ -1889,7 +1889,7 @@ _Defined in [types.ts:768](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **version**: _string_
 
-_Defined in [types.ts:756](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L756)_
+_Defined in [types.ts:757](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L757)_
 
 <hr />
 
@@ -1907,7 +1907,7 @@ Indicates which orders where accepted, which were rejected, and why.
 
 • **accepted**: _[AcceptedOrderInfo](#interface-acceptedorderinfo)[]_
 
-_Defined in [types.ts:683](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L683)_
+_Defined in [types.ts:684](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L684)_
 
 ---
 
@@ -1915,7 +1915,7 @@ _Defined in [types.ts:683](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **rejected**: _[RejectedOrderInfo](#interface-rejectedorderinfo)[]_
 
-_Defined in [types.ts:684](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L684)_
+_Defined in [types.ts:685](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L685)_
 
 <hr />
 
@@ -1931,7 +1931,7 @@ _Defined in [types.ts:684](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **owner**: _string_
 
-_Defined in [types.ts:489](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L489)_
+_Defined in [types.ts:489](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L489)_
 
 ---
 
@@ -1939,7 +1939,7 @@ _Defined in [types.ts:489](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **value**: _BigNumber_
 
-_Defined in [types.ts:490](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L490)_
+_Defined in [types.ts:490](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L490)_
 
 <hr />
 
@@ -1955,7 +1955,7 @@ _Defined in [types.ts:490](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **owner**: _string_
 
-_Defined in [types.ts:478](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L478)_
+_Defined in [types.ts:478](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L478)_
 
 ---
 
@@ -1963,6 +1963,6 @@ _Defined in [types.ts:478](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/pa
 
 • **value**: _BigNumber_
 
-_Defined in [types.ts:479](https://github.com/0xProject/0x-mesh/blob/5f6ccc31/packages/mesh-browser-lite/src/types.ts#L479)_
+_Defined in [types.ts:479](https://github.com/0xProject/0x-mesh/blob/8c9a9ef1/packages/mesh-browser-lite/src/types.ts#L479)_
 
 <hr />

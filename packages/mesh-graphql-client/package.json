@@ -1,6 +1,6 @@
 {
     "name": "@0x/mesh-graphql-client",
-    "version": "10.2.0",
+    "version": "10.2.1",
     "description": "A client for the Mesh GraphQL API",
     "main": "./lib/src/index.js",
     "license": "Apache-2.0",
@@ -43,7 +43,7 @@
         "websocket": "^1.0.31"
     },
     "dependencies": {
-        "@0x/mesh-browser-lite": "^10.2.0",
+        "@0x/mesh-browser-lite": "^10.2.1",
         "@0x/types": "^3.2.0",
         "@0x/utils": "^5.4.0",
         "@apollo/client": "^3.2.3",
