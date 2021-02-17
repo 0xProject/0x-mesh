@@ -471,7 +471,7 @@ func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadata, 
 }
 
 // Remove orders with an expiration time too far in the future.
-func (db *DB) RemoveOrderWithLongExpiration() ([]*sqltypes.Order, error) {
+func (db *DB) RemoveOrdersWithLongExpiration() ([]*sqltypes.Order, error) {
 	sqlRemoved := []*sqltypes.Order{}
 	return sqlRemoved, db.ReadWriteTransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
 		// HACK(albrow): sqlz doesn't support ORDER BY, LIMIT, and OFFSET

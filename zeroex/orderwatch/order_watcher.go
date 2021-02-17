@@ -952,7 +952,7 @@ func (w *Watcher) Cleanup(ctx context.Context, lastUpdatedBuffer time.Duration) 
 			"orderCount": orderCount,
 			"maxOrders":  w.maxOrders,
 		}).Info("Too many orders stored in the database, removing orders with long expiration")
-		ordersRemoved, err := w.db.RemoveOrderWithLongExpiration()
+		ordersRemoved, err := w.db.RemoveOrdersWithLongExpiration()
 		if err != nil {
 			return err
 		}
