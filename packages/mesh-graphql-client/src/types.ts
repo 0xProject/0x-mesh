@@ -1,6 +1,6 @@
-import { SignatureType, SignedOrder } from '@0x/types';
-import { BigNumber } from '@0x/utils';
 import { LimitOrderFields, Signature } from '@0x/protocol-utils';
+import { SignedOrder } from '@0x/types';
+import { BigNumber } from '@0x/utils';
 
 export interface AddOrdersOpts {
     keepCancelled?: boolean;
@@ -37,7 +37,7 @@ export interface OrderResponse {
 }
 
 export interface OrderResponseV4 {
-    order: StringifiedOrderWithMetadataV4 | null;
+    orderv4: StringifiedOrderWithMetadataV4 | null;
 }
 
 export interface OrdersResponse {
@@ -45,7 +45,7 @@ export interface OrdersResponse {
 }
 
 export interface OrdersResponseV4 {
-    orders: StringifiedOrderWithMetadataV4[];
+    ordersv4: StringifiedOrderWithMetadataV4[];
 }
 
 export interface OrderEventResponse {
@@ -339,8 +339,8 @@ export interface StringifiedRejectedOrderResult<K extends GenericStringifiedSign
 
 export interface StringifiedOrderEvent {
     timestamp: string;
-    order?: StringifiedOrderWithMetadata;
-    orderv4?: StringifiedOrderWithMetadataV4;
+    order: StringifiedOrderWithMetadata | null;
+    orderv4: StringifiedOrderWithMetadataV4 | null;
     endState: OrderEventEndState;
     fillableTakerAssetAmount: BigNumber;
     contractEvents: ContractEvent[];
@@ -427,8 +427,9 @@ export function fromStringifiedOrderWithMetadata(order: StringifiedOrderWithMeta
  * Converts StringifiedOrderWithMetadata to OrderWithMetadata
  */
 export function fromStringifiedOrderWithMetadataV4(order: StringifiedOrderWithMetadataV4): OrderWithMetadataV4 {
+    const { signatureType, signatureV, signatureR, signatureS, ...orderRest } = order;
     return {
-        ...order,
+        ...orderRest,
         // tslint:disable-next-line: custom-no-magic-numbers
         chainId: Number.parseInt(order.chainId, 10),
         makerAmount: new BigNumber(order.makerAmount),
@@ -437,10 +438,12 @@ export function fromStringifiedOrderWithMetadataV4(order: StringifiedOrderWithMe
         expiry: new BigNumber(order.expiry),
         fillableTakerAssetAmount: new BigNumber(order.fillableTakerAssetAmount),
         signature: {
-            signatureType: parseInt(order.signatureType),
-            v: parseInt(order.signatureV),
-            r: order.signatureR,
-            s: order.signatureS,
+            // tslint:disable-next-line: custom-no-magic-numbers
+            signatureType: parseInt(signatureType, 10),
+            // tslint:disable-next-line: custom-no-magic-numbers
+            v: parseInt(signatureV, 10),
+            r: signatureR,
+            s: signatureS,
         },
         salt: new BigNumber(order.salt),
     };
@@ -564,10 +567,8 @@ export function fromStringifiedOrderEvent(event: StringifiedOrderEvent): OrderEv
     return {
         ...event,
         timestampMs: new Date(event.timestamp).getUTCMilliseconds(),
-        order: event.order === undefined ? undefined : 
-            fromStringifiedOrderWithMetadata(event.order),
-        orderv4: event.orderv4 === undefined ? undefined :
-            fromStringifiedOrderWithMetadataV4(event.orderv4),
+        order: event.order ? fromStringifiedOrderWithMetadata(event.order) : undefined,
+        orderv4: event.orderv4 ? fromStringifiedOrderWithMetadataV4(event.orderv4) : undefined,
     };
 }
 
