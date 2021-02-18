@@ -386,34 +386,6 @@ func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []comm
 			}
 		}
 
-		// Remove orders with an expiration time too far in the future.
-		// HACK(albrow): sqlz doesn't support ORDER BY, LIMIT, and OFFSET
-		// for DELETE statements. It also doesn't support RETURNING. As a
-		// workaround, we do a SELECT and DELETE inside a transaction.
-		// HACK(albrow): SQL doesn't support limit without offset. As a
-		// workaround, we set the limit to an extremely large number.
-		removeQuery := txn.Select("*").From("orders").
-			OrderBy(sqlz.Desc(string(OFIsPinned)), sqlz.Asc(string(OFExpirationTimeSeconds))).
-			Limit(largeLimit).
-			Offset(int64(db.opts.MaxOrders))
-		var ordersToRemove []*sqltypes.Order
-		err = removeQuery.GetAllContext(db.ctx, &ordersToRemove)
-		if err != nil {
-			return err
-		}
-		for _, order := range ordersToRemove {
-			_, err := txn.DeleteFrom("orders").Where(sqlz.Eq(string(OFHash), order.Hash)).ExecContext(db.ctx)
-			if err != nil {
-				return err
-			}
-			if _, found := addedMap[order.Hash]; found {
-				// If the order was previously added, remove it from
-				// the added set and don't add it to the removed set.
-				delete(addedMap, order.Hash)
-			} else {
-				sqlRemoved = append(sqlRemoved, order)
-			}
-		}
 		return nil
 	})
 	if err != nil {
@@ -496,6 +468,36 @@ func (db *DB) FindOrders(query *OrderQuery) (orders []*types.OrderWithMetadata, 
 		return nil, err
 	}
 	return sqltypes.OrdersToCommonType(foundOrders), nil
+}
+
+// Remove orders with an expiration time too far in the future.
+func (db *DB) RemoveOrdersWithLongExpiration() ([]*sqltypes.Order, error) {
+	sqlRemoved := []*sqltypes.Order{}
+	return sqlRemoved, db.ReadWriteTransactionalContext(db.ctx, nil, func(txn *sqlz.Tx) error {
+		// HACK(albrow): sqlz doesn't support ORDER BY, LIMIT, and OFFSET
+		// for DELETE statements. It also doesn't support RETURNING. As a
+		// workaround, we do a SELECT and DELETE inside a transaction.
+		// HACK(albrow): SQL doesn't support limit without offset. As a
+		// workaround, we set the limit to an extremely large number.
+		removeQuery := txn.Select("*").From("orders").
+			OrderBy(sqlz.Desc(string(OFIsPinned)), sqlz.Asc(string(OFExpirationTimeSeconds))).
+			Limit(largeLimit).
+			Offset(int64(db.opts.MaxOrders))
+		var ordersToRemove []*sqltypes.Order
+		err := removeQuery.GetAllContext(db.ctx, &sqlRemoved)
+		if err != nil {
+			return err
+		}
+		for _, order := range ordersToRemove {
+			_, err := txn.DeleteFrom("orders").Where(sqlz.Eq(string(OFHash), order.Hash)).ExecContext(db.ctx)
+			if err != nil {
+				return err
+			}
+			sqlRemoved = append(sqlRemoved, order)
+		}
+
+		return nil
+	})
 }
 
 func (db *DB) CountOrders(query *OrderQuery) (count int, err error) {
