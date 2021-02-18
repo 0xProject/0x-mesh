@@ -19,7 +19,7 @@
         "webpack-cli": "^3.3.10"
     },
     "dependencies": {
-        "@0x/mesh-browser-lite": "^10.2.1",
+        "@0x/mesh-browser-lite": "^10.2.2",
         "dexie": "^3.0.1"
     }
 }
