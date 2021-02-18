@@ -965,7 +965,9 @@ func (w *Watcher) getLatestBlock() (*types.MiniHeader, error) {
 }
 
 // Cleanup re-validates all orders in DB which haven't been re-validated in
-// `lastUpdatedBuffer` time to make sure all orders are still up-to-date
+// `lastUpdatedBuffer` time to make sure all orders are still up-to-date.
+// Additionally removes orders with an expiration time too far in the future
+// when the DB holds more than opts.MaxOrders.
 func (w *Watcher) Cleanup(ctx context.Context, lastUpdatedBuffer time.Duration) error {
 	// Pause block event processing until we finished cleaning up at current block height
 	w.handleBlockEventsMu.RLock()
@@ -1014,6 +1016,23 @@ func (w *Watcher) Cleanup(ctx context.Context, lastUpdatedBuffer time.Duration) 
 
 	if len(orderEvents) > 0 {
 		w.orderFeed.Send(orderEvents)
+	}
+
+	orderCount, err := w.db.CountOrders(nil)
+	if err != nil {
+		return err
+	}
+	if orderCount > w.maxOrders {
+		logger.WithFields(logger.Fields{
+			"orderCount": orderCount,
+			"maxOrders":  w.maxOrders,
+		}).Info("Too many orders stored in the database, removing orders with long expiration")
+		ordersRemoved, err := w.db.RemoveOrdersWithLongExpiration()
+		if err != nil {
+			return err
+		}
+
+		logger.WithField("numOrdersRemoved", len(ordersRemoved)).Info("Removed orders with long expiration")
 	}
 
 	return nil
