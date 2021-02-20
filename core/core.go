@@ -189,7 +189,7 @@ type Config struct {
 	// EthereumRPCClient is the client to use for all Ethereum RPC reuqests. It is only
 	// settable in browsers and cannot be set via environment variable. If
 	// provided, EthereumRPCURL will be ignored.
-	EthereumRPCClient ethclient.RPCClient `envvar:"-"`
+	EthereumRPCClient ethclient.Client `envvar:"-"`
 	// MaxBytesPerSecond is the maximum number of bytes per second that a peer is
 	// allowed to send before failing the bandwidth check. Defaults to 5 MiB.
 	MaxBytesPerSecond float64 `envvar:"MAX_BYTES_PER_SECOND" default:"5242880"`
