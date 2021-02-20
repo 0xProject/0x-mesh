@@ -17,6 +17,10 @@ type AcceptedOrderResult struct {
 }
 
 type AddOrdersOpts struct {
+	// Pinned orders will not be affected by any DDoS prevention or incentive
+	// mechanisms and will stay in storage until they are no longer fillable
+	// (assuming the following flags are all false). Defaults to true.
+	Pinned *bool `json:"pinned"`
 	// Indicates that the orders being added should be kept by the database after
 	// cancellation.
 	KeepCancelled *bool `json:"keepCancelled"`

@@ -2,6 +2,7 @@ import { SignedOrder } from '@0x/types';
 import { BigNumber } from '@0x/utils';
 
 export interface AddOrdersOpts {
+    pinned?: boolean;
     keepCancelled?: boolean;
     keepExpired?: boolean;
     keepFullyFilled?: boolean;

@@ -229,6 +229,14 @@ export interface ContractAddresses {
     zrxToken?: string;
 }
 
+export interface AddOrdersOpts {
+    pinned?: boolean;
+    keepCancelled?: boolean;
+    keepExpired?: boolean;
+    keepFullyFilled?: boolean;
+    keepUnfunded?: boolean;
+}
+
 export enum Verbosity {
     Panic = 0,
     Fatal = 1,
@@ -259,10 +267,10 @@ export interface MeshWrapper {
     onOrderEvents(handler: (events: WrapperOrderEvent[]) => void): void;
     getStatsAsync(): Promise<WrapperStats>;
     getOrdersForPageAsync(perPage: number, minOrderHash?: string): Promise<WrapperGetOrdersResponse>;
-    addOrdersAsync(orders: WrapperSignedOrder[], pinned: boolean): Promise<WrapperValidationResults>;
+    addOrdersAsync(orders: WrapperSignedOrder[], options?: AddOrdersOpts): Promise<WrapperValidationResults>;
 
     // GraphQL API
-    gqlAddOrdersAsync(newOrders: WrapperSignedOrder[], pinned: boolean): Promise<WrapperAddOrderResults>;
+    gqlAddOrdersAsync(newOrders: WrapperSignedOrder[], options?: AddOrdersOpts): Promise<WrapperAddOrderResults>;
     gqlGetOrderAsync(orderHash: string): Promise<WrapperOrderWithMetadata>;
     gqlFindOrdersAsync(
         sort: WrapperOrderSort[],
