@@ -195,6 +195,8 @@ export enum OrderEventEndState {
     Cancelled = 'CANCELLED',
     // The order expired and is no longer fillable.
     Expired = 'EXPIRED',
+    // Catch all 'Invalid' state when invalid orders are submitted.
+    Invalid = 'INVALID',
     // The order was previously expired, but due to a block re-org it is no longer considered expired (should be rare).
     Unexpired = 'UNEXPIRED',
     // The order has become unfunded and is no longer fillable. This can happen if the maker makes a transfer or changes their allowance.
