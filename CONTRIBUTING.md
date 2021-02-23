@@ -63,15 +63,12 @@ changing any Go code will require running `yarn build` at the root of the projec
 Some of the tests depend on having a test Ethereum node running. Before running
 the tests, make sure you have [Docker](https://docs.docker.com/install/)
 installed locally and start
-[0xorg/ganache-cli](https://hub.docker.com/r/0xorg/ganache-cli). In these commands,
-`$GANACHE_VERSION` should be set to the version of ganache-cli that is used in the mesh project's
-CI found [here](https://github.com/0xProject/0x-mesh/blob/development/.circleci/config.yml#L10):
+[0xorg/ganache-cli](https://hub.docker.com/r/0xorg/ganache-cli) with the appropriate [snapshot version](https://github.com/0xProject/protocol/blob/development/packages/migrations/README.md#publish
+) passed in the `VERSION` environment variable. The snapshot version that is used in the mesh project's
+CI can be found [here](https://github.com/0xProject/0x-mesh/blob/development/.circleci/config.yml#L10)
 
 ```
-docker pull 0xorg/ganache-cli
-
-# Run the $GANACHE_VERSION image of ganache-cli.
-docker run -ti -p 8545:8545 -e VERSION=$GANACHE_VERSION 0xorg/ganache-cli
+docker run --rm --pull -ti -p 8545:8545 -e VERSION=6.5.11 0xorg/ganache-cli
 ```
 
 There are various Make targets for running tests:
@@ -183,3 +180,38 @@ Prettier configurations for most popular text editors can be found
 
 TSLint configurations for most popular text editors can be found
 [here](https://palantir.github.io/tslint/usage/third-party-tools/).
+
+### Updating the Go contract wrappers
+
+
+**Installing abi-gen:**
+
+See <https://geth.ethereum.org/docs/dapp/native-bindings>
+
+```
+git clone git@github.com:ethereum/go-ethereum.git
+cd go-ethereum
+git checkout v1.9.24
+go install ./cmd/abigen
+```
+
+**Obtain contract ABIs:**
+
+Extract any ABI from [`@0x/contract-artifacts/artifacts/*.json`](https://github.com/0xProject/protocol/tree/development/packages/contract-artifacts/artifacts), taking only the contents of the `abi` key. For example for the V4 DevUtils contract:
+
+```
+git clone git@github.com:0xProject/protocol.git
+jq < protocol/packages/contract-artifacts/artifacts/DevUtils.json .compilerOutput.abi > DevUtilsV4.abi.json
+```
+
+jq < ../protocol/packages/contract-artifacts/artifacts/IZeroEx.json .compilerOutput.abi > IZeroEx.abi.json
+
+The V4 ABI contains some internal functions whose names start with `_`. The next `abigen` command will strip the underscores and fail due to name collisions with non-prefixed versions. The easiest solution is to manually remove these functions from the JSON. (TODO: Come up with a `jq` query to automate this).
+
+**Generate wrapper:**
+
+```
+abigen --abi ./IZeroEx.abi.json --pkg wrappers --type ExchangeV4 --out ethereum/wrappers/exhange_v4.go
+```
+
+Then edit the file and correct the `package` name and remove any commonalities between different wrappers.

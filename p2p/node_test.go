@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"sort"
 	"testing"
@@ -36,6 +37,10 @@ var (
 type dummyMessageHandler struct{}
 
 func (*dummyMessageHandler) HandleMessages(ctx context.Context, messages []*Message) error {
+	return nil
+}
+
+func (*dummyMessageHandler) HandleMessagesV4(ctx context.Context, messages []*Message) error {
 	return nil
 }
 
@@ -162,6 +167,10 @@ func (mh *inMemoryMessageHandler) HandleMessages(ctx context.Context, messages [
 		return err
 	}
 	return nil
+}
+
+func (mh *inMemoryMessageHandler) HandleMessagesV4(ctx context.Context, messages []*Message) error {
+	return errors.New("V4 orders not supported in inMemoryMessageHandler")
 }
 
 func (mh *inMemoryMessageHandler) store(messages []*Message) error {

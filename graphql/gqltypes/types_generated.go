@@ -16,6 +16,14 @@ type AcceptedOrderResult struct {
 	IsNew bool `json:"isNew"`
 }
 
+type AcceptedOrderResultV4 struct {
+	// The v4 order that was accepted, including metadata.
+	Order *OrderV4WithMetadata `json:"order"`
+	// Whether or not the order is new. Set to true if this is the first time this Mesh node has accepted the order
+	// and false otherwise.
+	IsNew bool `json:"isNew"`
+}
+
 type AddOrdersOpts struct {
 	// Indicates that the orders being added should be kept by the database after
 	// cancellation.
@@ -39,6 +47,16 @@ type AddOrdersResults struct {
 	// The set of orders that were rejected, including the reason they were rejected. Rejected orders will not be
 	// watched.
 	Rejected []*RejectedOrderResult `json:"rejected"`
+}
+
+// The results of the addOrdersV4 mutation. Includes which orders were accepted and which orders where rejected.
+type AddOrdersResultsV4 struct {
+	// The set of orders that were accepted. Accepted orders will be watched and order events will be emitted if
+	// their status changes.
+	Accepted []*AcceptedOrderResultV4 `json:"accepted"`
+	// The set of orders that were rejected, including the reason they were rejected. Rejected orders will not be
+	// watched.
+	Rejected []*RejectedOrderResultV4 `json:"rejected"`
 }
 
 // An on-chain contract event.
@@ -91,6 +109,28 @@ type NewOrder struct {
 	Signature             string `json:"signature"`
 }
 
+// A signed v4 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format).
+type NewOrderV4 struct {
+	ChainID             string `json:"chainId"`
+	VerifyingContract   string `json:"verifyingContract"`
+	MakerToken          string `json:"makerToken"`
+	TakerToken          string `json:"takerToken"`
+	MakerAmount         string `json:"makerAmount"`
+	TakerAmount         string `json:"takerAmount"`
+	TakerTokenFeeAmount string `json:"takerTokenFeeAmount"`
+	Maker               string `json:"maker"`
+	Taker               string `json:"taker"`
+	Sender              string `json:"sender"`
+	FeeRecipient        string `json:"feeRecipient"`
+	Pool                string `json:"pool"`
+	Expiry              string `json:"expiry"`
+	Salt                string `json:"salt"`
+	SignatureType       string `json:"signatureType"`
+	SignatureV          string `json:"signatureV"`
+	SignatureR          string `json:"signatureR"`
+	SignatureS          string `json:"signatureS"`
+}
+
 // A signed 0x order according to the [protocol specification](https://github.com/0xProject/0x-protocol-specification/blob/master/v3/v3-specification.md#order-message-format.)
 type Order struct {
 	ChainID               string `json:"chainId"`
@@ -115,6 +155,8 @@ type Order struct {
 type OrderEvent struct {
 	// The order that was affected.
 	Order *OrderWithMetadata `json:"order"`
+	// The v4 order that was affected.
+	Orderv4 *OrderV4WithMetadata `json:"orderv4"`
 	// A way of classifying the effect that the order event had on the order. You can
 	// think of different end states as different "types" of order events.
 	EndState OrderEndState `json:"endState"`
@@ -139,10 +181,72 @@ type OrderFilter struct {
 	Value interface{} `json:"value"`
 }
 
+// A filter on v4 orders. Can be used in queries to only return orders that meet certain criteria.
+type OrderFilterV4 struct {
+	Field OrderFieldV4 `json:"field"`
+	Kind  FilterKind   `json:"kind"`
+	// value must match the type of the filter field.
+	Value interface{} `json:"value"`
+}
+
 // A sort ordering for orders. Can be used in queries to control the order in which results are returned.
 type OrderSort struct {
 	Field     OrderField    `json:"field"`
 	Direction SortDirection `json:"direction"`
+}
+
+// A sort ordering for v4 orders. Can be used in queries to control the order in which results are returned.
+type OrderSortV4 struct {
+	Field     OrderFieldV4  `json:"field"`
+	Direction SortDirection `json:"direction"`
+}
+
+// A signed 0x v4 order according to the [protocol specification](https://0xprotocol.readthedocs.io/en/latest/basics/orders.html)
+type OrderV4 struct {
+	ChainID             string `json:"chainId"`
+	VerifyingContract   string `json:"verifyingContract"`
+	MakerToken          string `json:"makerToken"`
+	TakerToken          string `json:"takerToken"`
+	MakerAmount         string `json:"makerAmount"`
+	TakerAmount         string `json:"takerAmount"`
+	TakerTokenFeeAmount string `json:"takerTokenFeeAmount"`
+	Maker               string `json:"maker"`
+	Taker               string `json:"taker"`
+	Sender              string `json:"sender"`
+	FeeRecipient        string `json:"feeRecipient"`
+	Pool                string `json:"pool"`
+	Expiry              string `json:"expiry"`
+	Salt                string `json:"salt"`
+	SignatureType       string `json:"signatureType"`
+	SignatureV          string `json:"signatureV"`
+	SignatureR          string `json:"signatureR"`
+	SignatureS          string `json:"signatureS"`
+}
+
+// A signed 0x v4 order along with some additional metadata about the order which is not part of the 0x protocol specification.
+type OrderV4WithMetadata struct {
+	ChainID             string `json:"chainId"`
+	VerifyingContract   string `json:"verifyingContract"`
+	MakerToken          string `json:"makerToken"`
+	TakerToken          string `json:"takerToken"`
+	MakerAmount         string `json:"makerAmount"`
+	TakerAmount         string `json:"takerAmount"`
+	TakerTokenFeeAmount string `json:"takerTokenFeeAmount"`
+	Maker               string `json:"maker"`
+	Taker               string `json:"taker"`
+	Sender              string `json:"sender"`
+	FeeRecipient        string `json:"feeRecipient"`
+	Pool                string `json:"pool"`
+	Expiry              string `json:"expiry"`
+	Salt                string `json:"salt"`
+	SignatureType       string `json:"signatureType"`
+	SignatureV          string `json:"signatureV"`
+	SignatureR          string `json:"signatureR"`
+	SignatureS          string `json:"signatureS"`
+	// The hash, which can be used to uniquely identify an order. Encoded as a hexadecimal string.
+	Hash string `json:"hash"`
+	// The remaining amount of the maker asset which has not yet been filled. Encoded as a numerical string.
+	FillableTakerAssetAmount string `json:"fillableTakerAssetAmount"`
 }
 
 // A signed 0x order along with some additional metadata about the order which is not part of the 0x protocol specification.
@@ -183,6 +287,19 @@ type RejectedOrderResult struct {
 	Message string `json:"message"`
 }
 
+type RejectedOrderResultV4 struct {
+	// The hash of the order. May be null if the hash could not be computed.
+	Hash *string `json:"hash"`
+	// The v4 order that was rejected.
+	Order *OrderV4 `json:"order"`
+	// A machine-readable code indicating why the order was rejected. This code is designed to
+	// be used by programs and applications and will never change without breaking backwards-compatibility.
+	Code RejectedOrderCode `json:"code"`
+	// A human-readable message indicating why the order was rejected. This message may change
+	// in future releases and is not covered by backwards-compatibility guarantees.
+	Message string `json:"message"`
+}
+
 // Contains configuration options and various stats for Mesh.
 type Stats struct {
 	Version                           string       `json:"version"`
@@ -193,7 +310,11 @@ type Stats struct {
 	LatestBlock                       *LatestBlock `json:"latestBlock"`
 	NumPeers                          int          `json:"numPeers"`
 	NumOrders                         int          `json:"numOrders"`
+	NumOrdersV4                       int          `json:"numOrdersV4"`
 	NumOrdersIncludingRemoved         int          `json:"numOrdersIncludingRemoved"`
+	NumOrdersIncludingRemovedV4       int          `json:"numOrdersIncludingRemovedV4"`
+	NumPinnedOrders                   int          `json:"numPinnedOrders"`
+	NumPinnedOrdersV4                 int          `json:"numPinnedOrdersV4"`
 	StartOfCurrentUTCDay              string       `json:"startOfCurrentUTCDay"`
 	EthRPCRequestsSentInCurrentUTCDay int          `json:"ethRPCRequestsSentInCurrentUTCDay"`
 	EthRPCRateLimitExpiredRequests    int          `json:"ethRPCRateLimitExpiredRequests"`
@@ -393,6 +514,78 @@ func (e *OrderField) UnmarshalGQL(v interface{}) error {
 }
 
 func (e OrderField) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+// An enum containing all the order fields for which filters and/or sorting is supported.
+type OrderFieldV4 string
+
+const (
+	OrderFieldV4Hash                     OrderFieldV4 = "hash"
+	OrderFieldV4ChainID                  OrderFieldV4 = "chainId"
+	OrderFieldV4VerifyingContract        OrderFieldV4 = "verifyingContract"
+	OrderFieldV4MakerToken               OrderFieldV4 = "makerToken"
+	OrderFieldV4TakerToken               OrderFieldV4 = "takerToken"
+	OrderFieldV4MakerAmount              OrderFieldV4 = "makerAmount"
+	OrderFieldV4TakerAmount              OrderFieldV4 = "takerAmount"
+	OrderFieldV4TakerTokenFeeAmount      OrderFieldV4 = "takerTokenFeeAmount"
+	OrderFieldV4Maker                    OrderFieldV4 = "maker"
+	OrderFieldV4Taker                    OrderFieldV4 = "taker"
+	OrderFieldV4Sender                   OrderFieldV4 = "sender"
+	OrderFieldV4FeeRecipient             OrderFieldV4 = "feeRecipient"
+	OrderFieldV4Pool                     OrderFieldV4 = "pool"
+	OrderFieldV4Expiry                   OrderFieldV4 = "expiry"
+	OrderFieldV4Salt                     OrderFieldV4 = "salt"
+	OrderFieldV4Signature                OrderFieldV4 = "signature"
+	OrderFieldV4FillableTakerAssetAmount OrderFieldV4 = "fillableTakerAssetAmount"
+)
+
+var AllOrderFieldV4 = []OrderFieldV4{
+	OrderFieldV4Hash,
+	OrderFieldV4ChainID,
+	OrderFieldV4VerifyingContract,
+	OrderFieldV4MakerToken,
+	OrderFieldV4TakerToken,
+	OrderFieldV4MakerAmount,
+	OrderFieldV4TakerAmount,
+	OrderFieldV4TakerTokenFeeAmount,
+	OrderFieldV4Maker,
+	OrderFieldV4Taker,
+	OrderFieldV4Sender,
+	OrderFieldV4FeeRecipient,
+	OrderFieldV4Pool,
+	OrderFieldV4Expiry,
+	OrderFieldV4Salt,
+	OrderFieldV4Signature,
+	OrderFieldV4FillableTakerAssetAmount,
+}
+
+func (e OrderFieldV4) IsValid() bool {
+	switch e {
+	case OrderFieldV4Hash, OrderFieldV4ChainID, OrderFieldV4VerifyingContract, OrderFieldV4MakerToken, OrderFieldV4TakerToken, OrderFieldV4MakerAmount, OrderFieldV4TakerAmount, OrderFieldV4TakerTokenFeeAmount, OrderFieldV4Maker, OrderFieldV4Taker, OrderFieldV4Sender, OrderFieldV4FeeRecipient, OrderFieldV4Pool, OrderFieldV4Expiry, OrderFieldV4Salt, OrderFieldV4Signature, OrderFieldV4FillableTakerAssetAmount:
+		return true
+	}
+	return false
+}
+
+func (e OrderFieldV4) String() string {
+	return string(e)
+}
+
+func (e *OrderFieldV4) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = OrderFieldV4(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid OrderFieldV4", str)
+	}
+	return nil
+}
+
+func (e OrderFieldV4) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

@@ -1,8 +1,9 @@
 import { Mesh } from '@0x/mesh-browser-lite';
+import { StringifiedSignedOrder } from '@0x/mesh-browser-lite/lib/types';
 import { ApolloLink, FetchResult, Operation } from '@apollo/client/link/core';
 import * as Observable from 'zen-observable';
 
-import { AddOrdersResponse, OrderResponse, OrdersResponse, StatsResponse } from './types';
+import { AddOrdersResponse, OrderResponse, OrdersResponse, StatsResponse, StringifiedOrderWithMetadata } from './types';
 
 export class BrowserLink extends ApolloLink {
     constructor(private readonly _mesh: Mesh) {
@@ -24,7 +25,9 @@ export class BrowserLink extends ApolloLink {
                 ) {
                     throw new Error('mesh-graphql-client: Browser nodes do not support true values in AddOrdersOpts');
                 }
-                return new Observable<{ data: AddOrdersResponse }>((observer) => {
+                return new Observable<{
+                    data: AddOrdersResponse<StringifiedOrderWithMetadata, StringifiedSignedOrder>;
+                }>((observer) => {
                     wrapper
                         .gqlAddOrdersAsync(operation.variables.orders, operation.variables.pinned)
                         .then((addOrders) => {

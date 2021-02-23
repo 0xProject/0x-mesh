@@ -17,6 +17,7 @@ import (
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/core/ordersync"
+	"github.com/0xProject/0x-mesh/core/ordersync_v4"
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/encoding"
 	"github.com/0xProject/0x-mesh/ethereum"
@@ -56,7 +57,7 @@ const (
 	estimatedNonPollingEthereumRPCRequestsPer24Hrs = 50000
 	// logStatsInterval is how often to log stats for this node.
 	logStatsInterval = 5 * time.Minute
-	version          = "10.2.2"
+	version          = "11.0.0"
 	// ordersyncMinPeers is the minimum amount of peers to receive orders from
 	// before considering the ordersync process finished.
 	ordersyncMinPeers = 5
@@ -196,22 +197,23 @@ type Config struct {
 }
 
 type App struct {
-	ctx               context.Context
-	config            Config
-	privateConfig     privateConfig
-	peerID            peer.ID
-	privKey           p2pcrypto.PrivKey
-	node              *p2p.Node
-	chainID           int
-	blockWatcher      *blockwatch.Watcher
-	orderWatcher      *orderwatch.Watcher
-	orderValidator    *ordervalidator.OrderValidator
-	orderFilter       *orderfilter.Filter
-	ethRPCRateLimiter ratelimit.RateLimiter
-	ethRPCClient      ethrpcclient.Client
-	db                *db.DB
-	ordersyncService  *ordersync.Service
-	contractAddresses *ethereum.ContractAddresses
+	ctx                context.Context
+	config             Config
+	privateConfig      privateConfig
+	peerID             peer.ID
+	privKey            p2pcrypto.PrivKey
+	node               *p2p.Node
+	chainID            int
+	blockWatcher       *blockwatch.Watcher
+	orderWatcher       *orderwatch.Watcher
+	orderValidator     *ordervalidator.OrderValidator
+	orderFilter        *orderfilter.Filter
+	ethRPCRateLimiter  ratelimit.RateLimiter
+	ethRPCClient       ethrpcclient.Client
+	db                 *db.DB
+	ordersyncService   *ordersync.Service
+	ordersyncServiceV4 *ordersync_v4.Service
+	contractAddresses  *ethereum.ContractAddresses
 
 	// started is closed to signal that the App has been started. Some methods
 	// will block until after the App is started.
@@ -655,6 +657,25 @@ func (app *App) Start() error {
 		}
 	}()
 
+	// Register and start ordersync V4 service.
+	app.ordersyncServiceV4 = ordersync_v4.New(innerCtx, app)
+	orderSyncErrChanV4 := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer func() {
+			log.Debug("closing ordersync V4 service")
+		}()
+		log.WithFields(map[string]interface{}{
+			"approxDelay": ordersyncApproxDelay,
+			"perPage":     app.privateConfig.paginationSubprotocolPerPage,
+		}).Info("starting ordersync V4 service")
+
+		if err := app.ordersyncServiceV4.PeriodicallyGetOrders(innerCtx, ordersyncMinPeers, ordersyncApproxDelay); err != nil {
+			orderSyncErrChanV4 <- err
+		}
+	}()
+
 	// Start the p2p node.
 	p2pErrChan := make(chan error, 1)
 	wg.Add(1)
@@ -780,14 +801,36 @@ func (app *App) periodicallyCheckForNewAddrs(ctx context.Context, startingAddrs 
 	}
 }
 
+func (app *App) Node() *p2p.Node {
+	return app.node
+}
+
+func (app *App) OrderWatcher() *orderwatch.Watcher {
+	return app.orderWatcher
+}
+
+func (app *App) ChainID() int {
+	return app.chainID
+}
+
 func (app *App) GetOrder(hash common.Hash) (*types.OrderWithMetadata, error) {
 	<-app.started
 	return app.db.GetOrder(hash)
 }
 
+func (app *App) GetOrderV4(hash common.Hash) (*types.OrderWithMetadata, error) {
+	<-app.started
+	return app.db.GetOrderV4(hash)
+}
+
 func (app *App) FindOrders(query *db.OrderQuery) ([]*types.OrderWithMetadata, error) {
 	<-app.started
 	return app.db.FindOrders(query)
+}
+
+func (app *App) FindOrdersV4(query *db.OrderQueryV4) ([]*types.OrderWithMetadata, error) {
+	<-app.started
+	return app.db.FindOrdersV4(query)
 }
 
 // ErrPerPageZero is the error returned when a GetOrders request specifies perPage to 0
@@ -876,6 +919,19 @@ func (app *App) AddOrders(ctx context.Context, signedOrders []*zeroex.SignedOrde
 		return nil, err
 	}
 	return app.AddOrdersRaw(ctx, signedOrdersRaw, pinned, opts)
+}
+
+// TODO(oskar) - finish
+func (app *App) AddOrdersV4(ctx context.Context, signedOrders []*zeroex.SignedOrderV4, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
+	signedOrdersRaw := []*json.RawMessage{}
+	buf := &bytes.Buffer{}
+	if err := json.NewEncoder(buf).Encode(signedOrders); err != nil {
+		return nil, err
+	}
+	if err := json.NewDecoder(buf).Decode(&signedOrdersRaw); err != nil {
+		return nil, err
+	}
+	return app.AddOrdersRawV4(ctx, signedOrdersRaw, pinned, opts)
 }
 
 // AddOrdersRaw is like AddOrders but accepts raw JSON messages.
@@ -972,11 +1028,115 @@ func (app *App) AddOrdersRaw(ctx context.Context, signedOrdersRaw []*json.RawMes
 	return allValidationResults, nil
 }
 
+// AddOrdersRawV4 is like AddOrdersRaw but accepts for V4 orders.
+func (app *App) AddOrdersRawV4(ctx context.Context, signedOrdersRaw []*json.RawMessage, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
+	<-app.started
+
+	allValidationResults := &ordervalidator.ValidationResults{
+		Accepted: []*ordervalidator.AcceptedOrderInfo{},
+		Rejected: []*ordervalidator.RejectedOrderInfo{},
+	}
+	orderHashesSeen := map[common.Hash]struct{}{}
+	schemaValidOrders := []*zeroex.SignedOrderV4{}
+	for _, signedOrderRaw := range signedOrdersRaw {
+		signedOrderBytes := []byte(*signedOrderRaw)
+		result, err := app.orderFilter.ValidateOrderJSONV4(signedOrderBytes)
+		if err != nil {
+			signedOrder := &zeroex.SignedOrderV4{}
+			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
+				signedOrder = nil
+			}
+			log.WithField("signedOrderRaw", string(signedOrderBytes)).Info("Unexpected error while attempting to validate signedOrderJSON against schema")
+			allValidationResults.Rejected = append(allValidationResults.Rejected, &ordervalidator.RejectedOrderInfo{
+				SignedOrderV4: signedOrder,
+				Kind:          ordervalidator.MeshValidation,
+				Status: ordervalidator.RejectedOrderStatus{
+					Code:    ordervalidator.ROInvalidSchemaCode,
+					Message: "order did not pass JSON-schema validation: Malformed JSON or empty payload",
+				},
+			})
+			continue
+		}
+		if !result.Valid() {
+			log.WithField("signedOrderRaw", string(signedOrderBytes)).Info("Order failed schema validation")
+			status := ordervalidator.RejectedOrderStatus{
+				Code:    ordervalidator.ROInvalidSchemaCode,
+				Message: fmt.Sprintf("order did not pass JSON-schema validation: %s", result.Errors()),
+			}
+			signedOrder := &zeroex.SignedOrder{}
+			if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
+				signedOrder = nil
+			}
+			allValidationResults.Rejected = append(allValidationResults.Rejected, &ordervalidator.RejectedOrderInfo{
+				SignedOrder: signedOrder,
+				Kind:        ordervalidator.MeshValidation,
+				Status:      status,
+			})
+			continue
+		}
+
+		signedOrder := &zeroex.SignedOrderV4{}
+		if err := signedOrder.UnmarshalJSON(signedOrderBytes); err != nil {
+			// This error should never happen since the signedOrder already passed the JSON schema validation above
+			log.WithField("signedOrderRaw", string(signedOrderBytes)).Error("Failed to unmarshal SignedOrder")
+			return nil, err
+		}
+
+		orderHash, err := signedOrder.ComputeOrderHash()
+		if err != nil {
+			return nil, err
+		}
+		if _, alreadySeen := orderHashesSeen[orderHash]; alreadySeen {
+			continue
+		}
+
+		schemaValidOrders = append(schemaValidOrders, signedOrder)
+		orderHashesSeen[orderHash] = struct{}{}
+	}
+
+	validationResults, err := app.orderWatcher.ValidateAndStoreValidOrdersV4(ctx, schemaValidOrders, app.chainID, pinned, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	allValidationResults.Accepted = append(allValidationResults.Accepted, validationResults.Accepted...)
+	allValidationResults.Rejected = append(allValidationResults.Rejected, validationResults.Rejected...)
+
+	for _, acceptedOrderInfo := range allValidationResults.Accepted {
+		// If the order isn't new, we don't add to OrderWatcher, log it's receipt
+		// or share the order with peers.
+		if !acceptedOrderInfo.IsNew {
+			continue
+		}
+
+		log.WithFields(log.Fields{
+			"orderHash": acceptedOrderInfo.OrderHash.String(),
+		}).Debug("added new valid order via GraphQL or browser callback")
+
+		if err := app.shareOrderV4(acceptedOrderInfo.SignedOrderV4); err != nil {
+			return nil, err
+		}
+	}
+
+	return allValidationResults, nil
+}
+
 // shareOrder immediately shares the given order on the GossipSub network.
 func (app *App) shareOrder(order *zeroex.SignedOrder) error {
 	<-app.started
 
 	encoded, err := encoding.OrderToRawMessage(app.orderFilter.Topic(), order)
+	if err != nil {
+		return err
+	}
+	return app.node.Send(encoded)
+}
+
+// shareOrderV4 immediately shares the given order on the GossipSub network.
+func (app *App) shareOrderV4(order *zeroex.SignedOrderV4) error {
+	<-app.started
+
+	encoded, err := json.Marshal(order)
 	if err != nil {
 		return err
 	}
@@ -1018,7 +1178,24 @@ func (app *App) GetStats() (*types.Stats, error) {
 	if err != nil {
 		return nil, err
 	}
+	numOrdersV4, err := app.db.CountOrdersV4(&db.OrderQueryV4{
+		Filters: []db.OrderFilterV4{
+			{
+				Field: db.OV4FIsRemoved,
+				Kind:  db.Equal,
+				Value: false,
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	numOrdersIncludingRemoved, err := app.db.CountOrders(nil)
+	if err != nil {
+		return nil, err
+	}
+	numOrdersIncludingRemovedV4, err := app.db.CountOrdersV4(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1034,6 +1211,19 @@ func (app *App) GetStats() (*types.Stats, error) {
 	if err != nil {
 		return nil, err
 	}
+	numPinnedOrdersV4, err := app.db.CountOrdersV4(&db.OrderQueryV4{
+		Filters: []db.OrderFilterV4{
+			{
+				Field: db.OV4FIsPinned,
+				Kind:  db.Equal,
+				Value: true,
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	metadata, err := app.db.GetMetadata()
 	if err != nil {
 		return nil, err
@@ -1056,9 +1246,12 @@ func (app *App) GetStats() (*types.Stats, error) {
 		EthereumChainID:                   app.config.EthereumChainID,
 		LatestBlock:                       latestBlock,
 		NumOrders:                         numOrders,
+		NumOrdersV4:                       numOrdersV4,
 		NumPeers:                          app.node.GetNumPeers(),
 		NumOrdersIncludingRemoved:         numOrdersIncludingRemoved,
+		NumOrdersIncludingRemovedV4:       numOrdersIncludingRemovedV4,
 		NumPinnedOrders:                   numPinnedOrders,
+		NumPinnedOrdersV4:                 numPinnedOrdersV4,
 		MaxExpirationTime:                 maxExpirationTime,
 		StartOfCurrentUTCDay:              metadata.StartOfCurrentUTCDay,
 		EthRPCRequestsSentInCurrentUTCDay: metadata.EthRPCRequestsSentInCurrentUTCDay,

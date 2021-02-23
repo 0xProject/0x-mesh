@@ -63,6 +63,7 @@ func defaultTestOrder() *zeroex.Order {
 func defaultConfig() *orderopts.Config {
 	return &orderopts.Config{
 		Order:             defaultTestOrder(),
+		OrderV4:           defaultTestOrderV4(),
 		SetupMakerState:   false,
 		SetupTakerAddress: constants.NullAddress,
 	}
@@ -201,6 +202,16 @@ func (x *tokenBalances) add(y *tokenBalances) {
 		if !found {
 			x.erc1155Tokens = append(x.erc1155Tokens, yToken)
 		}
+	}
+}
+
+func (x *tokenBalances) addTokenAmount(t *testing.T, token common.Address, amount *big.Int) {
+	if token == ganacheAddresses.ZRXToken {
+		x.zrx.Add(x.zrx, amount)
+	} else if token == ganacheAddresses.WETH9 {
+		x.weth.Add(x.weth, amount)
+	} else {
+		t.Fatalf("scenario: cannot setup on-chain state for ERC20 token (unsupported token): %s", token.Hex())
 	}
 }
 
@@ -346,7 +357,11 @@ func setWETHBalanceAndAllowance(t *testing.T, traderAddress common.Address, amou
 		From:   traderAddress,
 		Signer: GetTestSignerFn(traderAddress),
 	}
+	// V3
 	txn, err = weth9.Approve(opts, ganacheAddresses.ERC20Proxy, amount)
+	require.NoError(t, err)
+	// V4
+	txn, err = weth9.Approve(opts, ganacheAddresses.ExchangeProxy, amount)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, txn)
 }
@@ -371,7 +386,11 @@ func setZRXBalanceAndAllowance(t *testing.T, traderAddress common.Address, amoun
 		From:   traderAddress,
 		Signer: GetTestSignerFn(traderAddress),
 	}
+	// V3
 	txn, err = zrx.Approve(opts, ganacheAddresses.ERC20Proxy, amount)
+	require.NoError(t, err)
+	// V4
+	txn, err = zrx.Approve(opts, ganacheAddresses.ExchangeProxy, amount)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, txn)
 }

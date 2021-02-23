@@ -133,215 +133,17 @@ func (db *DB) PeerStore() ds.Batching {
 	return sqlds.NewDatastore(db.peerSQLdb.DB.DB, NewSqliteQueriesForTable("peerstore"))
 }
 
-// TODO(albrow): Use a proper migration tool. We don't technically need this
-// now but it will be necessary if we ever change the database schema.
-// Note(albrow): If needed, we can optimize this by adding indexes to the
-// orders and miniHeaders tables.
-const schema = `
-CREATE TABLE IF NOT EXISTS orders (
-	hash                     TEXT UNIQUE NOT NULL,
-	chainID                  TEXT NOT NULL,
-	exchangeAddress          TEXT NOT NULL,
-	makerAddress             TEXT NOT NULL,
-	makerAssetData           TEXT NOT NULL,
-	makerFeeAssetData        TEXT NOT NULL,
-	makerAssetAmount         TEXT NOT NULL,
-	makerFee                 TEXT NOT NULL,
-	takerAddress             TEXT NOT NULL,
-	takerAssetData           TEXT NOT NULL,
-	takerFeeAssetData        TEXT NOT NULL,
-	takerAssetAmount         TEXT NOT NULL,
-	takerFee                 TEXT NOT NULL,
-	senderAddress            TEXT NOT NULL,
-	feeRecipientAddress      TEXT NOT NULL,
-	expirationTimeSeconds    TEXT NOT NULL,
-	salt                     TEXT NOT NULL,
-	signature                TEXT NOT NULL,
-	lastUpdated              DATETIME NOT NULL,
-	fillableTakerAssetAmount TEXT NOT NULL,
-	isRemoved                BOOLEAN NOT NULL,
-	isPinned                 BOOLEAN NOT NULL,
-	isUnfillable             BOOLEAN NOT NULL,
-	isExpired                BOOLEAN NOT NULL,
-	parsedMakerAssetData     TEXT NOT NULL,
-	parsedMakerFeeAssetData  TEXT NOT NULL,
-	lastValidatedBlockNumber TEXT NOT NULL,
-	lastValidatedBlockHash   TEXT NOT NULL,
-	keepCancelled            BOOLEAN NOT NULL,
-	keepExpired              BOOLEAN NOT NULL,
-	keepFullyFilled          BOOLEAN NOT NULL,
-	keepUnfunded             BOOLEAN NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS miniHeaders (
-	hash      TEXT UNIQUE NOT NULL,
-	number    TEXT UNIQUE NOT NULL,
-	parent    TEXT NOT NULL,
-	timestamp DATETIME NOT NULL,
-	logs      TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS metadata (
-	ethereumChainID                   BIGINT NOT NULL,
-	ethRPCRequestsSentInCurrentUTCDay BIGINT NOT NULL,
-	startOfCurrentUTCDay              DATETIME NOT NULL
-);
-`
-
-const peerstoreSchema = `
-CREATE TABLE IF NOT EXISTS peerstore (
-	key  TEXT NOT NULL UNIQUE,
-	data BYTEA NOT NULL
-);
-`
-const dhtSchema = `
-CREATE TABLE IF NOT EXISTS dhtstore (
-	key  TEXT NOT NULL UNIQUE,
-	data BYTEA NOT NULL
-);
-`
-
-// Note(albrow): If needed, we can optimize this by using prepared
-// statements for inserts instead of just a string.
-const insertOrderQuery = `INSERT INTO orders (
-	hash,
-	chainID,
-	exchangeAddress,
-	makerAddress,
-	makerAssetData,
-	makerFeeAssetData,
-	makerAssetAmount,
-	makerFee,
-	takerAddress,
-	takerAssetData,
-	takerFeeAssetData,
-	takerAssetAmount,
-	takerFee,
-	senderAddress,
-	feeRecipientAddress,
-	expirationTimeSeconds,
-	salt,
-	signature,
-	lastUpdated,
-	fillableTakerAssetAmount,
-	isRemoved,
-	isPinned,
-	isUnfillable,
-	isExpired,
-	parsedMakerAssetData,
-	parsedMakerFeeAssetData,
-	lastValidatedBlockNumber,
-	lastValidatedBlockHash,
-	keepCancelled,
-	keepExpired,
-	keepFullyFilled,
-	keepUnfunded
-) VALUES (
-	:hash,
-	:chainID,
-	:exchangeAddress,
-	:makerAddress,
-	:makerAssetData,
-	:makerFeeAssetData,
-	:makerAssetAmount,
-	:makerFee,
-	:takerAddress,
-	:takerAssetData,
-	:takerFeeAssetData,
-	:takerAssetAmount,
-	:takerFee,
-	:senderAddress,
-	:feeRecipientAddress,
-	:expirationTimeSeconds,
-	:salt,
-	:signature,
-	:lastUpdated,
-	:fillableTakerAssetAmount,
-	:isRemoved,
-	:isPinned,
-	:isUnfillable,
-	:isExpired,
-	:parsedMakerAssetData,
-	:parsedMakerFeeAssetData,
-	:lastValidatedBlockNumber,
-	:lastValidatedBlockHash,
-	:keepCancelled,
-	:keepExpired,
-	:keepFullyFilled,
-	:keepUnfunded
-) ON CONFLICT DO NOTHING
-`
-
-const updateOrderQuery = `UPDATE orders SET
-	chainID = :chainID,
-	exchangeAddress = :exchangeAddress,
-	makerAddress = :makerAddress,
-	makerAssetData = :makerAssetData,
-	makerFeeAssetData = :makerFeeAssetData,
-	makerAssetAmount = :makerAssetAmount,
-	makerFee = :makerFee,
-	takerAddress = :takerAddress,
-	takerAssetData = :takerAssetData,
-	takerFeeAssetData = :takerFeeAssetData,
-	takerAssetAmount = :takerAssetAmount,
-	takerFee = :takerFee,
-	senderAddress = :senderAddress,
-	feeRecipientAddress = :feeRecipientAddress,
-	expirationTimeSeconds = :expirationTimeSeconds,
-	salt = :salt,
-	signature = :signature,
-	lastUpdated = :lastUpdated,
-	fillableTakerAssetAmount = :fillableTakerAssetAmount,
-	isRemoved = :isRemoved,
-	isPinned = :isPinned,
-	isUnfillable = :isUnfillable,
-	isExpired = :isExpired,
-	parsedMakerAssetData = :parsedMakerAssetData,
-	parsedMakerFeeAssetData = :parsedMakerFeeAssetData,
-	lastValidatedBlockNumber = :lastValidatedBlockNumber,
-	lastValidatedBlockHash = :lastValidatedBlockHash,
-	keepCancelled = :keepCancelled,
-	keepExpired = :keepExpired,
-	keepFullyFilled = :keepFullyFilled,
-	keepUnfunded = :keepUnfunded
-WHERE orders.hash = :hash
-`
-
-const insertMiniHeaderQuery = `INSERT INTO miniHeaders (
-	hash,
-	parent,
-	number,
-	timestamp,
-	logs
-) VALUES (
-	:hash,
-	:parent,
-	:number,
-	:timestamp,
-	:logs
-) ON CONFLICT DO NOTHING`
-
-const insertMetadataQuery = `INSERT INTO metadata (
-	ethereumChainID,
-	ethRPCRequestsSentInCurrentUTCDay,
-	startOfCurrentUTCDay
-) VALUES (
-	:ethereumChainID,
-	:ethRPCRequestsSentInCurrentUTCDay,
-	:startOfCurrentUTCDay
-)`
-
-const updateMetadataQuery = `UPDATE metadata SET
-	ethereumChainID = :ethereumChainID,
-	ethRPCRequestsSentInCurrentUTCDay = :ethRPCRequestsSentInCurrentUTCDay,
-	startOfCurrentUTCDay = :startOfCurrentUTCDay
-`
-
 func (db *DB) migrate() error {
 	_, err := db.sqldb.ExecContext(db.ctx, schema)
 	if err != nil {
 		return fmt.Errorf("meshdb schema migration failed with err: %s", err)
 	}
+
+	_, err = db.sqldb.ExecContext(db.ctx, v4OrdersSchema)
+	if err != nil {
+		return fmt.Errorf("meshdb v4 order schema migration failed with err: %s", err)
+	}
+
 	_, err = db.peerSQLdb.ExecContext(db.ctx, peerstoreSchema)
 	if err != nil {
 		return fmt.Errorf("peerstore schema migration failed with err: %s", err)
@@ -361,6 +163,21 @@ func (db *DB) ReadWriteTransactionalContext(ctx context.Context, opts *sql.TxOpt
 }
 
 func (db *DB) AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []common.Hash, added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error) {
+	alreadyStoredV3, addedV3, removedV3, err := db.AddOrdersV3(orders)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	alreadyStoredV4, addedV4, removedV4, err := db.AddOrdersV4(orders)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	alreadyStored = append(alreadyStoredV3, alreadyStoredV4...)
+	added = append(addedV3, addedV4...)
+	removed = append(removedV3, removedV4...)
+	return alreadyStored, added, removed, nil
+}
+
+func (db *DB) AddOrdersV3(orders []*types.OrderWithMetadata) (alreadyStored []common.Hash, added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error) {
 	defer func() {
 		err = convertErr(err)
 	}()
@@ -634,6 +451,21 @@ func (db *DB) DeleteOrders(query *OrderQuery) (deleted []*types.OrderWithMetadat
 }
 
 func (db *DB) UpdateOrder(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) (err error) {
+	errV3 := db.UpdateOrderV3(hash, updateFunc)
+	if errV3 != nil && errV3 != ErrNotFound {
+		return errV3
+	}
+	errV4 := db.UpdateOrderV4(hash, updateFunc)
+	if errV4 != nil && errV4 != ErrNotFound {
+		return errV4
+	}
+	if errV3 == ErrNotFound && errV4 == ErrNotFound {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (db *DB) UpdateOrderV3(hash common.Hash, updateFunc func(existingOrder *types.OrderWithMetadata) (updatedOrder *types.OrderWithMetadata, err error)) (err error) {
 	defer func() {
 		err = convertErr(err)
 	}()

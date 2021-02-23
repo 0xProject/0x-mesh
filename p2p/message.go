@@ -20,4 +20,5 @@ type MessageHandler interface {
 	// return an error if there was a problem handling the messages. It should not
 	// return an error for invalid or duplicate messages.
 	HandleMessages(context.Context, []*Message) error
+	HandleMessagesV4(context.Context, []*Message) error
 }

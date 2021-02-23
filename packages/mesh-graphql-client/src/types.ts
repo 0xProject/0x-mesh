@@ -1,3 +1,4 @@
+import { LimitOrderFields, Signature } from '@0x/protocol-utils';
 import { SignedOrder } from '@0x/types';
 import { BigNumber } from '@0x/utils';
 
@@ -12,16 +13,39 @@ export interface StatsResponse {
     stats: StringifiedStats;
 }
 
-export interface AddOrdersResponse {
-    addOrders: StringifiedAddOrdersResults;
+export type GenericOrderWithMetadata = OrderWithMetadata | OrderWithMetadataV4;
+export type GenericStringifiedOrderWithMetadata = StringifiedOrderWithMetadata | StringifiedOrderWithMetadataV4;
+export type GenericSignedOrder = SignedOrder | SignedOrderV4;
+export type GenericStringifiedSignedOrders = StringifiedSignedOrder | StringifiedSignedOrderV4;
+
+export interface AddOrdersResponse<
+    T extends GenericStringifiedOrderWithMetadata,
+    K extends GenericStringifiedSignedOrders
+> {
+    addOrders: StringifiedAddOrdersResults<T, K>;
+}
+
+export interface AddOrdersResponseV4<
+    T extends GenericStringifiedOrderWithMetadata,
+    K extends GenericStringifiedSignedOrders
+> {
+    addOrdersV4: StringifiedAddOrdersResults<T, K>;
 }
 
 export interface OrderResponse {
     order: StringifiedOrderWithMetadata | null;
 }
 
+export interface OrderResponseV4 {
+    orderv4: StringifiedOrderWithMetadataV4 | null;
+}
+
 export interface OrdersResponse {
     orders: StringifiedOrderWithMetadata[];
+}
+
+export interface OrdersResponseV4 {
+    ordersv4: StringifiedOrderWithMetadataV4[];
 }
 
 export interface OrderEventResponse {
@@ -38,8 +62,11 @@ export interface Stats {
     latestBlock: LatestBlock;
     numPeers: number;
     numOrders: number;
+    numOrdersV4: number;
     numOrdersIncludingRemoved: number;
+    numOrdersIncludingRemovedV4: number;
     numPinnedOrders: number;
+    numPinnedOrdersV4: number;
     maxExpirationTime: BigNumber;
     startOfCurrentUTCDay: Date;
     ethRPCRequestsSentInCurrentUTCDay: number;
@@ -56,28 +83,38 @@ export interface OrderWithMetadata extends SignedOrder {
     fillableTakerAssetAmount: BigNumber;
 }
 
-export interface AddOrdersResults {
-    // The set of orders that were accepted. Accepted orders will be watched and order events will be emitted if
-    // their status changes.
-    accepted: AcceptedOrderResult[];
-    // The set of orders that were rejected, including the reason they were rejected. Rejected orders will not be
-    // watched.
-    rejected: RejectedOrderResult[];
+export type OrderV4 = LimitOrderFields;
+export type SignedOrderV4 = OrderV4 & { signature: Signature };
+
+export interface OrderWithMetadataV4 extends SignedOrderV4 {
+    hash: string;
+    fillableTakerAssetAmount: BigNumber;
 }
 
-export interface AcceptedOrderResult {
+export interface AddOrdersResults<T extends GenericOrderWithMetadata, K extends GenericSignedOrder> {
+    // The set of orders that were accepted. Accepted orders will be watched and order events will be emitted if
+    // their status changes.
+    accepted: AcceptedOrderResult<T>[];
+    // The set of orders that were rejected, including the reason they were rejected. Rejected orders will not be
+    // watched.
+    rejected: RejectedOrderResult<K>[];
+}
+
+export interface AcceptedOrderResult<T extends GenericOrderWithMetadata> {
     // The order that was accepted, including metadata.
-    order: OrderWithMetadata;
+    // OrderWithMetadata
+    order: T;
     // Whether or not the order is new. Set to true if this is the first time this Mesh node has accepted the order
     // and false otherwise.
     isNew: boolean;
 }
 
-export interface RejectedOrderResult {
+export interface RejectedOrderResult<K extends GenericSignedOrder> {
     // The hash of the order. May be null if the hash could not be computed.
     hash?: string;
     // The order that was rejected.
-    order: SignedOrder;
+    // SIgnedOrder
+    order: K;
     // A machine-readable code indicating why the order was rejected. This code is designed to
     // be used by programs and applications and will never change without breaking backwards-compatibility.
     code: RejectedOrderCode;
@@ -112,7 +149,8 @@ export enum RejectedOrderCode {
 
 export interface OrderEvent {
     timestampMs: number;
-    order: OrderWithMetadata;
+    order?: OrderWithMetadata;
+    orderv4?: OrderWithMetadataV4;
     endState: OrderEventEndState;
     contractEvents: ContractEvent[];
 }
@@ -157,6 +195,8 @@ export enum OrderEventEndState {
     Cancelled = 'CANCELLED',
     // The order expired and is no longer fillable.
     Expired = 'EXPIRED',
+    // Catch all 'Invalid' state when invalid orders are submitted.
+    Invalid = 'INVALID',
     // The order was previously expired, but due to a block re-org it is no longer considered expired (should be rare).
     Unexpired = 'UNEXPIRED',
     // The order has become unfunded and is no longer fillable. This can happen if the maker makes a transfer or changes their allowance.
@@ -219,8 +259,11 @@ export interface StringifiedStats {
     latestBlock: StringifiedLatestBlock;
     numPeers: number;
     numOrders: number;
+    numOrdersV4: number;
     numOrdersIncludingRemoved: number;
+    numOrdersIncludingRemovedV4: number;
     numPinnedOrders: number;
+    numPinnedOrdersV4: number;
     maxExpirationTime: string;
     startOfCurrentUTCDay: string;
     ethRPCRequestsSentInCurrentUTCDay: number;
@@ -247,31 +290,60 @@ export interface StringifiedSignedOrder {
     signature: string;
 }
 
+export interface StringifiedSignedOrderV4 {
+    chainId: string;
+    verifyingContract: string;
+    makerToken: string;
+    takerToken: string;
+    makerAmount: string;
+    takerAmount: string;
+    takerTokenFeeAmount: string;
+    maker: string;
+    taker: string;
+    sender: string;
+    feeRecipient: string;
+    pool: string;
+    expiry: string;
+    salt: string;
+    signatureType: string;
+    signatureR: string;
+    signatureS: string;
+    signatureV: string;
+}
+export interface StringifiedOrderWithMetadataV4 extends StringifiedSignedOrderV4 {
+    hash: string;
+    fillableTakerAssetAmount: string;
+}
+
 export interface StringifiedOrderWithMetadata extends StringifiedSignedOrder {
     hash: string;
     fillableTakerAssetAmount: string;
 }
 
-export interface StringifiedAddOrdersResults {
-    accepted: StringifiedAcceptedOrderResult[];
-    rejected: StringifiedRejectedOrderResult[];
+export interface StringifiedAddOrdersResults<
+    T extends GenericStringifiedOrderWithMetadata,
+    K extends GenericStringifiedSignedOrders
+> {
+    accepted: StringifiedAcceptedOrderResult<T>[];
+    rejected: StringifiedRejectedOrderResult<K>[];
 }
 
-export interface StringifiedAcceptedOrderResult {
-    order: StringifiedOrderWithMetadata;
+export interface StringifiedAcceptedOrderResult<T extends GenericStringifiedOrderWithMetadata> {
+    order: T;
     isNew: boolean;
 }
 
-export interface StringifiedRejectedOrderResult {
+export interface StringifiedRejectedOrderResult<K extends GenericStringifiedSignedOrders> {
     hash?: string;
-    order: StringifiedSignedOrder;
+    order: K;
     code: RejectedOrderCode;
     message: string;
 }
 
 export interface StringifiedOrderEvent {
     timestamp: string;
-    order: StringifiedOrderWithMetadata;
+    order: StringifiedOrderWithMetadata | null;
+    orderv4: StringifiedOrderWithMetadataV4 | null;
     endState: OrderEventEndState;
     fillableTakerAssetAmount: BigNumber;
     contractEvents: ContractEvent[];
@@ -316,6 +388,27 @@ export function toStringifiedSignedOrder(order: SignedOrder): StringifiedSignedO
 }
 
 /**
+ * Converts SignedOrderV4 to StringifiedSignedOrderV4
+ */
+export function toStringifiedSignedOrderV4(order: SignedOrderV4): StringifiedSignedOrderV4 {
+    const stringifiedOrder: any = {
+        ...order,
+        chainId: order.chainId.toString(),
+        makerAmount: order.makerAmount.toString(),
+        takerAmount: order.takerAmount.toString(),
+        takerTokenFeeAmount: order.takerTokenFeeAmount.toString(),
+        expiry: order.expiry.toString(),
+        salt: order.salt.toString(),
+        signatureType: order.signature.signatureType.toString(),
+        signatureV: order.signature.v.toString(),
+        signatureR: order.signature.r.toString(),
+        signatureS: order.signature.s.toString(),
+    };
+    delete stringifiedOrder.signature;
+    return stringifiedOrder;
+}
+
+/**
  * Converts StringifiedOrderWithMetadata to OrderWithMetadata
  */
 export function fromStringifiedOrderWithMetadata(order: StringifiedOrderWithMetadata): OrderWithMetadata {
@@ -330,6 +423,32 @@ export function fromStringifiedOrderWithMetadata(order: StringifiedOrderWithMeta
         expirationTimeSeconds: new BigNumber(order.expirationTimeSeconds),
         salt: new BigNumber(order.salt),
         fillableTakerAssetAmount: new BigNumber(order.fillableTakerAssetAmount),
+    };
+}
+
+/**
+ * Converts StringifiedOrderWithMetadata to OrderWithMetadata
+ */
+export function fromStringifiedOrderWithMetadataV4(order: StringifiedOrderWithMetadataV4): OrderWithMetadataV4 {
+    const { signatureType, signatureV, signatureR, signatureS, ...orderRest } = order;
+    return {
+        ...orderRest,
+        // tslint:disable-next-line: custom-no-magic-numbers
+        chainId: Number.parseInt(order.chainId, 10),
+        makerAmount: new BigNumber(order.makerAmount),
+        takerAmount: new BigNumber(order.takerAmount),
+        takerTokenFeeAmount: new BigNumber(order.takerTokenFeeAmount),
+        expiry: new BigNumber(order.expiry),
+        fillableTakerAssetAmount: new BigNumber(order.fillableTakerAssetAmount),
+        signature: {
+            // tslint:disable-next-line: custom-no-magic-numbers
+            signatureType: parseInt(signatureType, 10),
+            // tslint:disable-next-line: custom-no-magic-numbers
+            v: parseInt(signatureV, 10),
+            r: signatureR,
+            s: signatureS,
+        },
+        salt: new BigNumber(order.salt),
     };
 }
 
@@ -351,9 +470,33 @@ export function fromStringifiedSignedOrder(order: StringifiedSignedOrder): Signe
 }
 
 /**
+ * Converts StringifiedSignedOrderV4 to SignedOrderV4
+ */
+export function fromStringifiedSignedOrderV4(order: StringifiedSignedOrderV4): SignedOrderV4 {
+    return {
+        ...order,
+        // tslint:disable-next-line: custom-no-magic-numbers
+        chainId: Number.parseInt(order.chainId, 10),
+        makerAmount: new BigNumber(order.makerAmount),
+        takerAmount: new BigNumber(order.takerAmount),
+        takerTokenFeeAmount: new BigNumber(order.takerTokenFeeAmount),
+        expiry: new BigNumber(order.expiry),
+        signature: {
+            signatureType: parseInt(order.signatureType),
+            v: parseInt(order.signatureV),
+            r: order.signatureR,
+            s: order.signatureS,
+        },
+        salt: new BigNumber(order.salt),
+    };
+}
+
+/**
  * Converts StringifiedAddOrdersResults to AddOrdersResults
  */
-export function fromStringifiedAddOrdersResults(results: StringifiedAddOrdersResults): AddOrdersResults {
+export function fromStringifiedAddOrdersResults(
+    results: StringifiedAddOrdersResults<StringifiedOrderWithMetadata, StringifiedSignedOrder>,
+): AddOrdersResults<OrderWithMetadata, SignedOrder> {
     return {
         accepted: results.accepted.map(fromStringifiedAcceptedOrderResult),
         rejected: results.rejected.map(fromStringifiedRejectedOrderResult),
@@ -361,11 +504,23 @@ export function fromStringifiedAddOrdersResults(results: StringifiedAddOrdersRes
 }
 
 /**
+ * Converts StringifiedAddOrdersResults to AddOrdersResults
+ */
+export function fromStringifiedAddOrdersResultsV4(
+    results: StringifiedAddOrdersResults<StringifiedOrderWithMetadataV4, StringifiedSignedOrderV4>,
+): AddOrdersResults<OrderWithMetadataV4, SignedOrderV4> {
+    return {
+        accepted: results.accepted.map(fromStringifiedAcceptedOrderResultV4),
+        rejected: results.rejected.map(fromStringifiedRejectedOrderResultV4),
+    };
+}
+
+/**
  * Converts StringifiedAcceptedOrderResult to AcceptedOrderResult
  */
 export function fromStringifiedAcceptedOrderResult(
-    acceptedResult: StringifiedAcceptedOrderResult,
-): AcceptedOrderResult {
+    acceptedResult: StringifiedAcceptedOrderResult<StringifiedOrderWithMetadata>,
+): AcceptedOrderResult<OrderWithMetadata> {
     return {
         ...acceptedResult,
         order: fromStringifiedOrderWithMetadata(acceptedResult.order),
@@ -373,14 +528,38 @@ export function fromStringifiedAcceptedOrderResult(
 }
 
 /**
+ * Converts StringifiedAcceptedOrderResult to AcceptedOrderResult
+ */
+export function fromStringifiedAcceptedOrderResultV4(
+    acceptedResult: StringifiedAcceptedOrderResult<StringifiedOrderWithMetadataV4>,
+): AcceptedOrderResult<OrderWithMetadataV4> {
+    return {
+        ...acceptedResult,
+        order: fromStringifiedOrderWithMetadataV4(acceptedResult.order),
+    };
+}
+
+/**
  * Converts StringifiedRejectedOrderResult to RejectedOrderResult
  */
 export function fromStringifiedRejectedOrderResult(
-    rejectedResult: StringifiedRejectedOrderResult,
-): RejectedOrderResult {
+    rejectedResult: StringifiedRejectedOrderResult<StringifiedSignedOrder>,
+): RejectedOrderResult<SignedOrder> {
     return {
         ...rejectedResult,
         order: fromStringifiedSignedOrder(rejectedResult.order),
+    };
+}
+
+/**
+ * Converts StringifiedRejectedOrderResultV4 to RejectedOrderResultV4
+ */
+export function fromStringifiedRejectedOrderResultV4(
+    rejectedResult: StringifiedRejectedOrderResult<StringifiedSignedOrderV4>,
+): RejectedOrderResult<SignedOrderV4> {
+    return {
+        ...rejectedResult,
+        order: fromStringifiedSignedOrderV4(rejectedResult.order),
     };
 }
 
@@ -391,7 +570,8 @@ export function fromStringifiedOrderEvent(event: StringifiedOrderEvent): OrderEv
     return {
         ...event,
         timestampMs: new Date(event.timestamp).getUTCMilliseconds(),
-        order: fromStringifiedOrderWithMetadata(event.order),
+        order: event.order ? fromStringifiedOrderWithMetadata(event.order) : undefined,
+        orderv4: event.orderv4 ? fromStringifiedOrderWithMetadataV4(event.orderv4) : undefined,
     };
 }
 
