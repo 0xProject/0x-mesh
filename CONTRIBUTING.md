@@ -63,8 +63,7 @@ changing any Go code will require running `yarn build` at the root of the projec
 Some of the tests depend on having a test Ethereum node running. Before running
 the tests, make sure you have [Docker](https://docs.docker.com/install/)
 installed locally and start
-[0xorg/ganache-cli](https://hub.docker.com/r/0xorg/ganache-cli) with the appropriate [snapshot version](https://github.com/0xProject/protocol/blob/development/packages/migrations/README.md#publish
-) passed in the `VERSION` environment variable. The snapshot version that is used in the mesh project's
+[0xorg/ganache-cli](https://hub.docker.com/r/0xorg/ganache-cli) with the appropriate [snapshot version](https://github.com/0xProject/protocol/blob/development/packages/migrations/README.md#publish) passed in the `VERSION` environment variable. The snapshot version that is used in the mesh project's
 CI can be found [here](https://github.com/0xProject/0x-mesh/blob/development/.circleci/config.yml#L10)
 
 ```
@@ -182,7 +181,6 @@ TSLint configurations for most popular text editors can be found
 [here](https://palantir.github.io/tslint/usage/third-party-tools/).
 
 ### Updating the Go contract wrappers
-
 
 **Installing abi-gen:**
 

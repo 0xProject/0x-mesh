@@ -22,8 +22,8 @@
         "webpack-cli": "^3.3.7"
     },
     "dependencies": {
-        "@0x/mesh-browser": "^10.2.2",
-        "@0x/mesh-graphql-client": "^10.2.2",
+        "@0x/mesh-browser": "^11.0.0",
+        "@0x/mesh-graphql-client": "^11.0.0",
         "@0x/order-utils": "^10.0.1",
         "@0x/subproviders": "^6.0.2",
         "@0x/utils": "^6.2.0"

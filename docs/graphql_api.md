@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-10.2.2-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
+[![Version](https://img.shields.io/badge/version-11.0.0-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 
 # 0x Mesh GraphQL API Documentation
 
