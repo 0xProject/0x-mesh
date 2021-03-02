@@ -195,7 +195,7 @@ func ConvertRejectOrderCodeToOrderEventEndState(rejectedOrderStatus RejectedOrde
 		return zeroex.ESOrderBecameUnfunded, true
 	default:
 		// Catch-all returns Invalid OrderEventEndState
-		log.WithField("rejectedOrderStatus", string(rejectedOrderStatus)).Info("Unexpected RejectedOrderStatus")
+		log.WithField("rejectedOrderStatus", rejectedOrderStatus.Message).Info("Unexpected RejectedOrderStatus")
 		return zeroex.ESInvalid, false
 	}
 }
