@@ -1,11 +1,11 @@
 import { Mesh } from '@0x/mesh-browser-lite';
+import { StringifiedSignedOrder } from '@0x/mesh-browser-lite/lib/types';
 import { SignedOrder } from '@0x/types';
 import { from, HttpLink, split } from '@apollo/client';
 import {
     ApolloClient,
     ApolloQueryResult,
     FetchResult,
-    gql,
     InMemoryCache,
     NormalizedCacheObject,
     OperationVariables,
@@ -21,23 +21,44 @@ import * as Observable from 'zen-observable';
 
 import { BrowserLink } from './browser_link';
 import {
+    addOrdersMutation,
+    addOrdersMutationV4,
+    orderEventsSubscription,
+    orderQuery,
+    orderQueryV4,
+    ordersQuery,
+    ordersQueryV4,
+    statsQuery,
+} from './queries';
+import {
     AddOrdersOpts,
     AddOrdersResponse,
+    AddOrdersResponseV4,
     AddOrdersResults,
     convertFilterValue,
     fromStringifiedAddOrdersResults,
+    fromStringifiedAddOrdersResultsV4,
     fromStringifiedOrderEvent,
     fromStringifiedOrderWithMetadata,
+    fromStringifiedOrderWithMetadataV4,
     fromStringifiedStats,
     OrderEvent,
     OrderEventResponse,
     OrderQuery,
     OrderResponse,
+    OrderResponseV4,
     OrdersResponse,
+    OrdersResponseV4,
     OrderWithMetadata,
+    OrderWithMetadataV4,
+    SignedOrderV4,
     Stats,
     StatsResponse,
+    StringifiedOrderWithMetadata,
+    StringifiedOrderWithMetadataV4,
+    StringifiedSignedOrderV4,
     toStringifiedSignedOrder,
+    toStringifiedSignedOrderV4,
 } from './types';
 
 export {
@@ -53,191 +74,15 @@ export {
     SortDirection,
     OrderEventEndState,
     RejectedOrderCode,
+    OrderWithMetadataV4,
+    AcceptedOrderResult,
+    RejectedOrderResult,
 } from './types';
 export { SignedOrder } from '@0x/types';
 export { ApolloQueryResult, QueryOptions } from '@apollo/client/core';
 export { Observable };
 
 const defaultOrderQueryLimit = 100;
-
-const statsQuery = gql`
-    query Stats {
-        stats {
-            version
-            pubSubTopic
-            rendezvous
-            peerID
-            ethereumChainID
-            latestBlock {
-                number
-                hash
-            }
-            numPeers
-            numOrders
-            numOrdersIncludingRemoved
-            startOfCurrentUTCDay
-            ethRPCRequestsSentInCurrentUTCDay
-            ethRPCRateLimitExpiredRequests
-            maxExpirationTime
-        }
-    }
-`;
-
-const addOrdersMutation = gql`
-    mutation AddOrders(
-        $orders: [NewOrder!]!
-        $pinned: Boolean = true
-        $opts: AddOrdersOpts = { keepCancelled: false, keepExpired: false, keepFullyFilled: false, keepUnfunded: false }
-    ) {
-        addOrders(orders: $orders, pinned: $pinned, opts: $opts) {
-            accepted {
-                order {
-                    hash
-                    chainId
-                    exchangeAddress
-                    makerAddress
-                    makerAssetData
-                    makerAssetAmount
-                    makerFeeAssetData
-                    makerFee
-                    takerAddress
-                    takerAssetData
-                    takerAssetAmount
-                    takerFeeAssetData
-                    takerFee
-                    senderAddress
-                    feeRecipientAddress
-                    expirationTimeSeconds
-                    salt
-                    signature
-                    fillableTakerAssetAmount
-                }
-                isNew
-            }
-            rejected {
-                hash
-                code
-                message
-                order {
-                    chainId
-                    exchangeAddress
-                    makerAddress
-                    makerAssetData
-                    makerAssetAmount
-                    makerFeeAssetData
-                    makerFee
-                    takerAddress
-                    takerAssetData
-                    takerAssetAmount
-                    takerFeeAssetData
-                    takerFee
-                    senderAddress
-                    feeRecipientAddress
-                    expirationTimeSeconds
-                    salt
-                    signature
-                }
-            }
-        }
-    }
-`;
-
-const orderQuery = gql`
-    query Order($hash: String!) {
-        order(hash: $hash) {
-            hash
-            chainId
-            exchangeAddress
-            makerAddress
-            makerAssetData
-            makerAssetAmount
-            makerFeeAssetData
-            makerFee
-            takerAddress
-            takerAssetData
-            takerAssetAmount
-            takerFeeAssetData
-            takerFee
-            senderAddress
-            feeRecipientAddress
-            expirationTimeSeconds
-            salt
-            signature
-            fillableTakerAssetAmount
-        }
-    }
-`;
-
-const ordersQuery = gql`
-    query Orders(
-        $filters: [OrderFilter!] = []
-        $sort: [OrderSort!] = [{ field: hash, direction: ASC }]
-        $limit: Int = 100
-    ) {
-        orders(filters: $filters, sort: $sort, limit: $limit) {
-            hash
-            chainId
-            exchangeAddress
-            makerAddress
-            makerAssetData
-            makerAssetAmount
-            makerFeeAssetData
-            makerFee
-            takerAddress
-            takerAssetData
-            takerAssetAmount
-            takerFeeAssetData
-            takerFee
-            senderAddress
-            feeRecipientAddress
-            expirationTimeSeconds
-            salt
-            signature
-            fillableTakerAssetAmount
-        }
-    }
-`;
-
-const orderEventsSubscription = gql`
-    subscription {
-        orderEvents {
-            timestamp
-            endState
-            order {
-                hash
-                chainId
-                exchangeAddress
-                makerAddress
-                makerAssetData
-                makerAssetAmount
-                makerFeeAssetData
-                makerFee
-                takerAddress
-                takerAssetData
-                takerAssetAmount
-                takerFeeAssetData
-                takerFee
-                senderAddress
-                feeRecipientAddress
-                expirationTimeSeconds
-                salt
-                signature
-                fillableTakerAssetAmount
-            }
-            contractEvents {
-                blockHash
-                txHash
-                txIndex
-                logIndex
-                isRemoved
-                address
-                kind
-                parameters
-            }
-        }
-    }
-`;
-
 export interface LinkConfig {
     httpUrl?: string;
     webSocketUrl?: string;
@@ -248,6 +93,7 @@ export class MeshGraphQLClient {
     // NOTE(jalextowle): BrowserLink doesn't support subscriptions at this time.
     private readonly _subscriptionClient?: SubscriptionClient;
     private readonly _client: ApolloClient<NormalizedCacheObject>;
+    private readonly _onReconnectedCallbacks: (() => void)[] = [];
     constructor(linkConfig: LinkConfig) {
         let link: ApolloLink;
         if (linkConfig.httpUrl && linkConfig.webSocketUrl) {
@@ -265,12 +111,23 @@ export class MeshGraphQLClient {
             const wsSubClient = new SubscriptionClient(
                 linkConfig.webSocketUrl,
                 {
-                    reconnect: false,
+                    reconnect: true,
                 },
                 // Use ws in Node.js and native WebSocket in browsers.
                 (process as any).browser ? undefined : ws,
             );
             const wsLink = new WebSocketLink(wsSubClient);
+
+            // HACK(kimpers): See https://github.com/apollographql/apollo-client/issues/5115#issuecomment-572318778
+            // @ts-ignore at the time of writing the field is private and untyped
+            const subscriptionClient = wsLink.subscriptionClient as SubscriptionClient;
+
+            subscriptionClient.onReconnected(() => {
+                for (const cb of this._onReconnectedCallbacks) {
+                    cb();
+                }
+            });
+
             const splitLink = split(
                 ({ query }) => {
                     const definition = getMainDefinition(query);
@@ -301,6 +158,7 @@ export class MeshGraphQLClient {
         }
         this._client = new ApolloClient({
             cache: new InMemoryCache({
+                resultCaching: false,
                 // This custom merge function is required for our orderEvents subscription.
                 // See https://www.apollographql.com/docs/react/caching/cache-field-behavior/#the-merge-function
                 typePolicies: {
@@ -336,8 +194,11 @@ export class MeshGraphQLClient {
         orders: SignedOrder[],
         pinned: boolean = true,
         opts?: AddOrdersOpts,
-    ): Promise<AddOrdersResults> {
-        const resp: FetchResult<AddOrdersResponse> = await this._client.mutate({
+    ): Promise<AddOrdersResults<OrderWithMetadata, SignedOrder>> {
+        const resp: FetchResult<AddOrdersResponse<
+            StringifiedOrderWithMetadata,
+            StringifiedSignedOrder
+        >> = await this._client.mutate({
             mutation: addOrdersMutation,
             variables: {
                 orders: orders.map(toStringifiedSignedOrder),
@@ -358,6 +219,37 @@ export class MeshGraphQLClient {
         return fromStringifiedAddOrdersResults(results);
     }
 
+    public async addOrdersV4Async(
+        orders: SignedOrderV4[],
+        pinned: boolean = true,
+        opts?: AddOrdersOpts,
+    ): Promise<AddOrdersResults<OrderWithMetadataV4, SignedOrderV4>> {
+        const resp: FetchResult<AddOrdersResponseV4<
+            StringifiedOrderWithMetadataV4,
+            StringifiedSignedOrderV4
+        >> = await this._client.mutate({
+            mutation: addOrdersMutationV4,
+            variables: {
+                orders: orders.map(toStringifiedSignedOrderV4),
+                pinned,
+                opts: {
+                    keepCancelled: false,
+                    keepExpired: false,
+                    keepFullyFilled: false,
+                    keepUnfunded: false,
+                    ...opts,
+                },
+            },
+        });
+        if (resp.data == null) {
+            throw new Error('received no data');
+        }
+
+        const results = resp.data.addOrdersV4;
+
+        return fromStringifiedAddOrdersResultsV4(results);
+    }
+
     public async getOrderAsync(hash: string): Promise<OrderWithMetadata | null> {
         const resp: ApolloQueryResult<OrderResponse> = await this._client.query({
             query: orderQuery,
@@ -372,6 +264,22 @@ export class MeshGraphQLClient {
             return null;
         }
         return fromStringifiedOrderWithMetadata(resp.data.order);
+    }
+
+    public async getOrderV4Async(hash: string): Promise<OrderWithMetadataV4 | null> {
+        const resp: ApolloQueryResult<OrderResponseV4> = await this._client.query({
+            query: orderQueryV4,
+            variables: {
+                hash,
+            },
+        });
+        if (resp.data == null) {
+            throw new Error('received no data');
+        }
+        if (resp.data.orderv4 == null) {
+            return null;
+        }
+        return fromStringifiedOrderWithMetadataV4(resp.data.orderv4);
     }
 
     public async findOrdersAsync(
@@ -391,6 +299,27 @@ export class MeshGraphQLClient {
         return resp.data.orders.map(fromStringifiedOrderWithMetadata);
     }
 
+    public async findOrdersV4Async(
+        query: OrderQuery = { sort: [], filters: [], limit: defaultOrderQueryLimit },
+    ): Promise<OrderWithMetadataV4[]> {
+        const resp: ApolloQueryResult<OrdersResponseV4> = await this._client.query({
+            query: ordersQueryV4,
+            variables: {
+                sort: query.sort || [],
+                filters: query.filters?.map(convertFilterValue) || [],
+                limit: query.limit || defaultOrderQueryLimit,
+            },
+        });
+        if (resp.data == null) {
+            throw new Error('received no data');
+        }
+        return resp.data.ordersv4.map(fromStringifiedOrderWithMetadataV4);
+    }
+
+    public onReconnected(cb: () => void): void {
+        this._onReconnectedCallbacks.push(cb);
+    }
+
     public onOrderEvents(): Observable<OrderEvent[]> {
         if (this._subscriptionClient !== undefined) {
             // NOTE(jalextowle): We must use a variable here because Typescript
@@ -406,6 +335,7 @@ export class MeshGraphQLClient {
             //    do this, Apollo Client just ignores them completely and acts like everything is fine :(
             //
             const incomingObservable = this._client.subscribe({
+                fetchPolicy: 'no-cache',
                 query: orderEventsSubscription,
             }) as Observable<FetchResult<OrderEventResponse>>;
             const outgoingObservable = new Observable<OrderEvent[]>((observer) => {

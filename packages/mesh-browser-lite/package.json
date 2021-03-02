@@ -1,6 +1,6 @@
 {
     "name": "@0x/mesh-browser-lite",
-    "version": "10.2.2",
+    "version": "11.0.0",
     "description": "TypeScript and JavaScript bindings for running Mesh directly in the browser. To use this packages, you must use your own copy of the Mesh WebAssembly Binary",
     "main": "./lib/index.js",
     "license": "Apache-2.0",
@@ -22,7 +22,7 @@
     },
     "dependencies": {
         "@0x/order-utils": "^10.2.0",
-        "@0x/utils": "^5.4.0",
+        "@0x/utils": "^6.2.0",
         "ajv": "^6.12.5",
         "dexie": "^3.0.1",
         "ethereum-types": "^3.0.0"

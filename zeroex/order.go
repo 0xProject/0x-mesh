@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	gethsigner "github.com/ethereum/go-ethereum/signer/core"
-	"golang.org/x/crypto/sha3"
 )
 
 // Order represents an unsigned 0x order
@@ -131,6 +130,8 @@ type OrderEvent struct {
 	OrderHash common.Hash `json:"orderHash"`
 	// SignedOrder is the signed 0x order struct
 	SignedOrder *SignedOrder `json:"signedOrder"`
+	// SignedOrder is the signed 0x order struct
+	SignedOrderV4 *SignedOrderV4 `json:"signedOrderV4"`
 	// EndState is the end state of this order at the time this event was generated
 	EndState OrderEventEndState `json:"endState"`
 	// FillableTakerAssetAmount is the amount for which this order is still fillable
@@ -145,6 +146,7 @@ type orderEventJSON struct {
 	Timestamp                time.Time            `json:"timestamp"`
 	OrderHash                string               `json:"orderHash"`
 	SignedOrder              *SignedOrder         `json:"signedOrder"`
+	SignedOrderV4            *SignedOrderV4       `json:"signedOrderV4"`
 	EndState                 string               `json:"endState"`
 	FillableTakerAssetAmount string               `json:"fillableTakerAssetAmount"`
 	ContractEvents           []*contractEventJSON `json:"contractEvents"`
@@ -156,6 +158,7 @@ func (o OrderEvent) MarshalJSON() ([]byte, error) {
 		"timestamp":                o.Timestamp,
 		"orderHash":                o.OrderHash.Hex(),
 		"signedOrder":              o.SignedOrder,
+		"signedOrderV4":            o.SignedOrderV4,
 		"endState":                 o.EndState,
 		"fillableTakerAssetAmount": o.FillableTakerAssetAmount.String(),
 		"contractEvents":           o.ContractEvents,
@@ -176,6 +179,7 @@ func (o *OrderEvent) fromOrderEventJSON(orderEventJSON orderEventJSON) error {
 	o.Timestamp = orderEventJSON.Timestamp
 	o.OrderHash = common.HexToHash(orderEventJSON.OrderHash)
 	o.SignedOrder = orderEventJSON.SignedOrder
+	o.SignedOrderV4 = orderEventJSON.SignedOrderV4
 	o.EndState = OrderEventEndState(orderEventJSON.EndState)
 	var ok bool
 	o.FillableTakerAssetAmount, ok = math.ParseBig256(orderEventJSON.FillableTakerAssetAmount)
@@ -659,13 +663,4 @@ func (s *SignedOrder) UnmarshalJSON(data []byte) error {
 	}
 	s.Signature = common.FromHex(signedOrderJSON.Signature)
 	return nil
-}
-
-// keccak256 calculates and returns the Keccak256 hash of the input data.
-func keccak256(data ...[]byte) []byte {
-	d := sha3.NewLegacyKeccak256()
-	for _, b := range data {
-		_, _ = d.Write(b)
-	}
-	return d.Sum(nil)
 }

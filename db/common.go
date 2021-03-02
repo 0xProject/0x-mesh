@@ -29,9 +29,11 @@ var (
 
 type Database interface {
 	AddOrders(orders []*types.OrderWithMetadata) (alreadyStored []common.Hash, added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error)
+	AddOrdersV4(orders []*types.OrderWithMetadata) (alreadyStored []common.Hash, added []*types.OrderWithMetadata, removed []*types.OrderWithMetadata, err error)
 	GetOrder(hash common.Hash) (*types.OrderWithMetadata, error)
 	GetOrderStatuses(hashes []common.Hash) (statuses []*StoredOrderStatus, err error)
 	FindOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
+	FindOrdersV4(opts *OrderQueryV4) ([]*types.OrderWithMetadata, error)
 	CountOrders(opts *OrderQuery) (int, error)
 	DeleteOrder(hash common.Hash) error
 	DeleteOrders(opts *OrderQuery) ([]*types.OrderWithMetadata, error)
@@ -289,10 +291,50 @@ func (db *DB) GetCurrentMaxExpirationTime() (*big.Int, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(ordersWithLongestExpirationTime) == 0 {
-		return constants.UnlimitedExpirationTime, nil
+
+	ordersWithLongestExpirationTimeV4, err := db.FindOrdersV4(&OrderQueryV4{
+		Filters: []OrderFilterV4{
+			{
+				Field: OV4FIsPinned,
+				Kind:  Equal,
+				Value: false,
+			},
+		},
+		Sort: []OrderSortV4{
+			{
+				Field:     OV4FExpiry,
+				Direction: Descending,
+			},
+		},
+		Limit: 1,
+	})
+	if err != nil {
+		return nil, err
 	}
-	return ordersWithLongestExpirationTime[0].ExpirationTimeSeconds, nil
+
+	emptyOrdersV3 := len(ordersWithLongestExpirationTime) == 0
+	emptyOrdersV4 := len(ordersWithLongestExpirationTimeV4) == 0
+
+	if emptyOrdersV3 {
+		if emptyOrdersV4 {
+			return constants.UnlimitedExpirationTime, nil
+		} else {
+			return ordersWithLongestExpirationTimeV4[0].OrderV4.Expiry, nil
+		}
+	} else {
+		if emptyOrdersV4 {
+			return ordersWithLongestExpirationTime[0].OrderV3.ExpirationTimeSeconds, nil
+		}
+	}
+
+	longestExpirationOrderV3 := ordersWithLongestExpirationTime[0].OrderV3.ExpirationTimeSeconds
+	longestExpirationOrderV4 := ordersWithLongestExpirationTimeV4[0].OrderV4.Expiry
+
+	if longestExpirationOrderV3.Cmp(longestExpirationOrderV4) == 1 {
+		return longestExpirationOrderV3, nil
+	}
+
+	return longestExpirationOrderV4, nil
 }
 
 func ParseContractAddressesAndTokenIdsFromAssetData(assetDataDecoder *zeroex.AssetDataDecoder, assetData []byte, contractAddresses ethereum.ContractAddresses) ([]*types.SingleAssetData, error) {

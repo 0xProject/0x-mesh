@@ -1,7 +1,16 @@
 import { getContractAddressesForChainOrThrow } from '@0x/contract-addresses';
 import { DummyERC20TokenContract } from '@0x/contracts-erc20';
 import { ExchangeContract } from '@0x/contracts-exchange';
-import { blockchainTests, constants, expect, OrderFactory, orderHashUtils } from '@0x/contracts-test-utils';
+import {
+    blockchainTests,
+    constants,
+    expect,
+    OrderFactory,
+    orderHashUtils,
+    randomAddress,
+    getRandomInteger,
+} from '@0x/contracts-test-utils';
+import { LimitOrder, LimitOrderFields, Signature } from '@0x/protocol-utils';
 import { BlockchainLifecycle, Web3Config, web3Factory } from '@0x/dev-utils';
 import { assetDataUtils } from '@0x/order-utils';
 import { Web3ProviderEngine } from '@0x/subproviders';
@@ -13,6 +22,7 @@ import 'mocha';
 
 import {
     FilterKind,
+    MeshGraphQLClient,
     OrderEvent,
     OrderEventEndState,
     OrderWithMetadata,
@@ -20,7 +30,31 @@ import {
     SortDirection,
 } from '../src/index';
 
+const exchangeProxyV4Address = '0x5315e44798395d4a952530d131249fe00f554565';
+
+function getRandomLimitOrder(fields: Partial<LimitOrderFields> = {}): LimitOrder {
+    return new LimitOrder({
+        chainId: 1,
+        verifyingContract: exchangeProxyV4Address,
+        makerToken: '0x34d402f14d58e001d8efbe6585051bf9706aa064',
+        takerToken: '0xcdb594a32b1cc3479d8746279712c39d18a07fc0',
+        makerAmount: new BigNumber(100),
+        takerAmount: new BigNumber(42),
+        takerTokenFeeAmount: new BigNumber(0),
+        maker: '0x6ecbe1db9ef729cbe972c83fb886247691fb6beb',
+        taker: '0x0000000000000000000000000000000000000000',
+        sender: '0x0000000000000000000000000000000000000000',
+        feeRecipient: '0x0000000000000000000000000000000000000000',
+        pool: '0x0000000000000000000000000000000000000000',
+        expiry: new BigNumber(Math.floor(Date.now() / 1000 + 60)),
+        salt: getRandomInteger('1e5', '1e6'),
+        ...fields,
+    });
+}
+
 import { MeshDeployment, startServerAndClientAsync } from './utils/graphql_server';
+import { SignedOrderV4 } from '../src/types';
+import { client } from 'websocket';
 
 blockchainTests.resets('GraphQLClient', (env) => {
     describe('integration tests', () => {
@@ -30,6 +64,8 @@ blockchainTests.resets('GraphQLClient', (env) => {
         let makerAddress: string;
         let orderFactory: OrderFactory;
         let provider: Web3ProviderEngine;
+        let makerTokenAddress: string;
+        let feeTokenAddress: string;
 
         beforeEach(async () => {
             deployment = await startServerAndClientAsync();
@@ -80,6 +116,17 @@ blockchainTests.resets('GraphQLClient', (env) => {
             await feeToken
                 .approve(erc20ProxyAddress, new BigNumber('100e18'))
                 .awaitTransactionSuccessAsync({ from: makerAddress });
+            // tslint:disable-next-line: await-promise
+            await makerToken
+                .approve('0x5315e44798395d4a952530d131249fe00f554565', new BigNumber('100e18'))
+                .awaitTransactionSuccessAsync({ from: makerAddress });
+            // tslint:disable-next-line: await-promise
+            await feeToken
+                .approve('0x5315e44798395d4a952530d131249fe00f554565', new BigNumber('100e18'))
+                .awaitTransactionSuccessAsync({ from: makerAddress });
+
+            makerTokenAddress = makerToken.address;
+            feeTokenAddress = feeToken.address;
             orderFactory = new OrderFactory(constants.TESTRPC_PRIVATE_KEYS[accounts.indexOf(makerAddress)], {
                 ...constants.STATIC_ORDER_PARAMS,
                 feeRecipientAddress: constants.NULL_ADDRESS,
@@ -93,6 +140,132 @@ blockchainTests.resets('GraphQLClient', (env) => {
             });
         });
 
+        describe('#LimitOrderV4', async () => {
+            it('is being signed properly', async () => {
+                const testOrder = new LimitOrder({
+                    chainId: 1,
+                    verifyingContract: '0x5315e44798395d4a952530d131249fe00f554565',
+                    makerToken: '0x0b1ba0af832d7c05fd64161e0db78e85978e8082',
+                    takerToken: '0x871dd7c2b4b25e1aa18728e9d5f2af4c4e431f5c',
+                    makerAmount: new BigNumber(100),
+                    takerAmount: new BigNumber(42),
+                    takerTokenFeeAmount: new BigNumber(0),
+                    maker: '0x05cac48d17ecc4d8a9db09dde766a03959b98367',
+                    taker: '0x0000000000000000000000000000000000000000',
+                    sender: '0x0000000000000000000000000000000000000000',
+                    feeRecipient: '0x0000000000000000000000000000000000000000',
+                    pool: '0x0000000000000000000000000000000000000000000000000000000000000000',
+                    expiry: new BigNumber(1611614113),
+                    salt: new BigNumber(464085317),
+                });
+                const expectedHash = '0x4de42b085ed2ce2ef4f8e64df51b7d3ee8586f8ab781ffe45fa45ce884cd278d';
+                const hash = testOrder.getHash();
+                expect(hash).to.be.eq(expectedHash);
+                const expectedSignature: Signature = {
+                    signatureType: 3,
+                    v: 28,
+                    r: '0x575a304e2fe23038a0e4561097b8e47b75270dc28c6bda49bc9a431a6aa9d980',
+                    s: '0x43f976de7c59159b0ea2e5594dadc2ec1c7ff4088f76160ab4aa49999996ef7f',
+                };
+                const signature = testOrder.getSignatureWithKey(
+                    '0xee094b79aa0315914955f2f09be9abe541dcdc51f0aae5bec5453e9f73a471a6',
+                );
+
+                expect(signature).to.be.deep.eq(expectedSignature);
+            });
+        });
+        describe('#findOrdersV4Async', async () => {
+            it('returns all orders when no options are provided', async () => {
+                const ordersLength = 1;
+                const orders = [];
+
+                console.log('token addresses', makerTokenAddress, feeTokenAddress);
+                for (let i = 0; i < ordersLength; i++) {
+                    const order = getRandomLimitOrder().clone({
+                        maker: makerAddress,
+                        makerToken: makerTokenAddress,
+                        takerToken: feeTokenAddress,
+                        chainId: 1337,
+                    });
+                    const signature = await order.getSignatureWithProviderAsync(provider);
+                    const signedOrder: SignedOrderV4 = {
+                        chainId: order.chainId,
+                        verifyingContract: order.verifyingContract,
+                        makerToken: order.makerToken,
+                        takerToken: order.takerToken,
+                        makerAmount: order.makerAmount,
+                        takerAmount: order.takerAmount,
+                        takerTokenFeeAmount: order.takerTokenFeeAmount,
+                        maker: order.maker,
+                        taker: order.taker,
+                        sender: order.sender,
+                        feeRecipient: order.feeRecipient,
+                        pool: order.pool,
+                        expiry: order.expiry,
+                        salt: order.salt,
+                        signature: {
+                            signatureType: signature.signatureType,
+                            v: signature.v,
+                            r: signature.r,
+                            s: signature.s,
+                        },
+                    };
+                    orders[i] = signedOrder;
+                    console.log(signedOrder);
+                }
+                console.log('adding orders');
+                // const newClient = new MeshGraphQLClient({
+                //     httpUrl: `http://localhost:60567/graphql`,
+                //     webSocketUrl: `ws://localhost:60567/graphql`,
+                // });
+
+                const validationResults = await deployment.client.addOrdersV4Async(orders);
+                console.log(validationResults.rejected);
+                expect(validationResults.accepted.length).to.be.eq(ordersLength);
+
+                // Verify that all of the orders that were added to the mesh node
+                // were returned in the response.
+                console.log('checking orders');
+                const gotOrders = await deployment.client.findOrdersV4Async();
+                console.log(gotOrders);
+                // const expectedOrders = orders.map((order) => ({
+                //     ...order,
+                //     hash: orderHashUtils.getOrderHashHex(order),
+                //     fillableTakerAssetAmount: order.takerAssetAmount,
+                // }));
+                // expectContainsOrders(gotOrders, expectedOrders);
+            });
+            it('returns orders that match a given query', async () => {
+                const ordersLength = 10;
+                const orders = [];
+                // Create some orders with makerAssetAmount = 1, 2, 3, etc.
+                for (let i = 0; i < ordersLength; i++) {
+                    orders[i] = await orderFactory.newSignedOrderAsync({
+                        makerAssetAmount: new BigNumber(i + 1),
+                    });
+                }
+                const validationResults = await deployment.client.addOrdersAsync(orders);
+                expect(validationResults.accepted.length).to.be.eq(ordersLength);
+
+                // Verify that all of the orders that were added to the mesh node
+                // were returned in the response.
+                const gotOrders = await deployment.client.findOrdersAsync({
+                    filters: [{ field: 'makerAssetAmount', kind: FilterKind.LessOrEqual, value: new BigNumber(7) }],
+                    sort: [{ field: 'makerAssetAmount', direction: SortDirection.Desc }],
+                    limit: 5,
+                });
+                // We expect 5 orders sorted in descending order by makerAssetAmount starting at 7.
+                // I.e. orders with makerAmounts of 7, 6, 5, 4, and 3.
+                const expectedOrders = orders.map((order) => ({
+                    ...order,
+                    hash: orderHashUtils.getOrderHashHex(order),
+                    fillableTakerAssetAmount: order.takerAssetAmount,
+                }));
+                const sortedExpectedOrders = sortOrdersByMakerAssetAmount(expectedOrders).reverse();
+                // tslint:disable-next-line: custom-no-magic-numbers
+                expect(gotOrders).to.be.deep.eq(sortedExpectedOrders.slice(3, 8));
+            });
+        });
         describe('#addOrdersAsync', async () => {
             it('accepts valid order', async () => {
                 const order = await orderFactory.newSignedOrderAsync({});
@@ -335,7 +508,8 @@ blockchainTests.resets('GraphQLClient', (env) => {
                                 const orderHash = orderHashUtils.getOrderHashHex(order);
                                 let hasSeenMatch = false;
                                 for (const event of events) {
-                                    if (orderHash === event.order.hash) {
+                                    const orderHash = event.order?.hash || event.orderv4?.hash || null;
+                                    if (orderHash === orderHash) {
                                         hasSeenMatch = true;
                                         const expectedOrder = {
                                             ...order,
