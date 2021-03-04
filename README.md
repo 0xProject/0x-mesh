@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-11.0.0-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
+[![Version](https://img.shields.io/badge/version-11.0.1-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 [![Docs](https://img.shields.io/badge/docs-website-yellow.svg)](https://0x-org.gitbook.io/mesh)
 [![Chat with us on Discord](https://img.shields.io/badge/chat-Discord-blueViolet.svg)](https://discord.gg/HF7fHwk)
 [![Circle CI](https://img.shields.io/circleci/project/0xProject/0x-mesh/master.svg)](https://circleci.com/gh/0xProject/0x-mesh/tree/master)

@@ -391,7 +391,7 @@ func OrderEventFromZeroExType(event *zeroex.OrderEvent) *OrderEvent {
 			MakerToken:               event.SignedOrderV4.MakerToken.Hex(),
 			TakerToken:               event.SignedOrderV4.TakerToken.Hex(),
 			MakerAmount:              event.SignedOrderV4.MakerAmount.String(),
-			TakerAmount:              event.SignedOrderV4.MakerAmount.String(),
+			TakerAmount:              event.SignedOrderV4.TakerAmount.String(),
 			TakerTokenFeeAmount:      event.SignedOrderV4.TakerTokenFeeAmount.String(),
 			Maker:                    event.SignedOrderV4.Maker.Hex(),
 			Taker:                    event.SignedOrderV4.Taker.Hex(),
