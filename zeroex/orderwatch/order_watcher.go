@@ -2240,18 +2240,21 @@ func (w *Watcher) permanentlyDeleteOrder(order *types.OrderWithMetadata) error {
 		return err
 	}
 
-	// After permanently deleting an order, we also remove its assetData from the Decoder
-	err := w.removeAssetDataAddressFromEventDecoder(order.OrderV3.MakerAssetData)
-	if err != nil {
-		// This should never happen since the same error would have happened when adding
-		// the assetData to the EventDecoder.
-		logger.WithFields(logger.Fields{
-			"error":       err.Error(),
-			"signedOrder": order.SignedOrder,
-		}).Error("Unexpected error when trying to remove an assetData from decoder")
-		return err
-	}
+	// After permanently deleting an order, we also remove its assetData
+	// from the Decoder for v3 orders.
+	if order.OrderV3 != nil {
+		err := w.removeAssetDataAddressFromEventDecoder(order.OrderV3.MakerAssetData)
+		if err != nil {
+			// This should never happen since the same error would have happened when adding
+			// the assetData to the EventDecoder.
+			logger.WithFields(logger.Fields{
+				"error":       err.Error(),
+				"signedOrder": order.SignedOrder,
+			}).Error("Unexpected error when trying to remove an assetData from decoder")
+			return err
+		}
 
+	}
 	return nil
 }
 
