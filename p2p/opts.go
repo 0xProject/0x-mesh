@@ -5,9 +5,11 @@ package p2p
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/0xProject/0x-mesh/db"
 	libp2p "github.com/libp2p/go-libp2p"
@@ -18,6 +20,7 @@ import (
 	tcp "github.com/libp2p/go-tcp-transport"
 	ws "github.com/libp2p/go-ws-transport"
 	ma "github.com/multiformats/go-multiaddr"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -48,7 +51,7 @@ func getHostOptions(ctx context.Context, config Config) ([]libp2p.Option, error)
 	// determine our public IP address on boot. This will work for nodes that
 	// would be reachable via a public IP address but don't know what it is (e.g.
 	// because they are running in a Docker container).
-	publicIP, err := getPublicIP()
+	publicIP, err := getPublicIP(config.AdditionalPublicIPSources)
 	if err != nil {
 		return nil, fmt.Errorf("could not get public IP address: %s", err.Error())
 	}
@@ -97,8 +100,8 @@ func newAddrsFactory(advertiseAddrs []ma.Multiaddr) func([]ma.Multiaddr) []ma.Mu
 	}
 }
 
-func getPublicIP() (string, error) {
-	res, err := http.Get("https://ifconfig.me/ip")
+func fetchPublicIPFromExternalSource(source string) (string, error) {
+	res, err := http.Get(source)
 	if err != nil {
 		return "", err
 	}
@@ -107,7 +110,24 @@ func getPublicIP() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(ipBytes), nil
+	return strings.TrimSuffix(string(ipBytes), "\n"), nil
+}
+
+func getPublicIP(additionalSources []string) (string, error) {
+	sources := []string{"https://wtfismyip.com/text", "https://whatismyip.api.0x.org", "https://ifconfig.me/ip"}
+	sources = append(additionalSources, sources...)
+	for _, source := range sources {
+		ip, err := fetchPublicIPFromExternalSource(source)
+		if err != nil {
+			log.WithField("source", source).Warn("failed to get public ip from source")
+			continue
+		}
+
+		return ip, nil
+
+	}
+
+	return "", errors.New("failed to get public ip from all provided external sources")
 }
 
 // NewDHT returns a new Kademlia DHT instance configured to work with 0x Mesh

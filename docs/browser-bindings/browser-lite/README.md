@@ -1,4 +1,4 @@
-# @0x/mesh-browser-lite - v11.0.2
+# @0x/mesh-browser-lite - v11.0.3
 
 ## @0x/mesh-browser-lite
 

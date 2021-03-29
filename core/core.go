@@ -57,7 +57,7 @@ const (
 	estimatedNonPollingEthereumRPCRequestsPer24Hrs = 50000
 	// logStatsInterval is how often to log stats for this node.
 	logStatsInterval = 5 * time.Minute
-	version          = "11.0.2"
+	version          = "11.0.3"
 	// ordersyncMinPeers is the minimum amount of peers to receive orders from
 	// before considering the ordersync process finished.
 	ordersyncMinPeers = 5
@@ -194,6 +194,13 @@ type Config struct {
 	// MaxBytesPerSecond is the maximum number of bytes per second that a peer is
 	// allowed to send before failing the bandwidth check. Defaults to 5 MiB.
 	MaxBytesPerSecond float64 `envvar:"MAX_BYTES_PER_SECOND" default:"5242880"`
+	// AdditionalPublicIPSources is a list of external public IP source like
+	// https://whatismyip.api.0x.org/ which return the IP address in a
+	// text/plain format. This list is prepended to the default sources list.
+	//
+	// It expects a comma delimited list of external sources for example:
+	// ADDITIONAL_PUBLIC_IP_SOURCES="https://ifconfig.me/ip,http://192.168.5.10:1337/ip"
+	AdditionalPublicIPSources string `envvar:"ADDITIONAL_PUBLIC_IP_SOURCES" default:""`
 }
 
 type App struct {
@@ -614,19 +621,20 @@ func (app *App) Start() error {
 		return err
 	}
 	nodeConfig := p2p.Config{
-		SubscribeTopic:         app.orderFilter.Topic(),
-		PublishTopics:          publishTopics,
-		TCPPort:                app.config.P2PTCPPort,
-		WebSocketsPort:         app.config.P2PWebSocketsPort,
-		Insecure:               false,
-		PrivateKey:             app.privKey,
-		MessageHandler:         app,
-		RendezvousPoints:       rendezvousPoints,
-		UseBootstrapList:       app.config.UseBootstrapList,
-		BootstrapList:          bootstrapList,
-		DB:                     app.db,
-		CustomMessageValidator: app.orderFilter.ValidatePubSubMessage,
-		MaxBytesPerSecond:      app.config.MaxBytesPerSecond,
+		SubscribeTopic:            app.orderFilter.Topic(),
+		PublishTopics:             publishTopics,
+		TCPPort:                   app.config.P2PTCPPort,
+		WebSocketsPort:            app.config.P2PWebSocketsPort,
+		Insecure:                  false,
+		PrivateKey:                app.privKey,
+		MessageHandler:            app,
+		RendezvousPoints:          rendezvousPoints,
+		UseBootstrapList:          app.config.UseBootstrapList,
+		BootstrapList:             bootstrapList,
+		DB:                        app.db,
+		CustomMessageValidator:    app.orderFilter.ValidatePubSubMessage,
+		MaxBytesPerSecond:         app.config.MaxBytesPerSecond,
+		AdditionalPublicIPSources: strings.Split(app.config.AdditionalPublicIPSources, ","),
 	}
 	app.node, err = p2p.New(innerCtx, nodeConfig)
 	if err != nil {

@@ -258,7 +258,12 @@ func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
-			databaseUtilization := float64(count) / float64(w.maxOrders)
+			countV4, err := w.db.CountOrdersV4(nil)
+			if err != nil {
+				return err
+			}
+			totalCount := count + countV4
+			databaseUtilization := float64(totalCount) / float64(w.maxOrders)
 
 			if time.Since(lastDeleted) > maxDeleteInterval || databaseUtilization > databaseUtilizationThreshold {
 				if err := w.permanentlyDeleteStaleRemovedOrders(); err != nil {
@@ -1086,6 +1091,31 @@ func (w *Watcher) permanentlyDeleteStaleRemovedOrders() error {
 			return err
 		}
 	}
+
+	optsV4 := &db.OrderQueryV4{
+		Filters: []db.OrderFilterV4{
+			{
+				Field: db.OV4FIsRemoved,
+				Kind:  db.Equal,
+				Value: true,
+			},
+			{
+				Field: db.OV4FLastUpdated,
+				Kind:  db.Less,
+				Value: minLastUpdated,
+			},
+		},
+	}
+	ordersToDeleteV4, err := w.db.FindOrdersV4(optsV4)
+	if err != nil {
+		return err
+	}
+	for _, order := range ordersToDeleteV4 {
+		if err := w.permanentlyDeleteOrder(order); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -2236,13 +2266,12 @@ func (w *Watcher) updateOrderExpirationState(order *types.OrderWithMetadata, val
 }
 
 func (w *Watcher) permanentlyDeleteOrder(order *types.OrderWithMetadata) error {
-	if err := w.db.DeleteOrder(order.Hash); err != nil {
-		return err
-	}
-
 	// After permanently deleting an order, we also remove its assetData
 	// from the Decoder for v3 orders.
 	if order.OrderV3 != nil {
+		if err := w.db.DeleteOrder(order.Hash); err != nil {
+			return err
+		}
 		err := w.removeAssetDataAddressFromEventDecoder(order.OrderV3.MakerAssetData)
 		if err != nil {
 			// This should never happen since the same error would have happened when adding
@@ -2253,7 +2282,10 @@ func (w *Watcher) permanentlyDeleteOrder(order *types.OrderWithMetadata) error {
 			}).Error("Unexpected error when trying to remove an assetData from decoder")
 			return err
 		}
-
+	} else {
+		if err := w.db.DeleteOrderV4(order.Hash); err != nil {
+			return err
+		}
 	}
 	return nil
 }

@@ -1,4 +1,4 @@
-# @0x/mesh-graphql-client - v11.0.2
+# @0x/mesh-graphql-client - v11.0.3
 
 ## @0x/mesh-graphql-client
 
