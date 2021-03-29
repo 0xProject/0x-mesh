@@ -168,6 +168,10 @@ type Config struct {
 	// MaxBytesPerSecond is the maximum number of bytes per second that a peer is
 	// allowed to send before failing the bandwidth check. Defaults to 5 MiB.
 	MaxBytesPerSecond float64
+	// AdditionalPublicIPSources is a list of external public IP source like
+	// https://whatismyip.api.0x.org/ which return the IP address in a
+	// text/plain format. This list is prepended to the default sources list.
+	AdditionalPublicIPSources []string
 }
 
 // New creates a new Node with the given context and config. The Node will stop

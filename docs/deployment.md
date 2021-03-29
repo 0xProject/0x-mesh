@@ -183,6 +183,13 @@ type Config struct {
 	// MaxBytesPerSecond is the maximum number of bytes per second that a peer is
 	// allowed to send before failing the bandwidth check. Defaults to 5 MiB.
 	MaxBytesPerSecond float64 `envvar:"MAX_BYTES_PER_SECOND" default:"5242880"`
+	// AdditionalPublicIPSources is a list of external public IP source like
+	// https://whatismyip.api.0x.org/ which return the IP address in a
+	// text/plain format. This list is prepended to the default sources list.
+	//
+	// It expects a comma delimited list of external sources for example:
+	// ADDITIONAL_PUBLIC_IP_SOURCES="https://ifconfig.me/ip,http://192.168.5.10:1337/ip"
+	AdditionalPublicIPSources string `envvar:"ADDITIONAL_PUBLIC_IP_SOURCES" default:""`
 }
 ```
 
