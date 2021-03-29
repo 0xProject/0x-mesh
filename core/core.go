@@ -60,7 +60,7 @@ const (
 	estimatedNonPollingEthereumRPCRequestsPer24Hrs = 50000
 	// logStatsInterval is how often to log stats for this node.
 	logStatsInterval = 5 * time.Minute
-	version          = "9.4.2"
+	version          = "9.4.3"
 	// ordersyncMinPeers is the minimum amount of peers to receive orders from
 	// before considering the ordersync process finished.
 	ordersyncMinPeers = 5
@@ -189,6 +189,13 @@ type Config struct {
 	// settable in browsers and cannot be set via environment variable. If
 	// provided, EthereumRPCURL will be ignored.
 	EthereumRPCClient ethclient.RPCClient `envvar:"-"`
+	// AdditionalPublicIPSources is a list of external public IP source like
+	// https://whatismyip.api.0x.org/ which return the IP address in a
+	// text/plain format. This list is prepended to the default sources list.
+	//
+	// It expects a comma delimited list of external sources for example:
+	// ADDITIONAL_PUBLIC_IP_SOURCES="https://ifconfig.me/ip,http://192.168.5.10:1337/ip"
+	AdditionalPublicIPSources string `envvar:"ADDITIONAL_PUBLIC_IP_SOURCES" default:""`
 }
 
 type snapshotInfo struct {
@@ -670,18 +677,19 @@ func (app *App) Start(ctx context.Context) error {
 		return err
 	}
 	nodeConfig := p2p.Config{
-		SubscribeTopic:         app.orderFilter.Topic(),
-		PublishTopics:          publishTopics,
-		TCPPort:                app.config.P2PTCPPort,
-		WebSocketsPort:         app.config.P2PWebSocketsPort,
-		Insecure:               false,
-		PrivateKey:             app.privKey,
-		MessageHandler:         app,
-		RendezvousPoints:       rendezvousPoints,
-		UseBootstrapList:       app.config.UseBootstrapList,
-		BootstrapList:          bootstrapList,
-		DataDir:                filepath.Join(app.config.DataDir, "p2p"),
-		CustomMessageValidator: app.orderFilter.ValidatePubSubMessage,
+		SubscribeTopic:            app.orderFilter.Topic(),
+		PublishTopics:             publishTopics,
+		TCPPort:                   app.config.P2PTCPPort,
+		WebSocketsPort:            app.config.P2PWebSocketsPort,
+		Insecure:                  false,
+		PrivateKey:                app.privKey,
+		MessageHandler:            app,
+		RendezvousPoints:          rendezvousPoints,
+		UseBootstrapList:          app.config.UseBootstrapList,
+		BootstrapList:             bootstrapList,
+		DataDir:                   filepath.Join(app.config.DataDir, "p2p"),
+		CustomMessageValidator:    app.orderFilter.ValidatePubSubMessage,
+		AdditionalPublicIPSources: strings.Split(app.config.AdditionalPublicIPSources, ","),
 	}
 	app.node, err = p2p.New(innerCtx, nodeConfig)
 	if err != nil {

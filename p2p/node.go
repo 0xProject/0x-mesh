@@ -163,6 +163,10 @@ type Config struct {
 	// according to this custom validator, which will be run in addition to the
 	// default validators.
 	CustomMessageValidator pubsub.Validator
+	// AdditionalPublicIPSources is a list of external public IP source like
+	// https://whatismyip.api.0x.org/ which return the IP address in a
+	// text/plain format. This list is prepended to the default sources list.
+	AdditionalPublicIPSources []string
 }
 
 func getPeerstoreDir(datadir string) string {
