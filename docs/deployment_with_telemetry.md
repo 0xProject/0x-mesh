@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-11.0.2-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
+[![Version](https://img.shields.io/badge/version-11.0.3-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 
 ## Deploying a Telemetry-Enabled Mesh Node
 
