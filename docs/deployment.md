@@ -158,6 +158,13 @@ type Config struct {
 	// all the required fields) are automatically included. For more information
 	// on JSON Schemas, see https://json-schema.org/
 	CustomOrderFilter string `envvar:"CUSTOM_ORDER_FILTER" default:"{}"`
+	// AdditionalPublicIPSources is a list of external public IP source like
+	// https://whatismyip.api.0x.org/ which return the IP address in a
+	// text/plain format. This list is prepended to the default sources list.
+	//
+	// It expects a comma delimited list of external sources for example:
+	// ADDITIONAL_PUBLIC_IP_SOURCES="https://ifconfig.me/ip,http://192.168.5.10:1337/ip"
+	AdditionalPublicIPSources string `envvar:"ADDITIONAL_PUBLIC_IP_SOURCES" default:""`
 }
 ```
 
