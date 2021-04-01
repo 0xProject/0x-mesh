@@ -17,6 +17,7 @@ import (
 
 const (
 	pubsubTopicVersion          = 3
+	pubsubTopicVersionV4        = 4
 	topicVersionFormat          = "/0x-orders/version/%d%s"
 	topicChainIDAndSchemaFormat = "/chain/%d/schema/%s"
 	fullTopicFormat             = "/0x-orders/version/%d/chain/%d/schema/%s"
@@ -43,6 +44,14 @@ func GetDefaultTopic(chainID int, contractAddresses ethereum.ContractAddresses) 
 		return "", err
 	}
 	return defaultFilter.Topic(), nil
+}
+
+func GetDefaultTopicV4(chainID int, contractAddresses ethereum.ContractAddresses) (string, error) {
+	defaultFilter, err := GetDefaultFilter(chainID, contractAddresses)
+	if err != nil {
+		return "", err
+	}
+	return defaultFilter.TopicV4(), nil
 }
 
 // MatchOrder returns true if the order passes the filter. It only returns an
@@ -93,6 +102,13 @@ func (f *Filter) Topic() string {
 		f.encodedSchema = f.generateEncodedSchema()
 	}
 	return fmt.Sprintf(fullTopicFormat, pubsubTopicVersion, f.chainID, f.encodedSchema)
+}
+
+func (f *Filter) TopicV4() string {
+	if f.encodedSchema == "" {
+		f.encodedSchema = f.generateEncodedSchema()
+	}
+	return fmt.Sprintf(fullTopicFormat, pubsubTopicVersionV4, f.chainID, f.encodedSchema)
 }
 
 // Dummy declaration to ensure that ValidatePubSubMessage matches the expected
