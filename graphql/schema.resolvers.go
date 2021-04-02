@@ -10,6 +10,7 @@ import (
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/graphql/generated"
 	"github.com/0xProject/0x-mesh/graphql/gqltypes"
+	"github.com/0xProject/0x-mesh/metrics"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
 	log "github.com/sirupsen/logrus"
@@ -26,6 +27,12 @@ func (r *mutationResolver) AddOrders(ctx context.Context, orders []*gqltypes.New
 	if err != nil {
 		return nil, err
 	}
+	metrics.OrdersAddedViaGraphQl.WithLabelValues(metrics.ProtocolV3, metrics.ValidationAccepted).
+		Add(float64(len(results.Accepted)))
+
+	metrics.OrdersAddedViaGraphQl.WithLabelValues(metrics.ProtocolV3, metrics.ValidationRejected).
+		Add(float64(len(results.Rejected)))
+
 	return gqltypes.AddOrdersResultsFromValidationResults(results)
 }
 
@@ -40,13 +47,20 @@ func (r *mutationResolver) AddOrdersV4(ctx context.Context, orders []*gqltypes.N
 	if err != nil {
 		return nil, err
 	}
-
 	returnResult, err := gqltypes.AddOrdersResultsFromValidationResultsV4(results)
+
+	metrics.OrdersAddedViaGraphQl.WithLabelValues(metrics.ProtocolV4, metrics.ValidationAccepted).
+		Add(float64(len(results.Accepted)))
+
+	metrics.OrdersAddedViaGraphQl.WithLabelValues(metrics.ProtocolV4, metrics.ValidationRejected).
+		Add(float64(len(results.Rejected)))
 
 	return returnResult, err
 }
 
 func (r *queryResolver) Order(ctx context.Context, hash string) (*gqltypes.OrderWithMetadata, error) {
+	defer metrics.GraphqlQueries.WithLabelValues("order").Inc()
+
 	order, err := r.app.GetOrder(common.HexToHash(hash))
 	if err != nil {
 		if err == db.ErrNotFound {
@@ -58,6 +72,7 @@ func (r *queryResolver) Order(ctx context.Context, hash string) (*gqltypes.Order
 }
 
 func (r *queryResolver) Orderv4(ctx context.Context, hash string) (*gqltypes.OrderV4WithMetadata, error) {
+	defer metrics.GraphqlQueries.WithLabelValues("orderv4").Inc()
 	order, err := r.app.GetOrderV4(common.HexToHash(hash))
 	if err != nil {
 		if err == db.ErrNotFound {
@@ -65,10 +80,12 @@ func (r *queryResolver) Orderv4(ctx context.Context, hash string) (*gqltypes.Ord
 		}
 		return nil, err
 	}
+
 	return gqltypes.OrderWithMetadataFromCommonTypeV4(order), nil
 }
 
 func (r *queryResolver) Orders(ctx context.Context, sort []*gqltypes.OrderSort, filters []*gqltypes.OrderFilter, limit *int) ([]*gqltypes.OrderWithMetadata, error) {
+	defer metrics.GraphqlQueries.WithLabelValues("orders").Inc()
 	// TODO(albrow): More validation of query args. We can assume
 	//               basic structure is correct but may need to validate
 	//               some of the semantics.
@@ -115,10 +132,12 @@ func (r *queryResolver) Orders(ctx context.Context, sort []*gqltypes.OrderSort, 
 	if err != nil {
 		return nil, err
 	}
+
 	return gqltypes.OrdersWithMetadataFromCommonType(orders), nil
 }
 
 func (r *queryResolver) Ordersv4(ctx context.Context, sort []*gqltypes.OrderSortV4, filters []*gqltypes.OrderFilterV4, limit *int) ([]*gqltypes.OrderV4WithMetadata, error) {
+	defer metrics.GraphqlQueries.WithLabelValues("ordersv4").Inc()
 	query := &db.OrderQueryV4{
 		// We never include orders that are marked as removed.
 		Filters: []db.OrderFilterV4{
@@ -166,6 +185,7 @@ func (r *queryResolver) Ordersv4(ctx context.Context, sort []*gqltypes.OrderSort
 }
 
 func (r *queryResolver) Stats(ctx context.Context) (*gqltypes.Stats, error) {
+	defer metrics.GraphqlQueries.WithLabelValues("stats").Inc()
 	stats, err := r.app.GetStats()
 	if err != nil {
 		return nil, err

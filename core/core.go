@@ -26,6 +26,7 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/loghooks"
+	"github.com/0xProject/0x-mesh/metrics"
 	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -1158,6 +1159,7 @@ func (app *App) AddOrdersRawV4(ctx context.Context, signedOrdersRaw []*json.RawM
 
 // shareOrder immediately shares the given order on the GossipSub network.
 func (app *App) shareOrder(order *zeroex.SignedOrder) error {
+	defer metrics.OrdersShared.WithLabelValues(metrics.ProtocolV3).Inc()
 	<-app.started
 
 	encoded, err := encoding.OrderToRawMessage(app.orderFilter.Topic(), order)
@@ -1169,6 +1171,7 @@ func (app *App) shareOrder(order *zeroex.SignedOrder) error {
 
 // shareOrderV4 immediately shares the given order on the GossipSub network.
 func (app *App) shareOrderV4(order *zeroex.SignedOrderV4) error {
+	defer metrics.OrdersShared.WithLabelValues(metrics.ProtocolV4).Inc()
 	<-app.started
 
 	encoded, err := json.Marshal(order)

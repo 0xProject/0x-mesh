@@ -15,6 +15,7 @@ import (
 
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/db"
+	"github.com/0xProject/0x-mesh/metrics"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch"
@@ -136,6 +137,7 @@ func (s *Service) HandleStream(stream network.Stream) {
 		log.WithFields(log.Fields{
 			"requester": stream.Conn().RemotePeer().Pretty(),
 		}).Trace("received ordersync V4 request")
+		metrics.OrdersyncRequestsReceived.WithLabelValues(metrics.ProtocolV4).Inc()
 		response := s.handleRequest(request, requesterID)
 		if response == nil {
 			return
@@ -236,6 +238,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 						"error":    err.Error(),
 						"provider": id.Pretty(),
 					}).Debug("could not get orders from peer via ordersync")
+					metrics.OrdersyncRequestsSent.WithLabelValues(metrics.ProtocolV4, metrics.OrdersyncFailure).Inc()
 					m.Lock()
 					if nextFirstRequest != nil {
 						nextRequestForPeer[id] = nextFirstRequest
@@ -245,6 +248,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 					log.WithFields(log.Fields{
 						"provider": id.Pretty(),
 					}).Trace("successfully got orders from peer via ordersync")
+					metrics.OrdersyncRequestsSent.WithLabelValues(metrics.ProtocolV4, metrics.OrdersyncSuccess).Inc()
 					m.Lock()
 					successfullySyncedPeers.Add(id.Pretty())
 					delete(nextRequestForPeer, id)
