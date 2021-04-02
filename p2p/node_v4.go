@@ -7,11 +7,6 @@ import (
 	mathrand "math/rand"
 )
 
-const (
-	// GossipSub topic for V4 orders
-	gossipSubOrdersV4Topic = "0x-orders-v4"
-)
-
 func (n *Node) SendV4(data []byte) error {
 	var firstErr error
 	for _, topic := range n.config.PublishTopicsV4 {
@@ -27,7 +22,7 @@ func (n *Node) receiveAndHandleMessagesV4(ctx context.Context) error {
 	// Subscribe to topic if we haven't already
 	if n.subV4 == nil {
 		var err error
-		n.subV4, err = n.pubsub.Subscribe(gossipSubOrdersV4Topic)
+		n.subV4, err = n.pubsub.Subscribe(n.config.SubscribeTopicV4)
 		if err != nil {
 			return err
 		}
