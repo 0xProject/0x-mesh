@@ -5,3 +5,28 @@ updates:
     schedule:
       interval: "daily"
     target-branch: "development"
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    target-branch: "development"
+  - package-ecosystem: "docker"
+    directory: "/dockerfiles/mesh"
+    schedule:
+      interval: "daily"
+    target-branch: "development"
+  - package-ecosystem: "docker"
+    directory: "/dockerfiles/mesh-bootstrap"
+    schedule:
+      interval: "daily"
+    target-branch: "development"
+  - package-ecosystem: "docker"
+    directory: "/dockerfiles/mesh-bridge"
+    schedule:
+      interval: "daily"
+    target-branch: "development"
+  - package-ecosystem: "docker"
+    directory: "/dockerfiles/mesh-fluentbit"
+    schedule:
+      interval: "daily"
+    target-branch: "development"
