@@ -57,8 +57,8 @@ const (
 	// for different Ethereum networks, but it should be good enough.
 	estimatedNonPollingEthereumRPCRequestsPer24Hrs = 50000
 	// logStatsInterval is how often to log stats for this node.
-	logStatsInterval = 5 * time.Minute
-	version          = "11.0.3"
+	logStatsInterval = 2 * time.Minute
+	version          = "11.1.0"
 	// ordersyncMinPeers is the minimum amount of peers to receive orders from
 	// before considering the ordersync process finished.
 	ordersyncMinPeers = 5
@@ -1315,6 +1315,8 @@ func (app *App) periodicallyLogStats(ctx context.Context) {
 			log.WithError(err).Error("could not get stats")
 			continue
 		}
+		metrics.PeersConnected.Set(float64(stats.NumPeers))
+		metrics.LatestBlock.Set(float64(stats.LatestBlock.Number.Int64()))
 		log.WithFields(log.Fields{
 			"version":                           stats.Version,
 			"pubSubTopic":                       stats.PubSubTopic,
@@ -1324,6 +1326,9 @@ func (app *App) periodicallyLogStats(ctx context.Context) {
 			"numOrders":                         stats.NumOrders,
 			"numOrdersIncludingRemoved":         stats.NumOrdersIncludingRemoved,
 			"numPinnedOrders":                   stats.NumPinnedOrders,
+			"numOrdersV4":                       stats.NumOrdersV4,
+			"numOrdersIncludingRemovedV4":       stats.NumOrdersIncludingRemovedV4,
+			"numPinnedOrdersV4":                 stats.NumPinnedOrdersV4,
 			"numPeers":                          stats.NumPeers,
 			"maxExpirationTime":                 stats.MaxExpirationTime,
 			"startOfCurrentUTCDay":              stats.StartOfCurrentUTCDay,

@@ -81,6 +81,11 @@ var (
 		ProtocolVersionLabel,
 		OrdersyncStatusLabel,
 	})
+
+	LatestBlock = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "mesh_latest_block",
+		Help: "Latest block number recognized by mesh",
+	})
 )
 
 func ServeMetrics(ctx context.Context, serveAddr string) error {

@@ -225,7 +225,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 
 			log.WithFields(log.Fields{
 				"provider": peerID.Pretty(),
-			}).Trace("requesting orders from neighbor via ordersync")
+			}).Trace("requesting orders from neighbor via ordersync_v4")
 
 			wg.Add(1)
 			go func(id peer.ID) {
@@ -237,7 +237,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 					log.WithFields(log.Fields{
 						"error":    err.Error(),
 						"provider": id.Pretty(),
-					}).Debug("could not get orders from peer via ordersync")
+					}).Debug("could not get orders from peer via ordersync_v4")
 					metrics.OrdersyncRequestsSent.WithLabelValues(metrics.ProtocolV4, metrics.OrdersyncFailure).Inc()
 					m.Lock()
 					if nextFirstRequest != nil {
@@ -247,7 +247,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 				} else {
 					log.WithFields(log.Fields{
 						"provider": id.Pretty(),
-					}).Trace("successfully got orders from peer via ordersync")
+					}).Trace("successfully got orders from peer via ordersync_v4")
 					metrics.OrdersyncRequestsSent.WithLabelValues(metrics.ProtocolV4, metrics.OrdersyncSuccess).Inc()
 					m.Lock()
 					successfullySyncedPeers.Add(id.Pretty())
@@ -282,7 +282,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 	log.WithFields(log.Fields{
 		"minPeers":                minPeers,
 		"successfullySyncedPeers": len(successfullySyncedPeers),
-	}).Info("completed a round of ordersync")
+	}).Info("completed a round of ordersync_v4")
 	return nil
 }
 
