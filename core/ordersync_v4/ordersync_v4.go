@@ -110,13 +110,13 @@ func (s *Service) HandleStream(stream network.Stream) {
 		// Pre-emptively close the stream if we can't accept anymore requests.
 		log.WithFields(log.Fields{
 			"requester": stream.Conn().RemotePeer().Pretty(),
-		}).Warn("closing ordersync stream because rate limiter is backed up")
+		}).Warn("closing ordersync_v4 stream because rate limiter is backed up")
 		_ = stream.Reset()
 		return
 	}
 	log.WithFields(log.Fields{
 		"requester": stream.Conn().RemotePeer().Pretty(),
-	}).Trace("handling ordersync stream")
+	}).Trace("handling ordersync_v4 stream")
 	defer func() {
 		_ = stream.Close()
 	}()
@@ -126,7 +126,7 @@ func (s *Service) HandleStream(stream network.Stream) {
 		if err := s.requestRateLimiter.Wait(s.ctx); err != nil {
 			log.WithFields(log.Fields{
 				"requester": stream.Conn().RemotePeer().Pretty(),
-			}).Warn("ordersync rate limiter returned error")
+			}).Warn("ordersync_v4 rate limiter returned error")
 			return
 		}
 		request, err := waitForRequest(s.ctx, stream)
@@ -136,7 +136,7 @@ func (s *Service) HandleStream(stream network.Stream) {
 		}
 		log.WithFields(log.Fields{
 			"requester": stream.Conn().RemotePeer().Pretty(),
-		}).Trace("received ordersync V4 request")
+		}).Trace("received ordersync_v4 request")
 		metrics.OrdersyncRequestsReceived.WithLabelValues(metrics.ProtocolV4).Inc()
 		response := s.handleRequest(request, requesterID)
 		if response == nil {
@@ -146,7 +146,7 @@ func (s *Service) HandleStream(stream network.Stream) {
 			log.WithFields(log.Fields{
 				"error":     err.Error(),
 				"requester": requesterID.Pretty(),
-			}).Warn("could not encode ordersync V4 response")
+			}).Warn("could not encode ordersync_v4 response")
 			s.handlePeerScoreEvent(requesterID, psUnexpectedDisconnect)
 			return
 		}
@@ -270,7 +270,7 @@ func (s *Service) GetOrders(ctx context.Context, minPeers int) error {
 				"delayBeforeNextRetry":    delayBeforeNextRetry.String(),
 				"minPeers":                minPeers,
 				"successfullySyncedPeers": successfullySyncedPeerLength,
-			}).Debug("ordersync could not get orders from enough peers (trying again soon)")
+			}).Debug("ordersync_v4 could not get orders from enough peers (trying again soon)")
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
@@ -336,7 +336,7 @@ func waitForRequest(parentCtx context.Context, stream network.Stream) (*Request,
 			log.WithFields(log.Fields{
 				"error":     err.Error(),
 				"requester": stream.Conn().RemotePeer().Pretty(),
-			}).Warn("could not decode ordersync request")
+			}).Warn("could not decode ordersync_v4 request")
 			errChan <- err
 			return
 		}
@@ -348,7 +348,7 @@ func waitForRequest(parentCtx context.Context, stream network.Stream) (*Request,
 		log.WithFields(log.Fields{
 			"error":     ctx.Err(),
 			"requester": stream.Conn().RemotePeer().Pretty(),
-		}).Warn("timed out waiting for ordersync request")
+		}).Warn("timed out waiting for ordersync_v4 request")
 		return nil, ctx.Err()
 	case err := <-errChan:
 		return nil, err
@@ -368,7 +368,7 @@ func waitForResponse(parentCtx context.Context, stream network.Stream) (*Respons
 			log.WithFields(log.Fields{
 				"error":    err.Error(),
 				"provider": stream.Conn().RemotePeer().Pretty(),
-			}).Warn("could not decode ordersync response")
+			}).Warn("could not decode ordersync_v4 response")
 			errChan <- err
 			return
 		}
@@ -393,7 +393,7 @@ func (s *Service) handleRequest(request *Request, requesterID peer.ID) *Response
 	// Early exit if channel closed?
 	select {
 	case <-s.ctx.Done():
-		log.WithError(s.ctx.Err()).Warn("handleRequest v4 error")
+		log.WithError(s.ctx.Err()).Warn("handleRequest ordersync_v4 error")
 		return nil
 	default:
 	}
@@ -421,7 +421,7 @@ func (s *Service) handleRequest(request *Request, requesterID peer.ID) *Response
 		Limit: uint(s.perPage),
 	})
 	if err != nil {
-		log.WithError(err).Warn("handleRequest v4 error")
+		log.WithError(err).Warn("handleRequest ordersync_v4 error")
 		return nil
 	}
 	var orders []*zeroex.SignedOrderV4
