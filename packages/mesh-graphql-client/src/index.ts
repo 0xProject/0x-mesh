@@ -181,6 +181,7 @@ export class MeshGraphQLClient {
 
     public async getStatsAsync(): Promise<Stats> {
         const resp: ApolloQueryResult<StatsResponse> = await this._client.query({
+            fetchPolicy: 'no-cache',
             query: statsQuery,
         });
         if (resp.data === undefined) {
@@ -253,6 +254,7 @@ export class MeshGraphQLClient {
     public async getOrderAsync(hash: string): Promise<OrderWithMetadata | null> {
         const resp: ApolloQueryResult<OrderResponse> = await this._client.query({
             query: orderQuery,
+            fetchPolicy: 'no-cache',
             variables: {
                 hash,
             },
@@ -269,6 +271,7 @@ export class MeshGraphQLClient {
     public async getOrderV4Async(hash: string): Promise<OrderWithMetadataV4 | null> {
         const resp: ApolloQueryResult<OrderResponseV4> = await this._client.query({
             query: orderQueryV4,
+            fetchPolicy: 'no-cache',
             variables: {
                 hash,
             },
@@ -287,6 +290,7 @@ export class MeshGraphQLClient {
     ): Promise<OrderWithMetadata[]> {
         const resp: ApolloQueryResult<OrdersResponse> = await this._client.query({
             query: ordersQuery,
+            fetchPolicy: 'no-cache',
             variables: {
                 sort: query.sort || [],
                 filters: query.filters?.map(convertFilterValue) || [],
@@ -304,6 +308,7 @@ export class MeshGraphQLClient {
     ): Promise<OrderWithMetadataV4[]> {
         const resp: ApolloQueryResult<OrdersResponseV4> = await this._client.query({
             query: ordersQueryV4,
+            fetchPolicy: 'no-cache',
             variables: {
                 sort: query.sort || [],
                 filters: query.filters?.map(convertFilterValue) || [],

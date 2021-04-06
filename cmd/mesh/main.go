@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/0xProject/0x-mesh/core"
+	"github.com/0xProject/0x-mesh/metrics"
 	"github.com/plaid/go-envvar/envvar"
 	log "github.com/sirupsen/logrus"
 )
@@ -38,6 +39,13 @@ type standaloneConfig struct {
 	// See https://github.com/graphql/graphiql for more information. By default, GraphiQL
 	// is disabled.
 	EnableGraphQLPlayground bool `envvar:"ENABLE_GRAPHQL_PLAYGROUND" default:"false"`
+	// EnablePrometheusMoniitoring determines whether or not to enable
+	// prometheus monitoring. The metrics are accessed by scraping
+	// {PrometheusMonitoringServerAddr}/metrics, prometheus is disabled.
+	EnablePrometheusMonitoring bool `envvar:"ENABLE_PROMETHEUS_MONITORING" default:"false"`
+	// PrometheusMonitoringServerAddr is the interface and port to use for
+	// prometheus server metrics endpoint.
+	PrometheusMonitoringServerAddr string `envvar:"PROMETHEUS_SERVER_ADDR" default:"0.0.0.0:8080"`
 }
 
 func main() {
@@ -82,6 +90,18 @@ func main() {
 			log.WithField("graphql_server_addr", config.GraphQLServerAddr).Info("starting GraphQL server")
 			if err := serveGraphQL(ctx, app, &config); err != nil {
 				graphQLErrChan <- err
+			}
+		}()
+	}
+
+	// NOTE: Prometehus is not an essential service to run.
+	if config.EnablePrometheusMonitoring {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.WithField("prometheus_server_addr", config.PrometheusMonitoringServerAddr).Info("starting Prometheus metrics server")
+			if err := metrics.ServeMetrics(ctx, config.PrometheusMonitoringServerAddr); err != nil {
+				log.Error(err)
 			}
 		}()
 	}

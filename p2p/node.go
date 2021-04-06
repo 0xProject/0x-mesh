@@ -107,12 +107,19 @@ type Node struct {
 // Config contains configuration options for a Node.
 type Config struct {
 	// SubscribeTopic is the topic to subscribe to for new messages. Only messages
-	// that are published on this topic will be received and processed.
+	// that are published on this topic will be received and processed for v3.
 	SubscribeTopic string
+	// SubscribeTopicV4 is the topic to subscribe to for new v4 messages. Only messages
+	// that are published on this topic will be received and processed for v4.
+	SubscribeTopicV4 string
 	// PublishTopics are the topics to publish messages to. Messages may be
 	// published to more than one topic (e.g. a topic for all orders and a topic
 	// for orders with a specific asset).
 	PublishTopics []string
+	// PublishTopics are the topics to publish v4 messages to. Messages may be
+	// published to more than one topic (e.g. a topic for all orders and a topic
+	// for orders with a specific asset).
+	PublishTopicsV4 []string
 	// TCPPort is the port on which to listen for incoming TCP connections.
 	TCPPort int
 	// WebSocketsPort is the port on which to listen for incoming WebSockets
@@ -429,6 +436,17 @@ func (n *Node) Start() error {
 			log.Debug("closing p2p message handler loop")
 		}()
 		messageHandlerErrChan <- n.startMessageHandler(innerCtx)
+	}()
+
+	// Start message handler v4 loop.
+	messageHandlerV4ErrChan := make(chan error, 1)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer func() {
+			log.Debug("closing p2p v4 message handler loop")
+		}()
+		messageHandlerV4ErrChan <- n.startMessageHandlerV4(innerCtx)
 	}()
 
 	// Start peer discovery loop.

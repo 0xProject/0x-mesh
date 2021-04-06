@@ -14,6 +14,7 @@ import (
 	"github.com/0xProject/0x-mesh/db"
 	"github.com/0xProject/0x-mesh/ethereum"
 	"github.com/0xProject/0x-mesh/ethereum/blockwatch"
+	"github.com/0xProject/0x-mesh/metrics"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
 	"github.com/0xProject/0x-mesh/zeroex/orderwatch/decoder"
@@ -262,6 +263,8 @@ func (w *Watcher) removedCheckerLoop(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
+			metrics.OrdersStored.WithLabelValues(metrics.ProtocolV3).Set(float64(count))
+			metrics.OrdersStored.WithLabelValues(metrics.ProtocolV4).Set(float64(countV4))
 			totalCount := count + countV4
 			databaseUtilization := float64(totalCount) / float64(w.maxOrders)
 

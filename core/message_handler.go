@@ -6,6 +6,7 @@ import (
 	"github.com/0xProject/0x-mesh/common/types"
 	"github.com/0xProject/0x-mesh/constants"
 	"github.com/0xProject/0x-mesh/encoding"
+	"github.com/0xProject/0x-mesh/metrics"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/0xProject/0x-mesh/zeroex/ordervalidator"
@@ -103,6 +104,14 @@ func (app *App) HandleMessages(ctx context.Context, messages []*p2p.Message) err
 			app.handlePeerScoreEvent(msg.From, psInvalidMessage)
 		}
 	}
+
+	metrics.P2POrdersReceived.
+		WithLabelValues(metrics.ProtocolV3, metrics.ValidationAccepted).
+		Add(float64(len(validationResults.Accepted)))
+
+	metrics.P2POrdersReceived.
+		WithLabelValues(metrics.ProtocolV3, metrics.ValidationRejected).
+		Add(float64(len(validationResults.Rejected)))
 	return nil
 }
 

@@ -26,6 +26,7 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/ratelimit"
 	"github.com/0xProject/0x-mesh/keys"
 	"github.com/0xProject/0x-mesh/loghooks"
+	"github.com/0xProject/0x-mesh/metrics"
 	"github.com/0xProject/0x-mesh/orderfilter"
 	"github.com/0xProject/0x-mesh/p2p"
 	"github.com/0xProject/0x-mesh/zeroex"
@@ -56,8 +57,8 @@ const (
 	// for different Ethereum networks, but it should be good enough.
 	estimatedNonPollingEthereumRPCRequestsPer24Hrs = 50000
 	// logStatsInterval is how often to log stats for this node.
-	logStatsInterval = 5 * time.Minute
-	version          = "11.0.3"
+	logStatsInterval = 2 * time.Minute
+	version          = "11.1.0"
 	// ordersyncMinPeers is the minimum amount of peers to receive orders from
 	// before considering the ordersync process finished.
 	ordersyncMinPeers = 5
@@ -434,6 +435,26 @@ func getPublishTopics(chainID int, contractAddresses ethereum.ContractAddresses,
 	}
 }
 
+func getPublishTopicsV4(chainID int, contractAddresses ethereum.ContractAddresses, customFilter *orderfilter.Filter) ([]string, error) {
+	defaultTopic, err := orderfilter.GetDefaultTopicV4(chainID, contractAddresses)
+	if err != nil {
+		return nil, err
+	}
+	customTopic := customFilter.TopicV4()
+	if defaultTopic == customTopic {
+		// If we're just using the default order filter, we don't need to publish to
+		// multiple topics.
+		return []string{defaultTopic}, nil
+	} else {
+		// If we are using a custom order filter, publish to *both* the default
+		// topic and the custom topic. All orders that match the custom order filter
+		// must necessarily match the default filter. This also allows us to
+		// implement cross-topic forwarding in the future.
+		// See https://github.com/0xProject/0x-mesh/pull/563
+		return []string{defaultTopic, customTopic}, nil
+	}
+}
+
 func (app *App) getRendezvousPoints() ([]string, error) {
 	defaultRendezvousPoint := fmt.Sprintf("/0x-mesh/network/%d/version/2", app.config.EthereumChainID)
 	defaultTopic, err := orderfilter.GetDefaultTopic(app.chainID, *app.contractAddresses)
@@ -495,6 +516,12 @@ func initMetadata(chainID int, database *db.DB) error {
 func (app *App) Start() error {
 	// Get the publish topics depending on our custom order filter.
 	publishTopics, err := getPublishTopics(app.config.EthereumChainID, *app.contractAddresses, app.orderFilter)
+	if err != nil {
+		return err
+	}
+
+	// Get the publish topics depending on our custom order filter.
+	publishTopicsV4, err := getPublishTopicsV4(app.config.EthereumChainID, *app.contractAddresses, app.orderFilter)
 	if err != nil {
 		return err
 	}
@@ -622,7 +649,9 @@ func (app *App) Start() error {
 	}
 	nodeConfig := p2p.Config{
 		SubscribeTopic:            app.orderFilter.Topic(),
+		SubscribeTopicV4:          app.orderFilter.TopicV4(),
 		PublishTopics:             publishTopics,
+		PublishTopicsV4:           publishTopicsV4,
 		TCPPort:                   app.config.P2PTCPPort,
 		WebSocketsPort:            app.config.P2PWebSocketsPort,
 		Insecure:                  false,
@@ -929,7 +958,6 @@ func (app *App) AddOrders(ctx context.Context, signedOrders []*zeroex.SignedOrde
 	return app.AddOrdersRaw(ctx, signedOrdersRaw, pinned, opts)
 }
 
-// TODO(oskar) - finish
 func (app *App) AddOrdersV4(ctx context.Context, signedOrders []*zeroex.SignedOrderV4, pinned bool, opts *types.AddOrdersOpts) (*ordervalidator.ValidationResults, error) {
 	signedOrdersRaw := []*json.RawMessage{}
 	buf := &bytes.Buffer{}
@@ -1131,6 +1159,7 @@ func (app *App) AddOrdersRawV4(ctx context.Context, signedOrdersRaw []*json.RawM
 
 // shareOrder immediately shares the given order on the GossipSub network.
 func (app *App) shareOrder(order *zeroex.SignedOrder) error {
+	defer metrics.OrdersShared.WithLabelValues(metrics.ProtocolV3).Inc()
 	<-app.started
 
 	encoded, err := encoding.OrderToRawMessage(app.orderFilter.Topic(), order)
@@ -1142,13 +1171,14 @@ func (app *App) shareOrder(order *zeroex.SignedOrder) error {
 
 // shareOrderV4 immediately shares the given order on the GossipSub network.
 func (app *App) shareOrderV4(order *zeroex.SignedOrderV4) error {
+	defer metrics.OrdersShared.WithLabelValues(metrics.ProtocolV4).Inc()
 	<-app.started
 
 	encoded, err := json.Marshal(order)
 	if err != nil {
 		return err
 	}
-	return app.node.Send(encoded)
+	return app.node.SendV4(encoded)
 }
 
 // AddPeer can be used to manually connect to a new peer.
@@ -1285,6 +1315,8 @@ func (app *App) periodicallyLogStats(ctx context.Context) {
 			log.WithError(err).Error("could not get stats")
 			continue
 		}
+		metrics.PeersConnected.Set(float64(stats.NumPeers))
+		metrics.LatestBlock.Set(float64(stats.LatestBlock.Number.Int64()))
 		log.WithFields(log.Fields{
 			"version":                           stats.Version,
 			"pubSubTopic":                       stats.PubSubTopic,
@@ -1294,6 +1326,9 @@ func (app *App) periodicallyLogStats(ctx context.Context) {
 			"numOrders":                         stats.NumOrders,
 			"numOrdersIncludingRemoved":         stats.NumOrdersIncludingRemoved,
 			"numPinnedOrders":                   stats.NumPinnedOrders,
+			"numOrdersV4":                       stats.NumOrdersV4,
+			"numOrdersIncludingRemovedV4":       stats.NumOrdersIncludingRemovedV4,
+			"numPinnedOrdersV4":                 stats.NumPinnedOrdersV4,
 			"numPeers":                          stats.NumPeers,
 			"maxExpirationTime":                 stats.MaxExpirationTime,
 			"startOfCurrentUTCDay":              stats.StartOfCurrentUTCDay,
