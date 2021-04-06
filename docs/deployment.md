@@ -214,5 +214,12 @@ type standaloneConfig struct {
 	// See https://github.com/graphql/graphiql for more information. By default, GraphiQL
 	// is disabled.
 	EnableGraphQLPlayground bool `envvar:"ENABLE_GRAPHQL_PLAYGROUND" default:"false"`
+	// EnablePrometheusMoniitoring determines whether or not to enable
+	// prometheus monitoring. The metrics are accessed by scraping
+	// {PrometheusMonitoringServerAddr}/metrics, prometheus is disabled.
+	EnablePrometheusMonitoring bool `envvar:"ENABLE_PROMETHEUS_MONITORING" default:"false"`
+	// PrometheusMonitoringServerAddr is the interface and port to use for
+	// prometheus server metrics endpoint.
+	PrometheusMonitoringServerAddr string `envvar:"PROMETHEUS_SERVER_ADDR" default:"0.0.0.0:8080"`
 }
 ```
