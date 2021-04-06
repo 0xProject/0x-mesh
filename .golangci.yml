@@ -9,3 +9,5 @@ linters:
       - misspell
       # Identifies unused function parameters
       - unparam
+      # Inspects source code for security problems by scanning the Go AST.
+      - gosec
