@@ -30,7 +30,7 @@
         "@types/ramda": "^0.27.27",
         "@types/rimraf": "^3.0.0",
         "@types/websocket": "^1.0.1",
-        "chai": "^4.2.0",
+        "chai": "^4.3.4",
         "chai-as-promised": "^7.1.1",
         "chai-bignumber": "^3.0.0",
         "dirty-chai": "^2.0.1",
