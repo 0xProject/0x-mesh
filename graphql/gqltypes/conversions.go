@@ -66,38 +66,83 @@ func LatestBlockFromCommonType(latestBlock types.LatestBlock) *LatestBlock {
 	}
 }
 
-func NewOrderToSignedOrder(newOrder *NewOrder) *zeroex.SignedOrder {
+func NewOrderToSignedOrder(newOrder *NewOrder) (*zeroex.SignedOrder, []error) {
+	errors := []error{}
+	chainID, ok := math.ParseBig256(newOrder.ChainID)
+	addIfParseError(&errors, "ChainID", newOrder.ChainID, ok)
+	makerAssetAmount, ok := math.ParseBig256(newOrder.MakerAssetAmount)
+	addIfParseError(&errors, "MakerAssetAmount", newOrder.MakerAssetAmount, ok)
+	makerFee, ok := math.ParseBig256(newOrder.MakerFee)
+	addIfParseError(&errors, "MakerFee", newOrder.MakerFee, ok)
+	takerAssetAmount, ok := math.ParseBig256(newOrder.TakerAssetAmount)
+	addIfParseError(&errors, "TakerAssetAmount", newOrder.TakerAssetAmount, ok)
+	takerFee, ok := math.ParseBig256(newOrder.TakerFee)
+	addIfParseError(&errors, "TakerFee", newOrder.TakerFee, ok)
+	expirationTimeSecond, ok := math.ParseBig256(newOrder.ExpirationTimeSeconds)
+	addIfParseError(&errors, "ExpirationTimeSeconds", newOrder.ExpirationTimeSeconds, ok)
+	salt, ok := math.ParseBig256(newOrder.Salt)
+	addIfParseError(&errors, "Salt", newOrder.Salt, ok)
+
+	if len(errors) > 0 {
+		return nil, errors
+	}
+
 	return &zeroex.SignedOrder{
 		Order: zeroex.Order{
-			ChainID:               math.MustParseBig256(newOrder.ChainID),
+			ChainID:               chainID,
 			ExchangeAddress:       common.HexToAddress(newOrder.ExchangeAddress),
 			MakerAddress:          common.HexToAddress(newOrder.MakerAddress),
 			MakerAssetData:        types.HexToBytes(newOrder.MakerAssetData),
 			MakerFeeAssetData:     types.HexToBytes(newOrder.MakerFeeAssetData),
-			MakerAssetAmount:      math.MustParseBig256(newOrder.MakerAssetAmount),
-			MakerFee:              math.MustParseBig256(newOrder.MakerFee),
+			MakerAssetAmount:      makerAssetAmount,
+			MakerFee:              makerFee,
 			TakerAddress:          common.HexToAddress(newOrder.TakerAddress),
 			TakerAssetData:        types.HexToBytes(newOrder.TakerAssetData),
 			TakerFeeAssetData:     types.HexToBytes(newOrder.TakerFeeAssetData),
-			TakerAssetAmount:      math.MustParseBig256(newOrder.TakerAssetAmount),
-			TakerFee:              math.MustParseBig256(newOrder.TakerFee),
+			TakerAssetAmount:      takerAssetAmount,
+			TakerFee:              takerFee,
 			SenderAddress:         common.HexToAddress(newOrder.SenderAddress),
 			FeeRecipientAddress:   common.HexToAddress(newOrder.FeeRecipientAddress),
-			ExpirationTimeSeconds: math.MustParseBig256(newOrder.ExpirationTimeSeconds),
-			Salt:                  math.MustParseBig256(newOrder.Salt),
+			ExpirationTimeSeconds: expirationTimeSecond,
+			Salt:                  salt,
 		},
 		Signature: types.HexToBytes(newOrder.Signature),
-	}
+	}, nil
 }
 
-func NewOrderToSignedOrderV4(newOrder *NewOrderV4) *zeroex.SignedOrderV4 {
+func NewOrderToSignedOrderV4(newOrder *NewOrderV4) (*zeroex.SignedOrderV4, []error) {
+	errors := []error{}
 	signatureType, err := zeroex.SignatureTypeV4FromString(newOrder.SignatureType)
 	if err != nil {
-		panic(err)
+		errors = append(errors, err)
 	}
+
+	chainID, ok := math.ParseBig256(newOrder.ChainID)
+	addIfParseError(&errors, "ChainID", newOrder.ChainID, ok)
+	makerAmount, ok := math.ParseBig256(newOrder.MakerAmount)
+	addIfParseError(&errors, "MakerAmount", newOrder.MakerAmount, ok)
+	takerAmount, ok := math.ParseBig256(newOrder.TakerAmount)
+	addIfParseError(&errors, "TakerAmount", newOrder.TakerAmount, ok)
+	takerTokenFeeAmount, ok := math.ParseBig256(newOrder.TakerTokenFeeAmount)
+	addIfParseError(&errors, "TakerTokenFeeAmount", newOrder.TakerTokenFeeAmount, ok)
+	salt, ok := math.ParseBig256(newOrder.Salt)
+	addIfParseError(&errors, "Salt", newOrder.Salt, ok)
+	expiry, ok := math.ParseBig256(newOrder.Expiry)
+	addIfParseError(&errors, "Expiry", newOrder.Expiry, ok)
+	pool, ok := math.ParseBig256(newOrder.Pool)
+	addIfParseError(&errors, "Pool", newOrder.Pool, ok)
+	signatureS, ok := math.ParseBig256(newOrder.SignatureS)
+	addIfParseError(&errors, "SignatureS", newOrder.SignatureS, ok)
+	signatureR, ok := math.ParseBig256(newOrder.SignatureR)
+	addIfParseError(&errors, "SignatureR", newOrder.SignatureR, ok)
+
+	if len(errors) > 0 {
+		return nil, errors
+	}
+
 	return &zeroex.SignedOrderV4{
 		OrderV4: zeroex.OrderV4{
-			ChainID:             math.MustParseBig256(newOrder.ChainID),
+			ChainID:             chainID,
 			VerifyingContract:   common.HexToAddress(newOrder.VerifyingContract),
 			MakerToken:          common.HexToAddress(newOrder.MakerToken),
 			TakerToken:          common.HexToAddress(newOrder.TakerToken),
@@ -105,36 +150,50 @@ func NewOrderToSignedOrderV4(newOrder *NewOrderV4) *zeroex.SignedOrderV4 {
 			Taker:               common.HexToAddress(newOrder.Taker),
 			Sender:              common.HexToAddress(newOrder.Sender),
 			FeeRecipient:        common.HexToAddress(newOrder.FeeRecipient),
-			MakerAmount:         math.MustParseBig256(newOrder.MakerAmount),
-			TakerAmount:         math.MustParseBig256(newOrder.TakerAmount),
-			TakerTokenFeeAmount: math.MustParseBig256(newOrder.TakerTokenFeeAmount),
-			Salt:                math.MustParseBig256(newOrder.Salt),
-			Expiry:              math.MustParseBig256(newOrder.Expiry),
-			Pool:                zeroex.BigToBytes32(math.MustParseBig256(newOrder.Pool)),
+			MakerAmount:         makerAmount,
+			TakerAmount:         takerAmount,
+			TakerTokenFeeAmount: takerTokenFeeAmount,
+			Salt:                salt,
+			Expiry:              expiry,
+			Pool:                zeroex.BigToBytes32(pool),
 		},
 		Signature: zeroex.SignatureFieldV4{
 			SignatureType: signatureType,
 			V:             parseUint8FromStringOrPanic(newOrder.SignatureV),
-			R:             zeroex.BigToBytes32(math.MustParseBig256(newOrder.SignatureR)),
-			S:             zeroex.BigToBytes32(math.MustParseBig256(newOrder.SignatureS)),
+			R:             zeroex.BigToBytes32(signatureR),
+			S:             zeroex.BigToBytes32(signatureS),
 		},
-	}
+	}, nil
 }
 
-func NewOrdersToSignedOrders(newOrders []*NewOrder) []*zeroex.SignedOrder {
-	result := make([]*zeroex.SignedOrder, len(newOrders))
-	for i, newOrder := range newOrders {
-		result[i] = NewOrderToSignedOrder(newOrder)
+func NewOrdersToSignedOrders(newOrders []*NewOrder) ([]*zeroex.SignedOrder, []error) {
+	results := []*zeroex.SignedOrder{}
+	errors := []error{}
+	for _, newOrder := range newOrders {
+		result, err := NewOrderToSignedOrder(newOrder)
+		if err != nil {
+			errors = append(errors, err...)
+		} else {
+			results = append(results, result)
+		}
+
 	}
-	return result
+	return results, errors
 }
 
-func NewOrdersToSignedOrdersV4(newOrders []*NewOrderV4) []*zeroex.SignedOrderV4 {
-	result := make([]*zeroex.SignedOrderV4, len(newOrders))
-	for i, newOrder := range newOrders {
-		result[i] = NewOrderToSignedOrderV4(newOrder)
+func NewOrdersToSignedOrdersV4(newOrders []*NewOrderV4) ([]*zeroex.SignedOrderV4, []error) {
+	results := []*zeroex.SignedOrderV4{}
+	errors := []error{}
+	for _, newOrder := range newOrders {
+		result, err := NewOrderToSignedOrderV4(newOrder)
+		if err != nil {
+			errors = append(errors, err...)
+		} else {
+			results = append(results, result)
+		}
+
 	}
-	return result
+	return results, errors
 }
 
 func NewOrderFromSignedOrder(signedOrder *zeroex.SignedOrder) *NewOrder {
@@ -489,6 +548,8 @@ func RejectedCodeFromValidatorStatus(status ordervalidator.RejectedOrderStatus) 
 		return RejectedOrderCodeDatabaseFullOfOrders, nil
 	case ordervalidator.ROTakerAddressNotAllowed.Code:
 		return RejectedOrderCodeTakerAddressNotAllowed, nil
+	case ordervalidator.ROInvalidSchemaCode:
+		return RejectedOrderCodeOrderInvalidSchema, nil
 	default:
 		return "", fmt.Errorf("unexpected RejectedOrderStatus.Code: %q", status.Code)
 	}
@@ -650,5 +711,11 @@ func SortDirectionToDBType(direction SortDirection) (db.SortDirection, error) {
 		return db.Descending, nil
 	default:
 		return "", fmt.Errorf("invalid sort direction: %q", direction)
+	}
+}
+
+func addIfParseError(errors *[]error, variableName, value string, ok bool) {
+	if !ok {
+		*errors = append(*errors, fmt.Errorf("%s field must be a whole number or hex, instead got %s", variableName, value))
 	}
 }

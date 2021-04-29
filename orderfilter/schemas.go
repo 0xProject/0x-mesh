@@ -10,7 +10,7 @@ const (
 {
     "type": "object",
     "required": [
-        "exchangeAddress",
+        "verifyingContract",
         "chainId",
         "makerToken",
         "takerToken",
@@ -25,6 +25,50 @@ const (
         "expiry",
         "salt"
     ],
+    "properties": {
+        "verifyingContract": {
+            "$ref": "/hex"
+        },
+        "chainId": {
+            "$ref": "/chainId"
+        },
+        "makerToken": {
+            "$ref": "/hex"
+        },
+        "takerToken": {
+            "$ref": "/hex"
+        },
+        "makerAmount": {
+            "$ref": "/wholeNumber"
+        },
+        "takerAmount": {
+            "$ref": "/wholeNumber"
+        },
+        "takerTokenFeeAmount": {
+            "$ref": "/wholeNumber"
+        },
+        "maker": {
+            "$ref": "/address"
+        },
+        "taker": {
+            "$ref": "/address"
+        },
+        "sender": {
+            "$ref": "/address"
+        },
+        "feeRecipient": {
+            "$ref": "/address"
+        },
+        "pool": {
+            "$ref": "/hex"
+        },
+        "expiry": {
+            "$ref": "/wholeNumber"
+        },
+        "salt": {
+            "$ref": "/wholeNumber"
+        }
+    },
     "$id": "/orderv4"
 }
 `
@@ -34,12 +78,51 @@ const (
     "allOf": [
         {
             "$ref": "/orderv4"
+        },
+        {
+            "properties": {
+                "signatureType": {
+                    "$ref": "/wholeNumber"
+                },
+                "signatureV": {
+                    "$ref": "/wholeNumber"
+                },
+                "signatureR": {
+                    "$ref": "/hex"
+                },
+                "signatureS": {
+                    "$ref": "/hex"
+                }
+            },
+            "required": [
+                "signatureType",
+                "signatureV",
+                "signatureR",
+                "signatureS"
+            ]
         }
     ],
     "$id": "/signedOrderV4"
 }
 `
-	signedOrderSchema = `{"$id":"/signedOrder","allOf":[{"$ref":"/order"},{"properties":{"signature":{"$ref":"/hex"}},"required":["signature"]}]}`
+	signedOrderSchema = `{
+    "allOf": [
+        {
+            "$ref": "/order"
+        },
+        {
+            "required": [
+                "signature"
+            ],
+            "properties": {
+                "signature": {
+                    "$ref": "/hex"
+                }
+            }
+        }
+    ],
+    "$id": "/signedOrder"
+}`
 
 	// Root schemas
 	rootOrderSchema        = `{"$id":"/rootOrder","allOf":[{"$ref":"/customOrder"},{"$ref":"/signedOrder"}]}`

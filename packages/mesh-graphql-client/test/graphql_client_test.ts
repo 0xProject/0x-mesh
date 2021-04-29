@@ -362,7 +362,11 @@ blockchainTests.resets('GraphQLClient', (env) => {
                     },
                     numPeers: 0,
                     numOrders: 0,
+                    numOrdersV4: 0,
+                    numPinnedOrders: 0,
+                    numPinnedOrdersV4: 0,
                     numOrdersIncludingRemoved: 0,
+                    numOrdersIncludingRemovedV4: 0,
                     maxExpirationTime: constants.MAX_UINT256,
                     startOfCurrentUTCDay: new Date(expectedStartOfCurrentUTCDay),
                     ethRPCRequestsSentInCurrentUTCDay: 0,
@@ -505,11 +509,11 @@ blockchainTests.resets('GraphQLClient', (env) => {
 
                             // Ensure that all of the orders that were added had an associated order event emitted.
                             for (const order of orders) {
-                                const orderHash = orderHashUtils.getOrderHashHex(order);
+                                const computedOrderHash = orderHashUtils.getOrderHashHex(order);
                                 let hasSeenMatch = false;
                                 for (const event of events) {
                                     const orderHash = event.order?.hash || event.orderv4?.hash || null;
-                                    if (orderHash === orderHash) {
+                                    if (computedOrderHash === orderHash) {
                                         hasSeenMatch = true;
                                         const expectedOrder = {
                                             ...order,

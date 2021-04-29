@@ -136,16 +136,7 @@ export class MeshGraphQLClient {
                 wsLink,
                 httpLink,
             );
-            const errorLink = onError(({ graphQLErrors, networkError }) => {
-                if (graphQLErrors != null && graphQLErrors.length > 0) {
-                    const allMessages = graphQLErrors.map((err) => err.message).join('\n');
-                    throw new Error(`GraphQL error(s): ${allMessages}`);
-                }
-                if (networkError != null) {
-                    throw new Error(`Network error: ${networkError.message}`);
-                }
-            });
-            link = from([errorLink, splitLink]);
+            link = from([splitLink]);
             this._subscriptionClient = wsSubClient;
         } else {
             if (!linkConfig.mesh) {
