@@ -136,9 +136,9 @@ func SetupTakerAddress(takerAddress common.Address) Option {
 }
 
 func tokenFromAssetData(assetData []byte) common.Address {
-	if bytes.Compare(assetData, constants.ZRXAssetData) == 0 {
+	if bytes.Equal(assetData, constants.ZRXAssetData) {
 		return ethereum.GanacheAddresses.ZRXToken
-	} else if bytes.Compare(assetData, constants.WETHAssetData) == 0 {
+	} else if bytes.Equal(assetData, constants.WETHAssetData) {
 		return ethereum.GanacheAddresses.WETH9
 	} else {
 		// No other tokens exist in test and only ERC20 is supported

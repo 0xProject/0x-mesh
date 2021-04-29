@@ -1,3 +1,4 @@
+/* tslint:disable */
 import { getContractAddressesForChainOrThrow } from '@0x/contract-addresses';
 import { DummyERC20TokenContract } from '@0x/contracts-erc20';
 import { ExchangeContract } from '@0x/contracts-exchange';

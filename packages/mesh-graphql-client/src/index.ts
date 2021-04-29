@@ -12,7 +12,6 @@ import {
     QueryOptions,
 } from '@apollo/client/core';
 import { ApolloLink } from '@apollo/client/link/core';
-import { onError } from '@apollo/client/link/error';
 import { WebSocketLink } from '@apollo/client/link/ws';
 import { getMainDefinition } from '@apollo/client/utilities';
 import { SubscriptionClient } from 'subscriptions-transport-ws';

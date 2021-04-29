@@ -59,6 +59,7 @@ const (
 	// maxBlockEventsToHandle is the max number of block events we want to
 	// process in a single call to `handleBlockEvents`
 	maxBlockEventsToHandle = 500
+	ExchangeFillEvent      = "ExchangeFillEvent"
 )
 
 var errNoBlocksStored = errors.New("no blocks were stored in the database")
@@ -814,7 +815,7 @@ func (w *Watcher) findOrdersAffectedByContractEvents(log ethtypes.Log, filter db
 			return nil, nil, err
 		}
 
-	case "ExchangeFillEvent":
+	case ExchangeFillEvent:
 		var exchangeFillEvent decoder.ExchangeFillEvent
 		err = w.eventDecoder.Decode(log, &exchangeFillEvent)
 		if err != nil {
@@ -2453,6 +2454,7 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 	return nil
 }
 
+//nolint
 func (w *Watcher) removeTokenAddressFromEventDecoder(address common.Address) error {
 	count := w.contractAddressToSeenCount.Dec(address)
 	if count == 0 {

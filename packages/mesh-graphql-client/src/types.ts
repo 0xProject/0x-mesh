@@ -1,3 +1,4 @@
+/* tslint:disable */
 import { LimitOrderFields, Signature } from '@0x/protocol-utils';
 import { SignedOrder } from '@0x/types';
 import { BigNumber } from '@0x/utils';
@@ -482,8 +483,8 @@ export function fromStringifiedSignedOrderV4(order: StringifiedSignedOrderV4): S
         takerTokenFeeAmount: new BigNumber(order.takerTokenFeeAmount),
         expiry: new BigNumber(order.expiry),
         signature: {
-            signatureType: parseInt(order.signatureType),
-            v: parseInt(order.signatureV),
+            signatureType: parseInt(order.signatureType, 10),
+            v: parseInt(order.signatureV, 16),
             r: order.signatureR,
             s: order.signatureS,
         },

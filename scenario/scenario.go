@@ -358,10 +358,10 @@ func setWETHBalanceAndAllowance(t *testing.T, traderAddress common.Address, amou
 		Signer: GetTestSignerFn(traderAddress),
 	}
 	// V3
-	txn, err = weth9.Approve(opts, ganacheAddresses.ERC20Proxy, amount)
+	_, err = weth9.Approve(opts, ganacheAddresses.ERC20Proxy, amount)
 	require.NoError(t, err)
 	// V4
-	txn, err = weth9.Approve(opts, ganacheAddresses.ExchangeProxy, amount)
+	_, err = weth9.Approve(opts, ganacheAddresses.ExchangeProxy, amount)
 	require.NoError(t, err)
 	waitTxnSuccessfullyMined(t, txn)
 }
@@ -387,7 +387,7 @@ func setZRXBalanceAndAllowance(t *testing.T, traderAddress common.Address, amoun
 		Signer: GetTestSignerFn(traderAddress),
 	}
 	// V3
-	txn, err = zrx.Approve(opts, ganacheAddresses.ERC20Proxy, amount)
+	_, err = zrx.Approve(opts, ganacheAddresses.ERC20Proxy, amount)
 	require.NoError(t, err)
 	// V4
 	txn, err = zrx.Approve(opts, ganacheAddresses.ExchangeProxy, amount)
