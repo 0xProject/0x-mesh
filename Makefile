@@ -51,7 +51,7 @@ test-go: generate test-go-parallel test-go-serial
 
 .PHONY: test-go-parallel
 test-go-parallel:
-	go test ./... -race -timeout 30s
+	go test ./... -race -timeout 30s -p=1
 
 
 .PHONY: test-key-value-stores
