@@ -42,7 +42,7 @@ check: test-all lint
 
 
 .PHONY: test-all
-test-all: test-go test-wasm-browser test-ts test-browser-conversion test-browser-integration
+test-all: test-go test-ts
 
 
 .PHONY: test-go
