@@ -1,5 +1,5 @@
 .PHONY: deps
-deps: deps-ts wasmbrowsertest gqlgen
+deps: deps-ts gqlgen
 
 
 .PHONY: deps-ts

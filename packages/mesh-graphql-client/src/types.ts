@@ -3,6 +3,26 @@ import { LimitOrderFields, Signature } from '@0x/protocol-utils';
 import { SignedOrder } from '@0x/types';
 import { BigNumber } from '@0x/utils';
 
+export interface StringifiedSignedOrder {
+    makerAddress: string;
+    makerAssetData: string;
+    makerAssetAmount: string;
+    makerFee: string;
+    makerFeeAssetData: string;
+    takerAddress: string;
+    takerAssetData: string;
+    takerFeeAssetData: string;
+    takerAssetAmount: string;
+    takerFee: string;
+    senderAddress: string;
+    feeRecipientAddress: string;
+    expirationTimeSeconds: string;
+    salt: string;
+    exchangeAddress: string;
+    chainId: string;
+    signature: string;
+}
+
 export interface AddOrdersOpts {
     keepCancelled?: boolean;
     keepExpired?: boolean;
