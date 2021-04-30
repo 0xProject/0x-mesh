@@ -3,8 +3,5 @@
 {
     "extends": "./tsconfig-base",
     "include": [],
-    "references": [
-        { "path": "./packages/mesh-integration-tests" },
-        { "path": "./packages/mesh-graphql-client" }
-    ]
+    "references": [{ "path": "./packages/mesh-integration-tests" }, { "path": "./packages/mesh-graphql-client" }]
 }
