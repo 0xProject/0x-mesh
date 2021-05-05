@@ -1,6 +1,6 @@
 {
     "name": "@0x/mesh-graphql-client",
-    "version": "11.1.2",
+    "version": "11.2.0",
     "description": "A client for the Mesh GraphQL API",
     "main": "./lib/src/index.js",
     "license": "Apache-2.0",
