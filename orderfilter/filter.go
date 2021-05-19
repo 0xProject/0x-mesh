@@ -13,12 +13,13 @@ import (
 
 var (
 	// Built-in schemas
-	addressSchemaLoader     = jsonschema.NewStringLoader(addressSchema)
-	wholeNumberSchemaLoader = jsonschema.NewStringLoader(wholeNumberSchema)
-	hexSchemaLoader         = jsonschema.NewStringLoader(hexSchema)
-	orderSchemaLoader       = jsonschema.NewStringLoader(orderSchema)
-	orderV4SchemaLoader     = jsonschema.NewStringLoader(orderV4Schema)
-	signedOrderSchemaLoader = jsonschema.NewStringLoader(signedOrderSchema)
+	addressSchemaLoader       = jsonschema.NewStringLoader(addressSchema)
+	wholeNumberSchemaLoader   = jsonschema.NewStringLoader(wholeNumberSchema)
+	hexSchemaLoader           = jsonschema.NewStringLoader(hexSchema)
+	orderSchemaLoader         = jsonschema.NewStringLoader(orderSchema)
+	orderV4SchemaLoader       = jsonschema.NewStringLoader(orderV4Schema)
+	signedOrderSchemaLoader   = jsonschema.NewStringLoader(signedOrderSchema)
+	signedOrderV4SchemaLoader = jsonschema.NewStringLoader(signedOrderV4Schema)
 
 	// Root schemas
 	rootOrderV4SchemaLoader      = jsonschema.NewStringLoader(rootOrderV4Schema)
@@ -33,6 +34,7 @@ var builtInSchemas = []jsonschema.JSONLoader{
 	orderSchemaLoader,
 	orderV4SchemaLoader,
 	signedOrderSchemaLoader,
+	signedOrderV4SchemaLoader,
 }
 
 type Filter struct {

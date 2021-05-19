@@ -82,7 +82,7 @@ type SignedOrderV4 struct {
 // SignedOrderJSONV4 is an unmodified JSON representation of a SignedOrder
 type SignedOrderJSONV4 struct {
 	ChainID             int64  `json:"chainId"`
-	ExchangeAddress     string `json:"exchangeAddress"`
+	VerifyingContract   string `json:"verifyingContract"`
 	MakerToken          string `json:"makerToken"`
 	TakerToken          string `json:"takerToken"`
 	MakerAmount         string `json:"makerAmount"`
@@ -254,7 +254,7 @@ func (s *SignedOrderV4) UnmarshalJSON(data []byte) error {
 
 	var ok bool
 	s.ChainID = big.NewInt(signedOrderJSON.ChainID)
-	s.VerifyingContract = common.HexToAddress(signedOrderJSON.ExchangeAddress)
+	s.VerifyingContract = common.HexToAddress(signedOrderJSON.VerifyingContract)
 	s.MakerToken = common.HexToAddress(signedOrderJSON.MakerToken)
 	s.TakerToken = common.HexToAddress(signedOrderJSON.TakerToken)
 	s.MakerAmount, ok = math.ParseBig256(signedOrderJSON.MakerAmount)
@@ -300,7 +300,7 @@ func (s *SignedOrderV4) UnmarshalJSON(data []byte) error {
 func (s *SignedOrderV4) MarshalJSON() ([]byte, error) {
 	return json.Marshal(SignedOrderJSONV4{
 		ChainID:             s.ChainID.Int64(),
-		ExchangeAddress:     strings.ToLower(s.VerifyingContract.Hex()),
+		VerifyingContract:   strings.ToLower(s.VerifyingContract.Hex()),
 		MakerToken:          strings.ToLower(s.MakerToken.Hex()),
 		TakerToken:          strings.ToLower(s.TakerToken.Hex()),
 		MakerAmount:         s.MakerAmount.String(),

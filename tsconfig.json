@@ -3,13 +3,5 @@
 {
     "extends": "./tsconfig-base",
     "include": [],
-    "references": [
-        { "path": "./packages/mesh-browser" },
-        { "path": "./packages/mesh-browser-lite" },
-        { "path": "./packages/mesh-webpack-example" },
-        { "path": "./packages/mesh-webpack-example-lite" },
-        { "path": "./packages/mesh-integration-tests" },
-        { "path": "./packages/mesh-browser-shim" },
-        { "path": "./packages/mesh-graphql-client" }
-    ]
+    "references": [{ "path": "./packages/mesh-integration-tests" }, { "path": "./packages/mesh-graphql-client" }]
 }

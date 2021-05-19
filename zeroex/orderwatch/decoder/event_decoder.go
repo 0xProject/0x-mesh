@@ -924,8 +924,8 @@ func (d *Decoder) FindEventType(log types.Log) (string, error) {
 		if ok {
 			return fmt.Sprintf("Exchange%sEventV4", eventNameV4), nil
 		}
-			return "", UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
-		}
+		return "", UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
+	}
 
 	return "", UntrackedTokenError{Topic: firstTopic, TokenAddress: log.Address}
 }
@@ -996,7 +996,7 @@ func (d *Decoder) decodeERC1155(log types.Log, decodedLog interface{}) error {
 func (d *Decoder) decodeExchange(log types.Log, decodedLog interface{}) error {
 	eventName, ok := d.exchangeTopicToEventName[log.Topics[0]]
 	if ok {
-	err := unpackLog(decodedLog, eventName, log, d.exchangeABI)
+		err := unpackLog(decodedLog, eventName, log, d.exchangeABI)
 		if err != nil {
 			return err
 		}
@@ -1005,11 +1005,11 @@ func (d *Decoder) decodeExchange(log types.Log, decodedLog interface{}) error {
 	eventNameV4, ok := d.exchangeTopicToEventNameV4[log.Topics[0]]
 	if ok {
 		err := unpackLog(decodedLog, eventNameV4, log, d.exchangeABIV4)
-	if err != nil {
-		return err
+		if err != nil {
+			return err
+		}
+		return nil
 	}
-	return nil
-}
 
 	return UnsupportedEventError{Topics: log.Topics, ContractAddress: log.Address}
 }

@@ -1,5 +1,3 @@
-import { Mesh } from '@0x/mesh-browser-lite';
-import { StringifiedSignedOrder } from '@0x/mesh-browser-lite/lib/types';
 import { SignedOrder } from '@0x/types';
 import { from, HttpLink, split } from '@apollo/client';
 import {
@@ -12,14 +10,12 @@ import {
     QueryOptions,
 } from '@apollo/client/core';
 import { ApolloLink } from '@apollo/client/link/core';
-import { onError } from '@apollo/client/link/error';
 import { WebSocketLink } from '@apollo/client/link/ws';
 import { getMainDefinition } from '@apollo/client/utilities';
 import { SubscriptionClient } from 'subscriptions-transport-ws';
 import * as ws from 'ws';
 import * as Observable from 'zen-observable';
 
-import { BrowserLink } from './browser_link';
 import {
     addOrdersMutation,
     addOrdersMutationV4,
@@ -56,37 +52,37 @@ import {
     StatsResponse,
     StringifiedOrderWithMetadata,
     StringifiedOrderWithMetadataV4,
+    StringifiedSignedOrder,
     StringifiedSignedOrderV4,
     toStringifiedSignedOrder,
     toStringifiedSignedOrderV4,
 } from './types';
 
-export {
-    AddOrdersResults,
-    OrderEvent,
-    OrderQuery,
-    OrderWithMetadata,
-    Stats,
-    OrderFilter,
-    FilterKind,
-    OrderField,
-    OrderSort,
-    SortDirection,
-    OrderEventEndState,
-    RejectedOrderCode,
-    OrderWithMetadataV4,
-    AcceptedOrderResult,
-    RejectedOrderResult,
-} from './types';
 export { SignedOrder } from '@0x/types';
 export { ApolloQueryResult, QueryOptions } from '@apollo/client/core';
+export {
+    AcceptedOrderResult,
+    AddOrdersResults,
+    FilterKind,
+    OrderEvent,
+    OrderEventEndState,
+    OrderField,
+    OrderFilter,
+    OrderQuery,
+    OrderSort,
+    OrderWithMetadata,
+    OrderWithMetadataV4,
+    RejectedOrderCode,
+    RejectedOrderResult,
+    SortDirection,
+    Stats,
+} from './types';
 export { Observable };
 
 const defaultOrderQueryLimit = 100;
 export interface LinkConfig {
     httpUrl?: string;
     webSocketUrl?: string;
-    mesh?: Mesh;
 }
 
 export class MeshGraphQLClient {
@@ -96,66 +92,48 @@ export class MeshGraphQLClient {
     private readonly _onReconnectedCallbacks: (() => void)[] = [];
     constructor(linkConfig: LinkConfig) {
         let link: ApolloLink;
-        if (linkConfig.httpUrl && linkConfig.webSocketUrl) {
-            if (!linkConfig.httpUrl || !linkConfig.webSocketUrl) {
-                throw new Error(
-                    'mesh-graphql-client: Both "httpUrl" and "webSocketUrl" must be provided in "linkConfig" if a network link is used',
-                );
-            }
-
-            // Set up an apollo client with WebSocket and HTTP links. This allows
-            // us to use the appropriate transport based on the type of the query.
-            const httpLink = new HttpLink({
-                uri: linkConfig.httpUrl,
-            });
-            const wsSubClient = new SubscriptionClient(
-                linkConfig.webSocketUrl,
-                {
-                    reconnect: true,
-                },
-                // Use ws in Node.js and native WebSocket in browsers.
-                (process as any).browser ? undefined : ws,
+        if (!linkConfig.httpUrl || !linkConfig.webSocketUrl) {
+            throw new Error(
+                'mesh-graphql-client: Both "httpUrl" and "webSocketUrl" must be provided in "linkConfig" if a network link is used',
             );
-            const wsLink = new WebSocketLink(wsSubClient);
-
-            // HACK(kimpers): See https://github.com/apollographql/apollo-client/issues/5115#issuecomment-572318778
-            // @ts-ignore at the time of writing the field is private and untyped
-            const subscriptionClient = wsLink.subscriptionClient as SubscriptionClient;
-
-            subscriptionClient.onReconnected(() => {
-                for (const cb of this._onReconnectedCallbacks) {
-                    cb();
-                }
-            });
-
-            const splitLink = split(
-                ({ query }) => {
-                    const definition = getMainDefinition(query);
-                    return definition.kind === 'OperationDefinition' && definition.operation === 'subscription';
-                },
-                wsLink,
-                httpLink,
-            );
-            const errorLink = onError(({ graphQLErrors, networkError }) => {
-                if (graphQLErrors != null && graphQLErrors.length > 0) {
-                    const allMessages = graphQLErrors.map((err) => err.message).join('\n');
-                    throw new Error(`GraphQL error(s): ${allMessages}`);
-                }
-                if (networkError != null) {
-                    throw new Error(`Network error: ${networkError.message}`);
-                }
-            });
-            link = from([errorLink, splitLink]);
-            this._subscriptionClient = wsSubClient;
-        } else {
-            if (!linkConfig.mesh) {
-                throw new Error(
-                    'mesh-graphql-client: "httpUrl" and "webSocketUrl" cannot be provided if a browser link is used',
-                );
-            }
-
-            link = new BrowserLink(linkConfig.mesh);
         }
+
+        // Set up an apollo client with WebSocket and HTTP links. This allows
+        // us to use the appropriate transport based on the type of the query.
+        const httpLink = new HttpLink({
+            uri: linkConfig.httpUrl,
+        });
+        const wsSubClient = new SubscriptionClient(
+            linkConfig.webSocketUrl,
+            {
+                reconnect: true,
+            },
+            // Use ws in Node.js and native WebSocket in browsers.
+            (process as any).browser ? undefined : ws,
+        );
+        const wsLink = new WebSocketLink(wsSubClient);
+
+        // HACK(kimpers): See https://github.com/apollographql/apollo-client/issues/5115#issuecomment-572318778
+        // @ts-ignore at the time of writing the field is private and untyped
+        const subscriptionClient = wsLink.subscriptionClient as SubscriptionClient;
+
+        subscriptionClient.onReconnected(() => {
+            for (const cb of this._onReconnectedCallbacks) {
+                cb();
+            }
+        });
+
+        const splitLink = split(
+            ({ query }) => {
+                const definition = getMainDefinition(query);
+                return definition.kind === 'OperationDefinition' && definition.operation === 'subscription';
+            },
+            wsLink,
+            httpLink,
+        );
+        link = from([splitLink]);
+        this._subscriptionClient = wsSubClient;
+
         this._client = new ApolloClient({
             cache: new InMemoryCache({
                 resultCaching: false,

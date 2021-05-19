@@ -2000,3 +2000,37 @@ Loads the Wasm module that is provided by a response.
 | `response` | `Response &#124; Promise<Response>` | The Wasm response that supplies the Wasm binary |
 
 <hr />
+
+# Functions
+
+## loadMeshStreamingForURLAsync
+
+▸ **loadMeshStreamingWithURLAsync**(`url`: `string`): _Promise‹`void`›_
+
+_Defined in [index.ts:7](https://github.com/0xProject/0x-mesh/blob/fe52e966/packages/mesh-browser-lite/src/index.ts#L7)_
+
+Loads the Wasm module that is provided by fetching a url.
+
+**Parameters:**
+
+| Name  | Type     | Description                          |
+| ----- | -------- | ------------------------------------ |
+| `url` | `string` | The URL to query for the Wasm binary |
+
+<hr />
+
+## loadMeshStreamingAsync
+
+▸ **loadMeshStreamingAsync**(`response`: `Response | Promise<Response>`): _Promise‹`void`›_
+
+_Defined in [index.ts:15](https://github.com/0xProject/0x-mesh/blob/fe52e966/packages/mesh-browser-lite/src/index.ts#L15)_
+
+Loads the Wasm module that is provided by a response.
+
+**Parameters:**
+
+| Name       | Type                                | Description                                     |
+| ---------- | ----------------------------------- | ----------------------------------------------- |
+| `response` | `Response &#124; Promise<Response>` | The Wasm response that supplies the Wasm binary |
+
+<hr />

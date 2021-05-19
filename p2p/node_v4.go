@@ -22,6 +22,7 @@ func (n *Node) receiveAndHandleMessagesV4(ctx context.Context) error {
 	// Subscribe to topic if we haven't already
 	if n.subV4 == nil {
 		var err error
+		//nolint
 		n.subV4, err = n.pubsub.Subscribe(n.config.SubscribeTopicV4)
 		if err != nil {
 			return err

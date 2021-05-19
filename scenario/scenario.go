@@ -359,6 +359,7 @@ func setWETHBalanceAndAllowance(t *testing.T, traderAddress common.Address, amou
 	}
 	// V3
 	txn, err = weth9.Approve(opts, ganacheAddresses.ERC20Proxy, amount)
+	waitTxnSuccessfullyMined(t, txn)
 	require.NoError(t, err)
 	// V4
 	txn, err = weth9.Approve(opts, ganacheAddresses.ExchangeProxy, amount)
@@ -389,6 +390,7 @@ func setZRXBalanceAndAllowance(t *testing.T, traderAddress common.Address, amoun
 	// V3
 	txn, err = zrx.Approve(opts, ganacheAddresses.ERC20Proxy, amount)
 	require.NoError(t, err)
+	waitTxnSuccessfullyMined(t, txn)
 	// V4
 	txn, err = zrx.Approve(opts, ganacheAddresses.ExchangeProxy, amount)
 	require.NoError(t, err)
@@ -482,7 +484,7 @@ func GetDummyERC1155AssetData(t *testing.T, tokenIDs []*big.Int, amounts []*big.
 }
 
 func waitTxnSuccessfullyMined(t *testing.T, txn *types.Transaction) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), 4*time.Second)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelFn()
 	receipt, err := bind.WaitMined(ctx, ethClient, txn)
 	require.NoError(t, err)

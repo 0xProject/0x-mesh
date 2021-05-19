@@ -12,8 +12,10 @@ import (
 	"github.com/0xProject/0x-mesh/graphql/gqltypes"
 	"github.com/0xProject/0x-mesh/metrics"
 	"github.com/0xProject/0x-mesh/zeroex"
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/ethereum/go-ethereum/common"
 	log "github.com/sirupsen/logrus"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 func (r *mutationResolver) AddOrders(ctx context.Context, orders []*gqltypes.NewOrder, pinned *bool, opts *gqltypes.AddOrdersOpts) (*gqltypes.AddOrdersResults, error) {
@@ -21,7 +23,16 @@ func (r *mutationResolver) AddOrders(ctx context.Context, orders []*gqltypes.New
 	if pinned != nil {
 		isPinned = (*pinned)
 	}
-	signedOrders := gqltypes.NewOrdersToSignedOrders(orders)
+	signedOrders, errors := gqltypes.NewOrdersToSignedOrders(orders)
+	if len(errors) > 0 {
+		for _, err := range errors {
+			graphql.AddErrorf(ctx, "%s", err.Error())
+		}
+	}
+	if len(signedOrders) == 0 {
+		return nil, gqlerror.Errorf("no signed orders to return")
+	}
+
 	commonTypeOpts := gqltypes.AddOrderOptsToCommonType(opts)
 	results, err := r.app.AddOrders(ctx, signedOrders, isPinned, commonTypeOpts)
 	if err != nil {
@@ -41,7 +52,16 @@ func (r *mutationResolver) AddOrdersV4(ctx context.Context, orders []*gqltypes.N
 	if pinned != nil {
 		isPinned = (*pinned)
 	}
-	signedOrders := gqltypes.NewOrdersToSignedOrdersV4(orders)
+	signedOrders, errors := gqltypes.NewOrdersToSignedOrdersV4(orders)
+	if len(errors) > 0 {
+		for _, err := range errors {
+			graphql.AddErrorf(ctx, "%s", err.Error())
+		}
+	}
+	if len(signedOrders) == 0 {
+		return nil, gqlerror.Errorf("no valid signed orders to return, see other errors")
+	}
+
 	commonTypeOpts := gqltypes.AddOrderOptsToCommonType(opts)
 	results, err := r.app.AddOrdersV4(ctx, signedOrders, isPinned, commonTypeOpts)
 	if err != nil {

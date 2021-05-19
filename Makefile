@@ -1,5 +1,5 @@
 .PHONY: deps
-deps: deps-ts wasmbrowsertest gqlgen
+deps: deps-ts gqlgen
 
 
 .PHONY: deps-ts
@@ -42,7 +42,7 @@ check: test-all lint
 
 
 .PHONY: test-all
-test-all: test-go test-wasm-browser test-ts test-browser-conversion test-browser-integration
+test-all: test-go test-ts
 
 
 .PHONY: test-go
@@ -51,7 +51,7 @@ test-go: generate test-go-parallel test-go-serial
 
 .PHONY: test-go-parallel
 test-go-parallel:
-	go test ./... -race -timeout 30s
+	go test ./... -race -timeout 30s -p=1
 
 
 .PHONY: test-key-value-stores

@@ -5,7 +5,7 @@
         "node": ">=11"
     },
     "workspaces": [
-        "packages/*"
+        "packages/mesh-graphql-client"
     ],
     "scripts": {
         "wsrun": "wsrun",
