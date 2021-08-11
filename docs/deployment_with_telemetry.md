@@ -1,5 +1,11 @@
 [![Version](https://img.shields.io/badge/version-11.2.0-orange.svg)](https://github.com/0xProject/0x-mesh/releases)
 
+# Deprecation Notice
+Since 0x-Mesh will no longer be maintained we also deprecate our telemetry log ingest, that means our telemetry endpoint will return `200` for all requests and not store new logs. We return `200` to make sure your local fluentbit will not continously retry sending logs our way.
+
+You can disable telemetry by removing the logging configuration from your `docker-compose.yml` and spinning down the `fluentbit` and `esproxy` services. 
+
+
 ## Deploying a Telemetry-Enabled Mesh Node
 
 0x Mesh is completely permissionless and the beta is open to anyone who wants to

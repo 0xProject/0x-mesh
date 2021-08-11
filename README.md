@@ -3,6 +3,11 @@
 [![Chat with us on Discord](https://img.shields.io/badge/chat-Discord-blueViolet.svg)](https://discord.gg/HF7fHwk)
 [![Circle CI](https://img.shields.io/circleci/project/0xProject/0x-mesh/master.svg)](https://circleci.com/gh/0xProject/0x-mesh/tree/master)
 
+⚠️ ALERT ⚠️
+This repository is no longer being maintained. 0x Labs isn’t keeping it aligned with future 0x protocol versions, nor is updating its dependencies with other blockchain protocols. We welcome other team’s contributions to do that if they find value in it. 
+If you’re looking to integrate orderbook-like capabilities in your application, we encourage you to try 0x API /orderbook service instead (link to 0x.org/docs/api (http://0x.org/docs/api)). 
+
+
 # 0x Mesh
 
 0x Mesh is a peer-to-peer network for sharing orders that adhere to the
