@@ -8,6 +8,8 @@
 This repository is no longer being maintained. 0x Labs isn’t keeping it aligned with future 0x protocol versions, nor is updating its dependencies with other blockchain protocols. We welcome other team’s contributions to do that if they find value in it. 
 If you’re looking to integrate orderbook-like capabilities in your application, we encourage you to try [0x API /orderbook service instead](http://0x.org/docs/api)
 
+We intend to keep 0x-mesh bootstrap nodes up indefinitely, however you can always set up your own [mesh-bootstrap nodes](cmd/mesh-boostrap) and configure the 0x-mesh nodes via the `BOOTSTRAP_LIST` environment variable.
+
 ---
 
 # 0x Mesh
