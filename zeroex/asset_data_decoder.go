@@ -198,13 +198,14 @@ func (a *AssetDataDecoder) Decode(assetData []byte, decodedAssetData interface{}
 	}
 
 	// This is necessary to prevent a nil pointer exception for ABIs with no inputs
-	if info.abi.Methods[info.name].Inputs.LengthNonIndexed() == 0 {
+	if len(info.abi.Methods[info.name].Inputs.NonIndexed()) == 0 {
 		return nil
 	}
-	err := info.abi.Methods[info.name].Inputs.Unpack(decodedAssetData, assetData[4:])
+	dAsset, err := info.abi.Methods[info.name].Inputs.Unpack(assetData)
 	if err != nil {
 		return err
 	}
+	decodedAssetData = dAsset
 
 	return nil
 }

@@ -663,19 +663,19 @@ func New() (*Decoder, error) {
 
 	erc20TopicToEventName := map[common.Hash]string{}
 	for _, event := range erc20ABI.Events {
-		erc20TopicToEventName[event.ID()] = event.Name
+		erc20TopicToEventName[event.ID] = event.Name
 	}
 	erc721TopicToEventName := map[common.Hash]string{}
 	for _, event := range erc721ABI.Events {
-		erc721TopicToEventName[event.ID()] = event.Name
+		erc721TopicToEventName[event.ID] = event.Name
 	}
 	erc1155TopicToEventName := map[common.Hash]string{}
 	for _, event := range erc1155ABI.Events {
-		erc1155TopicToEventName[event.ID()] = event.Name
+		erc1155TopicToEventName[event.ID] = event.Name
 	}
 	exchangeTopicToEventName := map[common.Hash]string{}
 	for _, event := range exchangeABI.Events {
-		exchangeTopicToEventName[event.ID()] = event.Name
+		exchangeTopicToEventName[event.ID] = event.Name
 	}
 
 	return &Decoder{
@@ -915,10 +915,13 @@ func (d *Decoder) decodeExchange(log types.Log, decodedLog interface{}) error {
 // unpackLog unpacks a retrieved log into the provided output structure.
 func unpackLog(decodedEvent interface{}, event string, log types.Log, _abi abi.ABI) error {
 	if len(log.Data) > 0 {
-		if err := _abi.Unpack(decodedEvent, event, log.Data); err != nil {
+		dEvent, err := _abi.Unpack(event, log.Data)
+		if err != nil {
 			return err
 		}
+		decodedEvent = dEvent
 	}
+
 	var indexed abi.Arguments
 	for _, arg := range _abi.Events[event].Inputs {
 		if arg.Indexed {

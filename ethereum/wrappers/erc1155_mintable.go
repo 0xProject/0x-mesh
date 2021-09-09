@@ -4,6 +4,7 @@
 package wrappers
 
 import (
+	"errors"
 	"math/big"
 	"strings"
 
@@ -17,18 +18,24 @@ import (
 
 // Reference imports to suppress errors if they are not otherwise used.
 var (
+	_ = errors.New
 	_ = big.NewInt
 	_ = strings.NewReader
 	_ = ethereum.NotFound
-	_ = abi.U256
 	_ = bind.Bind
 	_ = common.Big1
 	_ = types.BloomLookup
 	_ = event.NewSubscription
 )
 
+// ERC1155MintableMetaData contains all meta data concerning the ERC1155Mintable contract.
+var ERC1155MintableMetaData = &bind.MetaData{
+	ABI: "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"approved\",\"type\":\"bool\"}],\"name\":\"ApprovalForAll\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256[]\",\"name\":\"ids\",\"type\":\"uint256[]\"},{\"indexed\":false,\"internalType\":\"uint256[]\",\"name\":\"values\",\"type\":\"uint256[]\"}],\"name\":\"TransferBatch\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"TransferSingle\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"value\",\"type\":\"string\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"URI\",\"type\":\"event\"},{\"constant\":true,\"inputs\":[],\"name\":\"ERC1155_BATCH_RECEIVED\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"\",\"type\":\"bytes4\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"ERC1155_RECEIVED\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"\",\"type\":\"bytes4\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"balanceOf\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"address[]\",\"name\":\"owners\",\"type\":\"address[]\"},{\"internalType\":\"uint256[]\",\"name\":\"ids\",\"type\":\"uint256[]\"}],\"name\":\"balanceOfBatch\",\"outputs\":[{\"internalType\":\"uint256[]\",\"name\":\"balances_\",\"type\":\"uint256[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"string\",\"name\":\"uri\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isNF\",\"type\":\"bool\"}],\"name\":\"create\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"type_\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"type_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"uri\",\"type\":\"string\"}],\"name\":\"createWithType\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"creators\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"getNonFungibleBaseType\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"getNonFungibleIndex\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"}],\"name\":\"isApprovedForAll\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"isFungible\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"isNonFungible\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"isNonFungibleBaseType\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"isNonFungibleItem\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"maxIndex\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address[]\",\"name\":\"to\",\"type\":\"address[]\"},{\"internalType\":\"uint256[]\",\"name\":\"quantities\",\"type\":\"uint256[]\"}],\"name\":\"mintFungible\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"type_\",\"type\":\"uint256\"},{\"internalType\":\"address[]\",\"name\":\"to\",\"type\":\"address[]\"}],\"name\":\"mintNonFungible\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"ownerOf\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256[]\",\"name\":\"ids\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"values\",\"type\":\"uint256[]\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"safeBatchTransferFrom\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"safeTransferFrom\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"approved\",\"type\":\"bool\"}],\"name\":\"setApprovalForAll\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+}
+
 // ERC1155MintableABI is the input ABI used to generate the binding from.
-const ERC1155MintableABI = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"approved\",\"type\":\"bool\"}],\"name\":\"ApprovalForAll\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256[]\",\"name\":\"ids\",\"type\":\"uint256[]\"},{\"indexed\":false,\"internalType\":\"uint256[]\",\"name\":\"values\",\"type\":\"uint256[]\"}],\"name\":\"TransferBatch\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"TransferSingle\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"value\",\"type\":\"string\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"URI\",\"type\":\"event\"},{\"constant\":true,\"inputs\":[],\"name\":\"ERC1155_BATCH_RECEIVED\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"\",\"type\":\"bytes4\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"ERC1155_RECEIVED\",\"outputs\":[{\"internalType\":\"bytes4\",\"name\":\"\",\"type\":\"bytes4\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"balanceOf\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"address[]\",\"name\":\"owners\",\"type\":\"address[]\"},{\"internalType\":\"uint256[]\",\"name\":\"ids\",\"type\":\"uint256[]\"}],\"name\":\"balanceOfBatch\",\"outputs\":[{\"internalType\":\"uint256[]\",\"name\":\"balances_\",\"type\":\"uint256[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"string\",\"name\":\"uri\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"isNF\",\"type\":\"bool\"}],\"name\":\"create\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"type_\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"type_\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"uri\",\"type\":\"string\"}],\"name\":\"createWithType\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"creators\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"getNonFungibleBaseType\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"getNonFungibleIndex\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"}],\"name\":\"isApprovedForAll\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"isFungible\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"isNonFungible\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"isNonFungibleBaseType\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"isNonFungibleItem\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"maxIndex\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address[]\",\"name\":\"to\",\"type\":\"address[]\"},{\"internalType\":\"uint256[]\",\"name\":\"quantities\",\"type\":\"uint256[]\"}],\"name\":\"mintFungible\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"type_\",\"type\":\"uint256\"},{\"internalType\":\"address[]\",\"name\":\"to\",\"type\":\"address[]\"}],\"name\":\"mintNonFungible\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"}],\"name\":\"ownerOf\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256[]\",\"name\":\"ids\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"values\",\"type\":\"uint256[]\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"safeBatchTransferFrom\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"safeTransferFrom\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"operator\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"approved\",\"type\":\"bool\"}],\"name\":\"setApprovalForAll\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]"
+// Deprecated: Use ERC1155MintableMetaData.ABI instead.
+var ERC1155MintableABI = ERC1155MintableMetaData.ABI
 
 // ERC1155Mintable is an auto generated Go binding around an Ethereum contract.
 type ERC1155Mintable struct {
@@ -138,7 +145,7 @@ func bindERC1155Mintable(address common.Address, caller bind.ContractCaller, tra
 // sets the output to result. The result type might be a single field for simple
 // returns, a slice of interfaces for anonymous returns and a struct for named
 // returns.
-func (_ERC1155Mintable *ERC1155MintableRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
+func (_ERC1155Mintable *ERC1155MintableRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
 	return _ERC1155Mintable.Contract.ERC1155MintableCaller.contract.Call(opts, result, method, params...)
 }
 
@@ -157,7 +164,7 @@ func (_ERC1155Mintable *ERC1155MintableRaw) Transact(opts *bind.TransactOpts, me
 // sets the output to result. The result type might be a single field for simple
 // returns, a slice of interfaces for anonymous returns and a struct for named
 // returns.
-func (_ERC1155Mintable *ERC1155MintableCallerRaw) Call(opts *bind.CallOpts, result interface{}, method string, params ...interface{}) error {
+func (_ERC1155Mintable *ERC1155MintableCallerRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
 	return _ERC1155Mintable.Contract.contract.Call(opts, result, method, params...)
 }
 
@@ -174,364 +181,434 @@ func (_ERC1155Mintable *ERC1155MintableTransactorRaw) Transact(opts *bind.Transa
 
 // ERC1155BATCHRECEIVED is a free data retrieval call binding the contract method 0xfc67bf1c.
 //
-// Solidity: function ERC1155_BATCH_RECEIVED() constant returns(bytes4)
+// Solidity: function ERC1155_BATCH_RECEIVED() view returns(bytes4)
 func (_ERC1155Mintable *ERC1155MintableCaller) ERC1155BATCHRECEIVED(opts *bind.CallOpts) ([4]byte, error) {
-	var (
-		ret0 = new([4]byte)
-	)
-	out := ret0
-	err := _ERC1155Mintable.contract.Call(opts, out, "ERC1155_BATCH_RECEIVED")
-	return *ret0, err
+	var out []interface{}
+	err := _ERC1155Mintable.contract.Call(opts, &out, "ERC1155_BATCH_RECEIVED")
+
+	if err != nil {
+		return *new([4]byte), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new([4]byte)).(*[4]byte)
+
+	return out0, err
+
 }
 
 // ERC1155BATCHRECEIVED is a free data retrieval call binding the contract method 0xfc67bf1c.
 //
-// Solidity: function ERC1155_BATCH_RECEIVED() constant returns(bytes4)
+// Solidity: function ERC1155_BATCH_RECEIVED() view returns(bytes4)
 func (_ERC1155Mintable *ERC1155MintableSession) ERC1155BATCHRECEIVED() ([4]byte, error) {
 	return _ERC1155Mintable.Contract.ERC1155BATCHRECEIVED(&_ERC1155Mintable.CallOpts)
 }
 
 // ERC1155BATCHRECEIVED is a free data retrieval call binding the contract method 0xfc67bf1c.
 //
-// Solidity: function ERC1155_BATCH_RECEIVED() constant returns(bytes4)
+// Solidity: function ERC1155_BATCH_RECEIVED() view returns(bytes4)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) ERC1155BATCHRECEIVED() ([4]byte, error) {
 	return _ERC1155Mintable.Contract.ERC1155BATCHRECEIVED(&_ERC1155Mintable.CallOpts)
 }
 
 // ERC1155RECEIVED is a free data retrieval call binding the contract method 0xe0a5c949.
 //
-// Solidity: function ERC1155_RECEIVED() constant returns(bytes4)
+// Solidity: function ERC1155_RECEIVED() view returns(bytes4)
 func (_ERC1155Mintable *ERC1155MintableCaller) ERC1155RECEIVED(opts *bind.CallOpts) ([4]byte, error) {
-	var (
-		ret0 = new([4]byte)
-	)
-	out := ret0
-	err := _ERC1155Mintable.contract.Call(opts, out, "ERC1155_RECEIVED")
-	return *ret0, err
+	var out []interface{}
+	err := _ERC1155Mintable.contract.Call(opts, &out, "ERC1155_RECEIVED")
+
+	if err != nil {
+		return *new([4]byte), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new([4]byte)).(*[4]byte)
+
+	return out0, err
+
 }
 
 // ERC1155RECEIVED is a free data retrieval call binding the contract method 0xe0a5c949.
 //
-// Solidity: function ERC1155_RECEIVED() constant returns(bytes4)
+// Solidity: function ERC1155_RECEIVED() view returns(bytes4)
 func (_ERC1155Mintable *ERC1155MintableSession) ERC1155RECEIVED() ([4]byte, error) {
 	return _ERC1155Mintable.Contract.ERC1155RECEIVED(&_ERC1155Mintable.CallOpts)
 }
 
 // ERC1155RECEIVED is a free data retrieval call binding the contract method 0xe0a5c949.
 //
-// Solidity: function ERC1155_RECEIVED() constant returns(bytes4)
+// Solidity: function ERC1155_RECEIVED() view returns(bytes4)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) ERC1155RECEIVED() ([4]byte, error) {
 	return _ERC1155Mintable.Contract.ERC1155RECEIVED(&_ERC1155Mintable.CallOpts)
 }
 
 // BalanceOf is a free data retrieval call binding the contract method 0x00fdd58e.
 //
-// Solidity: function balanceOf(address owner, uint256 id) constant returns(uint256)
+// Solidity: function balanceOf(address owner, uint256 id) view returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableCaller) BalanceOf(opts *bind.CallOpts, owner common.Address, id *big.Int) (*big.Int, error) {
-	var (
-		ret0 = new(*big.Int)
-	)
-	out := ret0
-	err := _ERC1155Mintable.contract.Call(opts, out, "balanceOf", owner, id)
-	return *ret0, err
+	var out []interface{}
+	err := _ERC1155Mintable.contract.Call(opts, &out, "balanceOf", owner, id)
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
 }
 
 // BalanceOf is a free data retrieval call binding the contract method 0x00fdd58e.
 //
-// Solidity: function balanceOf(address owner, uint256 id) constant returns(uint256)
+// Solidity: function balanceOf(address owner, uint256 id) view returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableSession) BalanceOf(owner common.Address, id *big.Int) (*big.Int, error) {
 	return _ERC1155Mintable.Contract.BalanceOf(&_ERC1155Mintable.CallOpts, owner, id)
 }
 
 // BalanceOf is a free data retrieval call binding the contract method 0x00fdd58e.
 //
-// Solidity: function balanceOf(address owner, uint256 id) constant returns(uint256)
+// Solidity: function balanceOf(address owner, uint256 id) view returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) BalanceOf(owner common.Address, id *big.Int) (*big.Int, error) {
 	return _ERC1155Mintable.Contract.BalanceOf(&_ERC1155Mintable.CallOpts, owner, id)
 }
 
 // BalanceOfBatch is a free data retrieval call binding the contract method 0x4e1273f4.
 //
-// Solidity: function balanceOfBatch(address[] owners, uint256[] ids) constant returns(uint256[] balances_)
+// Solidity: function balanceOfBatch(address[] owners, uint256[] ids) view returns(uint256[] balances_)
 func (_ERC1155Mintable *ERC1155MintableCaller) BalanceOfBatch(opts *bind.CallOpts, owners []common.Address, ids []*big.Int) ([]*big.Int, error) {
-	var (
-		ret0 = new([]*big.Int)
-	)
-	out := ret0
-	err := _ERC1155Mintable.contract.Call(opts, out, "balanceOfBatch", owners, ids)
-	return *ret0, err
+	var out []interface{}
+	err := _ERC1155Mintable.contract.Call(opts, &out, "balanceOfBatch", owners, ids)
+
+	if err != nil {
+		return *new([]*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new([]*big.Int)).(*[]*big.Int)
+
+	return out0, err
+
 }
 
 // BalanceOfBatch is a free data retrieval call binding the contract method 0x4e1273f4.
 //
-// Solidity: function balanceOfBatch(address[] owners, uint256[] ids) constant returns(uint256[] balances_)
+// Solidity: function balanceOfBatch(address[] owners, uint256[] ids) view returns(uint256[] balances_)
 func (_ERC1155Mintable *ERC1155MintableSession) BalanceOfBatch(owners []common.Address, ids []*big.Int) ([]*big.Int, error) {
 	return _ERC1155Mintable.Contract.BalanceOfBatch(&_ERC1155Mintable.CallOpts, owners, ids)
 }
 
 // BalanceOfBatch is a free data retrieval call binding the contract method 0x4e1273f4.
 //
-// Solidity: function balanceOfBatch(address[] owners, uint256[] ids) constant returns(uint256[] balances_)
+// Solidity: function balanceOfBatch(address[] owners, uint256[] ids) view returns(uint256[] balances_)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) BalanceOfBatch(owners []common.Address, ids []*big.Int) ([]*big.Int, error) {
 	return _ERC1155Mintable.Contract.BalanceOfBatch(&_ERC1155Mintable.CallOpts, owners, ids)
 }
 
 // Creators is a free data retrieval call binding the contract method 0xcd53d08e.
 //
-// Solidity: function creators(uint256 ) constant returns(address)
+// Solidity: function creators(uint256 ) view returns(address)
 func (_ERC1155Mintable *ERC1155MintableCaller) Creators(opts *bind.CallOpts, arg0 *big.Int) (common.Address, error) {
-	var (
-		ret0 = new(common.Address)
-	)
-	out := ret0
-	err := _ERC1155Mintable.contract.Call(opts, out, "creators", arg0)
-	return *ret0, err
+	var out []interface{}
+	err := _ERC1155Mintable.contract.Call(opts, &out, "creators", arg0)
+
+	if err != nil {
+		return *new(common.Address), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
+
+	return out0, err
+
 }
 
 // Creators is a free data retrieval call binding the contract method 0xcd53d08e.
 //
-// Solidity: function creators(uint256 ) constant returns(address)
+// Solidity: function creators(uint256 ) view returns(address)
 func (_ERC1155Mintable *ERC1155MintableSession) Creators(arg0 *big.Int) (common.Address, error) {
 	return _ERC1155Mintable.Contract.Creators(&_ERC1155Mintable.CallOpts, arg0)
 }
 
 // Creators is a free data retrieval call binding the contract method 0xcd53d08e.
 //
-// Solidity: function creators(uint256 ) constant returns(address)
+// Solidity: function creators(uint256 ) view returns(address)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) Creators(arg0 *big.Int) (common.Address, error) {
 	return _ERC1155Mintable.Contract.Creators(&_ERC1155Mintable.CallOpts, arg0)
 }
 
 // GetNonFungibleBaseType is a free data retrieval call binding the contract method 0x6f969c2d.
 //
-// Solidity: function getNonFungibleBaseType(uint256 id) constant returns(uint256)
+// Solidity: function getNonFungibleBaseType(uint256 id) pure returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableCaller) GetNonFungibleBaseType(opts *bind.CallOpts, id *big.Int) (*big.Int, error) {
-	var (
-		ret0 = new(*big.Int)
-	)
-	out := ret0
-	err := _ERC1155Mintable.contract.Call(opts, out, "getNonFungibleBaseType", id)
-	return *ret0, err
+	var out []interface{}
+	err := _ERC1155Mintable.contract.Call(opts, &out, "getNonFungibleBaseType", id)
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
 }
 
 // GetNonFungibleBaseType is a free data retrieval call binding the contract method 0x6f969c2d.
 //
-// Solidity: function getNonFungibleBaseType(uint256 id) constant returns(uint256)
+// Solidity: function getNonFungibleBaseType(uint256 id) pure returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableSession) GetNonFungibleBaseType(id *big.Int) (*big.Int, error) {
 	return _ERC1155Mintable.Contract.GetNonFungibleBaseType(&_ERC1155Mintable.CallOpts, id)
 }
 
 // GetNonFungibleBaseType is a free data retrieval call binding the contract method 0x6f969c2d.
 //
-// Solidity: function getNonFungibleBaseType(uint256 id) constant returns(uint256)
+// Solidity: function getNonFungibleBaseType(uint256 id) pure returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) GetNonFungibleBaseType(id *big.Int) (*big.Int, error) {
 	return _ERC1155Mintable.Contract.GetNonFungibleBaseType(&_ERC1155Mintable.CallOpts, id)
 }
 
 // GetNonFungibleIndex is a free data retrieval call binding the contract method 0x9cca1c64.
 //
-// Solidity: function getNonFungibleIndex(uint256 id) constant returns(uint256)
+// Solidity: function getNonFungibleIndex(uint256 id) pure returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableCaller) GetNonFungibleIndex(opts *bind.CallOpts, id *big.Int) (*big.Int, error) {
-	var (
-		ret0 = new(*big.Int)
-	)
-	out := ret0
-	err := _ERC1155Mintable.contract.Call(opts, out, "getNonFungibleIndex", id)
-	return *ret0, err
+	var out []interface{}
+	err := _ERC1155Mintable.contract.Call(opts, &out, "getNonFungibleIndex", id)
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
 }
 
 // GetNonFungibleIndex is a free data retrieval call binding the contract method 0x9cca1c64.
 //
-// Solidity: function getNonFungibleIndex(uint256 id) constant returns(uint256)
+// Solidity: function getNonFungibleIndex(uint256 id) pure returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableSession) GetNonFungibleIndex(id *big.Int) (*big.Int, error) {
 	return _ERC1155Mintable.Contract.GetNonFungibleIndex(&_ERC1155Mintable.CallOpts, id)
 }
 
 // GetNonFungibleIndex is a free data retrieval call binding the contract method 0x9cca1c64.
 //
-// Solidity: function getNonFungibleIndex(uint256 id) constant returns(uint256)
+// Solidity: function getNonFungibleIndex(uint256 id) pure returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) GetNonFungibleIndex(id *big.Int) (*big.Int, error) {
 	return _ERC1155Mintable.Contract.GetNonFungibleIndex(&_ERC1155Mintable.CallOpts, id)
 }
 
 // IsApprovedForAll is a free data retrieval call binding the contract method 0xe985e9c5.
 //
-// Solidity: function isApprovedForAll(address owner, address operator) constant returns(bool)
+// Solidity: function isApprovedForAll(address owner, address operator) view returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCaller) IsApprovedForAll(opts *bind.CallOpts, owner common.Address, operator common.Address) (bool, error) {
-	var (
-		ret0 = new(bool)
-	)
-	out := ret0
-	err := _ERC1155Mintable.contract.Call(opts, out, "isApprovedForAll", owner, operator)
-	return *ret0, err
+	var out []interface{}
+	err := _ERC1155Mintable.contract.Call(opts, &out, "isApprovedForAll", owner, operator)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
 }
 
 // IsApprovedForAll is a free data retrieval call binding the contract method 0xe985e9c5.
 //
-// Solidity: function isApprovedForAll(address owner, address operator) constant returns(bool)
+// Solidity: function isApprovedForAll(address owner, address operator) view returns(bool)
 func (_ERC1155Mintable *ERC1155MintableSession) IsApprovedForAll(owner common.Address, operator common.Address) (bool, error) {
 	return _ERC1155Mintable.Contract.IsApprovedForAll(&_ERC1155Mintable.CallOpts, owner, operator)
 }
 
 // IsApprovedForAll is a free data retrieval call binding the contract method 0xe985e9c5.
 //
-// Solidity: function isApprovedForAll(address owner, address operator) constant returns(bool)
+// Solidity: function isApprovedForAll(address owner, address operator) view returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) IsApprovedForAll(owner common.Address, operator common.Address) (bool, error) {
 	return _ERC1155Mintable.Contract.IsApprovedForAll(&_ERC1155Mintable.CallOpts, owner, operator)
 }
 
 // IsFungible is a free data retrieval call binding the contract method 0xadebf6f2.
 //
-// Solidity: function isFungible(uint256 id) constant returns(bool)
+// Solidity: function isFungible(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCaller) IsFungible(opts *bind.CallOpts, id *big.Int) (bool, error) {
-	var (
-		ret0 = new(bool)
-	)
-	out := ret0
-	err := _ERC1155Mintable.contract.Call(opts, out, "isFungible", id)
-	return *ret0, err
+	var out []interface{}
+	err := _ERC1155Mintable.contract.Call(opts, &out, "isFungible", id)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
 }
 
 // IsFungible is a free data retrieval call binding the contract method 0xadebf6f2.
 //
-// Solidity: function isFungible(uint256 id) constant returns(bool)
+// Solidity: function isFungible(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableSession) IsFungible(id *big.Int) (bool, error) {
 	return _ERC1155Mintable.Contract.IsFungible(&_ERC1155Mintable.CallOpts, id)
 }
 
 // IsFungible is a free data retrieval call binding the contract method 0xadebf6f2.
 //
-// Solidity: function isFungible(uint256 id) constant returns(bool)
+// Solidity: function isFungible(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) IsFungible(id *big.Int) (bool, error) {
 	return _ERC1155Mintable.Contract.IsFungible(&_ERC1155Mintable.CallOpts, id)
 }
 
 // IsNonFungible is a free data retrieval call binding the contract method 0xe44591f0.
 //
-// Solidity: function isNonFungible(uint256 id) constant returns(bool)
+// Solidity: function isNonFungible(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCaller) IsNonFungible(opts *bind.CallOpts, id *big.Int) (bool, error) {
-	var (
-		ret0 = new(bool)
-	)
-	out := ret0
-	err := _ERC1155Mintable.contract.Call(opts, out, "isNonFungible", id)
-	return *ret0, err
+	var out []interface{}
+	err := _ERC1155Mintable.contract.Call(opts, &out, "isNonFungible", id)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
 }
 
 // IsNonFungible is a free data retrieval call binding the contract method 0xe44591f0.
 //
-// Solidity: function isNonFungible(uint256 id) constant returns(bool)
+// Solidity: function isNonFungible(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableSession) IsNonFungible(id *big.Int) (bool, error) {
 	return _ERC1155Mintable.Contract.IsNonFungible(&_ERC1155Mintable.CallOpts, id)
 }
 
 // IsNonFungible is a free data retrieval call binding the contract method 0xe44591f0.
 //
-// Solidity: function isNonFungible(uint256 id) constant returns(bool)
+// Solidity: function isNonFungible(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) IsNonFungible(id *big.Int) (bool, error) {
 	return _ERC1155Mintable.Contract.IsNonFungible(&_ERC1155Mintable.CallOpts, id)
 }
 
 // IsNonFungibleBaseType is a free data retrieval call binding the contract method 0x7269a327.
 //
-// Solidity: function isNonFungibleBaseType(uint256 id) constant returns(bool)
+// Solidity: function isNonFungibleBaseType(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCaller) IsNonFungibleBaseType(opts *bind.CallOpts, id *big.Int) (bool, error) {
-	var (
-		ret0 = new(bool)
-	)
-	out := ret0
-	err := _ERC1155Mintable.contract.Call(opts, out, "isNonFungibleBaseType", id)
-	return *ret0, err
+	var out []interface{}
+	err := _ERC1155Mintable.contract.Call(opts, &out, "isNonFungibleBaseType", id)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
 }
 
 // IsNonFungibleBaseType is a free data retrieval call binding the contract method 0x7269a327.
 //
-// Solidity: function isNonFungibleBaseType(uint256 id) constant returns(bool)
+// Solidity: function isNonFungibleBaseType(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableSession) IsNonFungibleBaseType(id *big.Int) (bool, error) {
 	return _ERC1155Mintable.Contract.IsNonFungibleBaseType(&_ERC1155Mintable.CallOpts, id)
 }
 
 // IsNonFungibleBaseType is a free data retrieval call binding the contract method 0x7269a327.
 //
-// Solidity: function isNonFungibleBaseType(uint256 id) constant returns(bool)
+// Solidity: function isNonFungibleBaseType(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) IsNonFungibleBaseType(id *big.Int) (bool, error) {
 	return _ERC1155Mintable.Contract.IsNonFungibleBaseType(&_ERC1155Mintable.CallOpts, id)
 }
 
 // IsNonFungibleItem is a free data retrieval call binding the contract method 0x5e81b958.
 //
-// Solidity: function isNonFungibleItem(uint256 id) constant returns(bool)
+// Solidity: function isNonFungibleItem(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCaller) IsNonFungibleItem(opts *bind.CallOpts, id *big.Int) (bool, error) {
-	var (
-		ret0 = new(bool)
-	)
-	out := ret0
-	err := _ERC1155Mintable.contract.Call(opts, out, "isNonFungibleItem", id)
-	return *ret0, err
+	var out []interface{}
+	err := _ERC1155Mintable.contract.Call(opts, &out, "isNonFungibleItem", id)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
 }
 
 // IsNonFungibleItem is a free data retrieval call binding the contract method 0x5e81b958.
 //
-// Solidity: function isNonFungibleItem(uint256 id) constant returns(bool)
+// Solidity: function isNonFungibleItem(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableSession) IsNonFungibleItem(id *big.Int) (bool, error) {
 	return _ERC1155Mintable.Contract.IsNonFungibleItem(&_ERC1155Mintable.CallOpts, id)
 }
 
 // IsNonFungibleItem is a free data retrieval call binding the contract method 0x5e81b958.
 //
-// Solidity: function isNonFungibleItem(uint256 id) constant returns(bool)
+// Solidity: function isNonFungibleItem(uint256 id) pure returns(bool)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) IsNonFungibleItem(id *big.Int) (bool, error) {
 	return _ERC1155Mintable.Contract.IsNonFungibleItem(&_ERC1155Mintable.CallOpts, id)
 }
 
 // MaxIndex is a free data retrieval call binding the contract method 0x08d7d469.
 //
-// Solidity: function maxIndex(uint256 ) constant returns(uint256)
+// Solidity: function maxIndex(uint256 ) view returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableCaller) MaxIndex(opts *bind.CallOpts, arg0 *big.Int) (*big.Int, error) {
-	var (
-		ret0 = new(*big.Int)
-	)
-	out := ret0
-	err := _ERC1155Mintable.contract.Call(opts, out, "maxIndex", arg0)
-	return *ret0, err
+	var out []interface{}
+	err := _ERC1155Mintable.contract.Call(opts, &out, "maxIndex", arg0)
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
 }
 
 // MaxIndex is a free data retrieval call binding the contract method 0x08d7d469.
 //
-// Solidity: function maxIndex(uint256 ) constant returns(uint256)
+// Solidity: function maxIndex(uint256 ) view returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableSession) MaxIndex(arg0 *big.Int) (*big.Int, error) {
 	return _ERC1155Mintable.Contract.MaxIndex(&_ERC1155Mintable.CallOpts, arg0)
 }
 
 // MaxIndex is a free data retrieval call binding the contract method 0x08d7d469.
 //
-// Solidity: function maxIndex(uint256 ) constant returns(uint256)
+// Solidity: function maxIndex(uint256 ) view returns(uint256)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) MaxIndex(arg0 *big.Int) (*big.Int, error) {
 	return _ERC1155Mintable.Contract.MaxIndex(&_ERC1155Mintable.CallOpts, arg0)
 }
 
 // OwnerOf is a free data retrieval call binding the contract method 0x6352211e.
 //
-// Solidity: function ownerOf(uint256 id) constant returns(address)
+// Solidity: function ownerOf(uint256 id) view returns(address)
 func (_ERC1155Mintable *ERC1155MintableCaller) OwnerOf(opts *bind.CallOpts, id *big.Int) (common.Address, error) {
-	var (
-		ret0 = new(common.Address)
-	)
-	out := ret0
-	err := _ERC1155Mintable.contract.Call(opts, out, "ownerOf", id)
-	return *ret0, err
+	var out []interface{}
+	err := _ERC1155Mintable.contract.Call(opts, &out, "ownerOf", id)
+
+	if err != nil {
+		return *new(common.Address), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
+
+	return out0, err
+
 }
 
 // OwnerOf is a free data retrieval call binding the contract method 0x6352211e.
 //
-// Solidity: function ownerOf(uint256 id) constant returns(address)
+// Solidity: function ownerOf(uint256 id) view returns(address)
 func (_ERC1155Mintable *ERC1155MintableSession) OwnerOf(id *big.Int) (common.Address, error) {
 	return _ERC1155Mintable.Contract.OwnerOf(&_ERC1155Mintable.CallOpts, id)
 }
 
 // OwnerOf is a free data retrieval call binding the contract method 0x6352211e.
 //
-// Solidity: function ownerOf(uint256 id) constant returns(address)
+// Solidity: function ownerOf(uint256 id) view returns(address)
 func (_ERC1155Mintable *ERC1155MintableCallerSession) OwnerOf(id *big.Int) (common.Address, error) {
 	return _ERC1155Mintable.Contract.OwnerOf(&_ERC1155Mintable.CallOpts, id)
 }
@@ -833,6 +910,7 @@ func (_ERC1155Mintable *ERC1155MintableFilterer) ParseApprovalForAll(log types.L
 	if err := _ERC1155Mintable.contract.UnpackLog(event, "ApprovalForAll", log); err != nil {
 		return nil, err
 	}
+	event.Raw = log
 	return event, nil
 }
 
@@ -996,6 +1074,7 @@ func (_ERC1155Mintable *ERC1155MintableFilterer) ParseTransferBatch(log types.Lo
 	if err := _ERC1155Mintable.contract.UnpackLog(event, "TransferBatch", log); err != nil {
 		return nil, err
 	}
+	event.Raw = log
 	return event, nil
 }
 
@@ -1159,6 +1238,7 @@ func (_ERC1155Mintable *ERC1155MintableFilterer) ParseTransferSingle(log types.L
 	if err := _ERC1155Mintable.contract.UnpackLog(event, "TransferSingle", log); err != nil {
 		return nil, err
 	}
+	event.Raw = log
 	return event, nil
 }
 
@@ -1303,6 +1383,6 @@ func (_ERC1155Mintable *ERC1155MintableFilterer) ParseURI(log types.Log) (*ERC11
 	if err := _ERC1155Mintable.contract.UnpackLog(event, "URI", log); err != nil {
 		return nil, err
 	}
+	event.Raw = log
 	return event, nil
 }
-

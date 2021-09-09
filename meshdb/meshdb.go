@@ -13,6 +13,7 @@ import (
 	"github.com/0xProject/0x-mesh/ethereum/miniheader"
 	"github.com/0xProject/0x-mesh/zeroex"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -169,7 +170,7 @@ func setupOrders(database *db.DB, contractAddresses ethereum.ContractAddresses) 
 			// by null bytes ("0x0"). We still want to index this value so we can look
 			// up orders without a maker fee.
 			return [][]byte{
-				[]byte(order.SignedOrder.MakerAddress.Hex() + "|" + common.ToHex(constants.NullBytes) + "|"),
+				[]byte(order.SignedOrder.MakerAddress.Hex() + "|" + hexutil.Encode(constants.NullBytes) + "|"),
 			}
 		}
 		singleAssetDatas, err := parseContractAddressesAndTokenIdsFromAssetData(order.SignedOrder.MakerFeeAssetData, contractAddresses)
@@ -425,7 +426,7 @@ func (m *MeshDB) FindOrdersByMakerAddressTokenAddressAndTokenID(makerAddress, to
 func (m *MeshDB) FindOrdersByMakerAddressMakerFeeAssetAddressAndTokenID(makerAddress, makerFeeAssetAddress common.Address, tokenID *big.Int) ([]*Order, error) {
 	var prefix []byte
 	if makerFeeAssetAddress == constants.NullAddress {
-		prefix = []byte(makerAddress.Hex() + "|" + common.ToHex(constants.NullBytes) + "|")
+		prefix = []byte(makerAddress.Hex() + "|" + hexutil.Encode(constants.NullBytes) + "|")
 	} else {
 		prefix = []byte(makerAddress.Hex() + "|" + makerFeeAssetAddress.Hex() + "|")
 		if tokenID != nil {
