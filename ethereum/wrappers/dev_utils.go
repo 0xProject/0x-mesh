@@ -910,6 +910,37 @@ func (_DevUtils *DevUtilsCaller) Erc20ProxyAddress(opts *bind.CallOpts) (common.
 
 }
 
+type RelevantStatesReturn struct {
+	OrdersInfo                []OrderInfo
+	FillableTakerAssetAmounts []*big.Int
+	IsValidSignature          []bool
+}
+
+func (_DevUtils *DevUtilsCaller) GetOrderRelevantStates(opts *bind.CallOpts, orders []LibOrderOrder, signatures [][]byte) (RelevantStatesReturn, error) {
+	var out0 []interface{}
+	err := _DevUtils.contract.Call(opts, &out0, "getOrderRelevantStates", orders, signatures)
+
+	ret := *abi.ConvertType(out0, new(RelevantStatesReturn)).(*RelevantStatesReturn)
+
+	return ret, err
+	// var out []interface{}
+	// err := _DevUtils.contract.Call(opts, &out, "erc20ProxyAddress")
+
+	// if err != nil {
+	// 	return *new(common.Address), err
+	// }
+
+	// out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
+
+	// return out0, err
+	// return struct {
+	// 	OrdersInfo                []OrderInfo
+	// 	FillableTakerAssetAmounts []*big.Int
+	// 	IsValidSignature          []bool
+	// }{}, nil
+
+}
+
 // Erc20ProxyAddress is a free data retrieval call binding the contract method 0xee185997.
 //
 // Solidity: function erc20ProxyAddress() view returns(address)
@@ -1297,7 +1328,8 @@ func (_DevUtils *DevUtilsTransactor) GetOrderRelevantStates(opts *bind.TransactO
 //
 // Solidity: function getOrderRelevantStates((address,address,address,address,uint256,uint256,uint256,uint256,uint256,uint256,bytes,bytes,bytes,bytes)[] orders, bytes[] signatures) returns((uint8,bytes32,uint256)[] ordersInfo, uint256[] fillableTakerAssetAmounts, bool[] isValidSignature)
 func (_DevUtils *DevUtilsSession) GetOrderRelevantStates(orders []LibOrderOrder, signatures [][]byte) (*types.Transaction, error) {
-	return _DevUtils.Contract.GetOrderRelevantStates(&_DevUtils.TransactOpts, orders, signatures)
+	// return _DevUtils.Contract.GetOrderRelevantStates(&_DevUtils.TransactOpts, orders, signatures)
+	return nil, nil
 }
 
 // GetOrderRelevantStates is a paid mutator transaction binding the contract method 0xe25cabf7.
