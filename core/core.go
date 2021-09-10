@@ -188,7 +188,7 @@ type Config struct {
 	// EthereumRPCClient is the client to use for all Ethereum RPC reuqests. It is only
 	// settable in browsers and cannot be set via environment variable. If
 	// provided, EthereumRPCURL will be ignored.
-	EthereumRPCClient ethclient.RPCClient `envvar:"-"`
+	EthereumRPCClient ethclient.Client `envvar:"-"`
 	// AdditionalPublicIPSources is a list of external public IP source like
 	// https://whatismyip.api.0x.org/ which return the IP address in a
 	// text/plain format. This list is prepended to the default sources list.
@@ -314,13 +314,8 @@ func newWithPrivateConfig(config Config, pConfig privateConfig) (*App, error) {
 	}
 
 	// Initialize the ETH client, which will be used by various watchers.
-	var ethRPCClient ethclient.RPCClient
-	if config.EthereumRPCClient != nil {
-		if config.EthereumRPCURL != "" {
-			log.Warn("Ignoring EthereumRPCURL and using the provided EthereumRPCClient")
-		}
-		ethRPCClient = config.EthereumRPCClient
-	} else if config.EthereumRPCURL != "" {
+	var ethRPCClient *rpc.Client
+	if config.EthereumRPCURL != "" {
 		ethRPCClient, err = rpc.Dial(config.EthereumRPCURL)
 		if err != nil {
 			log.WithError(err).Error("Could not dial EthereumRPCURL")
