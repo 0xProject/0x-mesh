@@ -44,10 +44,10 @@ func NewRpcClient(ethRPCClient ethrpcclient.Client) (*RpcClient, error) {
 }
 
 type GetBlockByNumberResponse struct {
-	Hash       common.Hash `json:"hash"`
-	ParentHash common.Hash `json:"parentHash"`
-	Number     string      `json:"number"`
-	Timestamp  string      `json:"timestamp"`
+	Hash       string `json:"hash"`
+	ParentHash string `json:"parentHash"`
+	Number     string `json:"number"`
+	Timestamp  string `json:"timestamp"`
 }
 
 // UnknownBlockNumberError is the error returned from a filter logs RPC call when the block number
@@ -80,6 +80,7 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, er
 	var header GetBlockByNumberResponse
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
+	// rc.ethRPCClient.HeaderByNumber(ctx context.Context, number *big.Int)
 	err := rc.ethRPCClient.CallContext(ctx, &header, "eth_getBlockByNumber", blockParam, shouldIncludeTransactions)
 	if err != nil {
 		return nil, err
@@ -102,8 +103,8 @@ func (rc *RpcClient) HeaderByNumber(number *big.Int) (*miniheader.MiniHeader, er
 		return nil, errors.New("Failed to parse big.Int value from hex-encoded block timestamp returned from eth_getBlockByNumber")
 	}
 	miniHeader := &miniheader.MiniHeader{
-		Hash:      header.Hash,
-		Parent:    header.ParentHash,
+		Hash:      common.HexToHash(header.Hash),
+		Parent:    common.HexToHash(header.ParentHash),
 		Number:    blockNum,
 		Timestamp: time.Unix(unixTimestamp.Int64(), 0),
 	}
@@ -152,7 +153,7 @@ type FilterUnknownBlockError struct {
 }
 
 func (e FilterUnknownBlockError) Error() string {
-	return fmt.Sprintf("%s: %+v", e.Message, e.FilterQuery)
+	return fmt.Sprintf("%s: %s", e.Message, e.FilterQuery.BlockHash.String())
 }
 
 // FilterLogs returns the logs that satisfy the supplied filter query.
