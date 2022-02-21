@@ -47,7 +47,7 @@
         "@0x/types": "^3.2.0",
         "@0x/utils": "^5.4.0",
         "@apollo/client": "^3.2.4",
-        "@types/ws": "^7.2.6",
+        "@types/ws": "^8.2.3",
         "graphql": "^15.3.0",
         "react": "*",
         "subscriptions-transport-ws": "^0.9.17",
