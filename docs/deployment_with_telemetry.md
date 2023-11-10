@@ -186,11 +186,11 @@ logs called `myPeerID`:
 }
 ```
 
-Ping us in [Discord](https://discord.gg/HF7fHwk) and let us know your peer ID.
+Ping us in Discord and let us know your peer ID.
 You can DM `alex_towle#0282` or `ovrmrrw#0454` and we'll
 whitelist your node :)
 
 I hope that was easy enough! If you ran into any issues, please ping us in the
-`#mesh` channel on [Discord](https://discord.gg/HF7fHwk). To learn more about
+`#mesh` channel on Discord. To learn more about
 connecting to your Mesh node's GraphQL API, check out the
 [GraphQL API Documentation](graphql_api.md).
